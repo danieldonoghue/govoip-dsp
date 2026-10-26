@@ -141,8 +141,9 @@ are without a residual.
     `n`: for every `n` from -1 to `MaxFrameSize`+2, at the rates 4, 8000,
     48000 and 65535 Hz, it is true if and only if `New` returns no error.
     It derives its answer from the bounds and `internal/fft`, not from a
-    copy of their rules; an off-by-one in its bound is caught by the test;
-    it does not allocate. It is true for 80, 160, 320, 480, 640 and 960.
+    copy of their rules. An off-by-one in its bound that changes the result
+    is caught by the test. It does not allocate. It is true for 80, 160,
+    320, 480, 640 and 960.
 
 ## Sanity signal tests (reported, not thresholded)
 
@@ -199,3 +200,11 @@ listed under "Open questions" in `docs/status.md`.
 Callers cannot import `internal/fft`, so the `Config.FrameSize` rule could
 not be checked before `New`. WP5b adds `SupportedFrameSize` and criterion
 11 for it. This adds a criterion and relaxes nothing.
+
+### Criterion 11 worded exactly (WP5b review)
+
+Criterion 11 first said that any off-by-one in the bound is caught. Two
+are equivalent and cannot be caught: `n >= 0` and `n <= MaxFrameSize+1`
+give the same answers, because `fft.Supported` rejects 0 and 4098. The
+criterion now asks for the off-by-ones that change the result, which the
+test catches (`docs/testing.md`). The test is unchanged.
