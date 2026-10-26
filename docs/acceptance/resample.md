@@ -278,4 +278,12 @@ Targets:
    - A loose wall-clock backstop remains: each rejection takes under 1 s.
      Without the cap these cases took about 14 s.
    - The 10 ms bound of change 5 is dropped.
+8. **Correction to change 7, after review.** Its justification said that
+   without the cap "these cases took about 14 s". Measured: 15 to 19 s
+   for `New` at 4000000:1 and 6000001:3 (quality 10), 11 to 23 s for the
+   setters, but about 0.37 s for 256 channels at 100000:1, which C's own
+   memory limit rejects after building the table. That case is under the
+   1 s backstop, so only the allocation bound catches it without the cap.
+   Each setter case now gets its own resampler, so that no case can reuse
+   buffers that an earlier case grew.
 
