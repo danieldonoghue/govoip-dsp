@@ -16,7 +16,7 @@ return:
 
 | Function | Input | Output |
 |---|---|---|
-| `Sqrt` | Q(2n), any `int32` | Q(n), `int16` |
+| `Sqrt` | Q(2n), x in [0, 2^30); meaningless outside | Q(n), `int16` |
 | `Cos` | angle in radians, Q13, upstream uses [0, π] | Q13 |
 | `CosNorm` | x where the angle is π/2 · x/2^15; period 2^17 | Q15 |
 | `Exp` | Q11 | Q16, saturating at 2^31-1 |
