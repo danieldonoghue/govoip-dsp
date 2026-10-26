@@ -348,6 +348,34 @@ and 5.39 dB, so G3 and G4 fail. With order 2 it gives 1.60, 1.90, 2.14 and
 6.78 dB, so G4 fails. The same 3 dB as P4 catches both, and leaves 0.45 dB
 of margin at −20 dBFS.
 
+### Noise-floor safeguard (NF), trial
+
+Registered on 2026-10-26 at the owner's request, before implementation.
+The safeguard is kept only if every registered criterion (C, P, S, T, N,
+Q, R, G) still passes and N4 passes; otherwise it is reverted and the
+limit is documented as it stands.
+
+**Rule.** A minimum-statistics noise-floor estimate of the input:
+
+1. For every frame, active or not, the frame RMS `r` updates the minimum of
+   the current sub-window of 10 frames (100 ms).
+2. The last 15 sub-window minima (1.5 s) are kept. The noise floor `N` is
+   the smallest of them and of the current sub-window's minimum. Until the
+   first sub-window is complete, `N` is 0.
+3. The AGC gain may rise on an active frame only if `r² > 10·N²`
+   (`r` more than 10 dB above the floor). Falls, the cut, the level
+   estimate and everything else are unchanged. `speech` stays a `bool`.
+
+| ID | Test | Threshold |
+|---|---|---|
+| N4 | `testutil.PinkNoise` at a long-term RMS of −55 dBFS (the reported N1 case), 60 s, `speech = true`, fresh instance | applied gain never above **+3 dB** (design v2 without NF: +23.16 dB) |
+
+**Reasoning and expected risk.** Noise is near its own floor, so its frames
+rarely stand 10 dB above it; speech has pauses that set the floor low.
+The risk is that a stationary signal is also at its own floor: the sine
+and white-noise signals of C2, C5, C6, P1 and P2 need the gain to rise
+with no pauses, so they may fail. That is measured, not assumed.
+
 ## Changes
 
 1. **N3, Q2, Q3: reference gain clarified** (before any test was written or
