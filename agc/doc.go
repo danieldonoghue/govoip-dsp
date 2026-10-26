@@ -51,6 +51,12 @@
 // prevent this; only a gate above the noise does. In pauses the gain cannot
 // rise, but it may finish falling.
 //
+// Use the AGC after preprocess with denoising on, which lowers stationary
+// noise before the AGC sees it, and set GateLevel above the residual noise.
+// At the default suppression (-15 dB), preprocess was measured to reduce
+// white noise by 13 to 14 dB and pink noise by only 4 to 6 dB. The
+// integration work package (WP7) measures the whole chain.
+//
 // # Rates, chunking and latency
 //
 // SampleRate is 8000 to 48000 Hz. Process accepts any number of samples,
