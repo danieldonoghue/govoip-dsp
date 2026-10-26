@@ -105,7 +105,7 @@ has it). Any literal whose result is out of range is reported in
 7. The doc comment of every public approximation (`Sqrt`, `Cos`, `CosNorm`,
    `Exp`, `Atan`) states its maximum error against the correctly rounded
    true value from `math`, measured over its whole documented domain, and
-   where that error is large. A test computes the error over the domain,
+   says where that error is large. A test computes the error over the domain,
    exhaustively or by an argument that covers every input, and fails if it
    exceeds the stated figure. Each figure is the measured maximum, so
    lowering it makes the test fail.
@@ -144,3 +144,6 @@ The package did not say how far its approximations are from `math`, so a
 reader could not tell that they are not interchangeable. Criterion 7 makes
 each doc state the measured error and a test keep it true. It changes no
 behaviour and no other criterion.
+
+After review, "and says where that error is large" replaced the
+ungrammatical "and where that error is large"; the meaning is unchanged.
