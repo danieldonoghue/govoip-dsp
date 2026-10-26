@@ -137,6 +137,12 @@ are without a residual.
 9. `Reset` gives the output of a fresh instance with the same settings.
 10. Switching between `Run` and `RunEcho` matches the C sequence of setting and
     clearing the echo state (fixture 7).
+11. `SupportedFrameSize(n)` reports exactly whether `New` accepts frame size
+    `n`: for every `n` from -1 to `MaxFrameSize`+2, at the rates 4, 8000,
+    48000 and 65535 Hz, it is true if and only if `New` returns no error.
+    It derives its answer from the bounds and `internal/fft`, not from a
+    copy of their rules; an off-by-one in its bound is caught by the test;
+    it does not allocate. It is true for 80, 160, 320, 480, 640 and 960.
 
 ## Sanity signal tests (reported, not thresholded)
 
@@ -187,3 +193,9 @@ the reference (with a stand-in for `speex_echo_get_residual`), so the
 behaviour at a zero divisor is compared with the canonical arm64 build
 rather than only with a Go unit test. Criterion 7 is unchanged: the site is
 listed under "Open questions" in `docs/status.md`.
+
+### Criterion 11 added (WP5b)
+
+Callers cannot import `internal/fft`, so the `Config.FrameSize` rule could
+not be checked before `New`. WP5b adds `SupportedFrameSize` and criterion
+11 for it. This adds a criterion and relaxes nothing.
