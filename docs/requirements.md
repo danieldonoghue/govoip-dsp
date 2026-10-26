@@ -78,7 +78,8 @@ interface, a registry, a hook) goes to the project owner before it is built.
 ### Out of scope
 
 RTP parsing, codecs, codec-specific PLC, neural models, hard real-time
-guarantees.
+guarantees. Codecs are planned for a separate repository, one package per
+codec (`docs/decisions/owner-codecs-separate-repo.md`).
 
 ---
 
