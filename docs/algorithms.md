@@ -590,17 +590,21 @@ fixed-point arithmetic. A feed-forward AGC with a lookahead limiter:
    `TestRMS`).
 3. A frame is active when `r` is at or above `GateLevel` and every sample
    in it was passed with `speech = true`. Inactive frames do not change
-   the level estimate and cannot raise the gain.
+   the level estimate and cannot raise the gain; the gain may still finish
+   falling during them.
 4. The level estimate `L` is a power mean of order 4: `E` is an
    exponential mean, over active frames, of `min(r, 2L)⁴`, with time
    constant `LevelTime`, and `L = E^(1/4)`. During the first `LevelTime` of
    active frames the weight is `1/n` for the `n`-th frame, so `E` is the
-   plain mean of what has been heard. `E` is a `fixed.Float`, and the
-   fourth root is two `fixed.FloatSqrt` calls.
-5. Three active frames in a row with energy above `10·L²` (+10 dB) set `E`
-   to the 4th power of the smallest of their `r` and cut the gain at once.
-   `LevelTime/3` of active frames in a row below `L/2` (−6 dB) set `E` to
-   the 4th power of the largest of their `r`.
+   plain mean of what has been heard; the first frame is clamped against
+   the initial level, the target. `E` is a `fixed.Float` updated as
+   `E − c·E + c·x`, and the fourth root is two `fixed.FloatSqrt` calls.
+5. Consecutive active frames with energy above `20·L²` (+13 dB), one more
+   than a 10 ms click can touch (3 at rates that are multiples of 1000, 4
+   at 9999 Hz), set `E` to the 4th power of the smallest of their `r` and
+   cut the gain at once. An inactive frame ends the run. `LevelTime/3` of
+   active frames in a row below `L/2` (−6 dB) set `E` to the 4th power of
+   the largest of their `r`.
 6. The target gain is `TargetLevel / L`, clamped to `[MinGain, MaxGain]`.
    The AGC gain starts at 0 dB and moves towards the target gain by at most
    `RiseRate` dB/s up, on active frames only, and `FallRate` dB/s down, on
@@ -611,38 +615,48 @@ fixed-point arithmetic. A feed-forward AGC with a lookahead limiter:
    between `min(e[j−1], e[j])` and `min(e[j], e[j+1])`, which needs one
    block of lookahead.
 
-**Design choices.**
+**Design choices.** Each was measured on the P4 LibriSpeech signal at
+several active levels (P4 is registered at −34 dBFS only; the other levels
+are reported, `TestAcceptanceLibriSpeech`).
 
 - **Order 4 instead of Speex's 5.** Order 4 needs only squarings and two
   square roots, which `internal/fixed` has; a fifth root does not exist
-  there. Measured: order 2 instead of 4 raises P4 (LibriSpeech pumping)
-  from 2.24 dB to 7.99 dB, so the peak weighting is what keeps the gain
-  steady.
-- **Persistence before a cut.** Speex cuts after one jump of 10 times the
-  loudness. With 2 frames instead of 3, a 10 ms click that straddles two
-  frames cuts the gain by 32 dB (prototype measurement; mutation check:
-  caught by T4). Three frames costs 30 ms on a genuine step: T3 is 0.03 s.
-- **Warm-up.** Without it, `E` starts at the target level, and for speech
-  10 dB below the target an order-4 mean takes about 9·`LevelTime` to come
-  down; P3 then fails (mutation check: caught).
+  there. Order 4 gives P4 2.05 to 2.55 dB from −38 to −20 dBFS. Order 2
+  gives less at quiet levels (1.60 dB at −38, 2.14 dB at −24) but 6.78 dB
+  at −20 dBFS, because its lower level lets ordinary loud speech trigger
+  the cut. Order 4 was kept for that robustness; no registered criterion
+  separates the two (mutation check: not caught).
+- **Cut threshold and run.** Speex cuts after one jump of 10 times the
+  loudness. Here a run is needed: with 2 frames, a 10 ms click straddling
+  two frames cut the gain by 32 dB (prototype), and frames that are not
+  consecutive in time let clicks in pauses add up. The threshold is
+  +13 dB: with +10 dB, P4 rose to 3.41, 3.50 and 5.39 dB at −27, −24 and
+  −20 dBFS, with 1 to 3 cuts on ordinary speech; with +13 dB there are no
+  cuts on speech, while the +20 dB steps still cut after 30 ms (T3 0.03 s).
+- **Warm-up.** It makes the estimate start from the speech heard rather
+  than from the target. Without it, S1 on `SpeechLike` is −27.0 dBFS
+  instead of −25.4 dBFS; P3 and P4 pass either way (mutation check: caught
+  only by `TestSpeechFlag`).
 - **Sustained drop.** An order-4 mean needs about 18·`LevelTime` to fall
   20 dB. The reset after `LevelTime/3` of quieter frames gives C2 2.45 s.
   It fired 0 times on the P3 and P4 signals (counted in a probe).
-- **Cautious start.** Speex grows a maximum gain as speech is confirmed.
-  Here the gain starts at 0 dB and rises only on active frames, at most
-  `RiseRate` dB/s, which gives the same bound; a separate cap could never
-  bind (R3).
+- **Cautious start.** Speex grows an absolute maximum gain as speech is
+  confirmed. Here the gain starts at 0 dB and rises only on active frames,
+  at most `RiseRate` dB/s, which has a similar effect; R3 checks the bound,
+  and the gain came within 0.002 dB of it.
 
 **Parameters.** `DefaultConfig`: target −24 dBFS, ceiling −1 dBFS, gate
 −50 dBFS, gain −12 to +24 dB, rise 12 dB/s, fall 40 dB/s (Speex's
-defaults), `LevelTime` 3 s. On a prototype with the warm-up, P4 measured
-3.91, 3.16, 2.81, 2.24 and 1.93 dB for `LevelTime` 1, 1.5, 2, 3 and 4 s
-(2 and 4 s with a longer drop window), and C2 1.78, 1.94 and 2.44 s for
-1, 1.5 and 3 s; 3 s leaves margin on both. "Target level" is the output
-RMS that a stationary signal above the gate converges to. For speech, the
-AGC holds the order-4 power mean of active frame RMS at the target,
-which lies above the active-speech RMS: measured on LibriSpeech, the
-output's active-speech RMS is 1.6 dB below the target (S1).
+defaults), `LevelTime` 3 s. On a prototype with the warm-up and a +10 dB
+cut, P4 measured 3.91, 3.16, 2.81, 2.24 and 1.93 dB for `LevelTime` 1,
+1.5, 2, 3 and 4 s (2 and 4 s with a longer drop window), and C2 1.78, 1.94
+and 2.44 s for 1, 1.5 and 3 s; 3 s leaves margin on both. These were
+measured on the P4 files themselves, so the P4 margin is in-sample.
+"Target level" is the output RMS that a stationary signal above the gate
+converges to. For speech, the AGC holds the order-4 power mean of active
+frame RMS at the target, which lies above the active-speech RMS: measured
+on LibriSpeech, the output's active-speech RMS is 1.6 dB below the target
+(S1).
 
 **Latency.** `2K` samples: 2 ms at rates that are multiples of 1000. The
 first `2K` output samples of a stream are zero.
@@ -656,14 +670,18 @@ first `2K` output samples of a stream are zero.
   unreachable (mutation check: removing it is not caught).
 - Every division has a non-zero divisor: the block length (at least 8), the
   frame length (at least 80), the block peak (the zero case is a separate
-  branch), and `L`, which is clamped to at least the gate (at least 13421
+  branch), and `L`, which is clamped to at least the gate (at least 13422
   in Q12). `TestConfigEdgeAccuracy` drives `L` to just above a −80 dBFS
   gate.
-- The 4th power and its root use `fixed.Float` (16-bit mantissa), so `L`
-  has about 13 bits of precision; C5 measures at most 0.05 dB of
-  steady-state error on a sine.
-- The rise step is at least one Q15 unit, so the gain cannot stall below
-  its target. The limiter release rounds towards its target.
+- The 4th power and its root use `fixed.Float` (15-bit normalised
+  mantissa). Updating `E` as `E − c·E + c·x` keeps the truncation of
+  `FloatMult` in the small terms: the steady-state level error on a sine is
+  −0.024 dB at most for `LevelTime` 100 ms to 10 s (`TestLevelBias`;
+  `(1 − c)·E + c·x` drifted to −0.20 dB at 10 s).
+- The gain is kept in Q22, so the rate limits hold at low gains: at
+  −36 dB with 1 dB/s, the worst measured rate is 1.02 dB/s, from Q15
+  rounding of the per-frame factor (`TestLowGainRates`). The rise step is
+  at least one Q22 unit. The limiter release rounds towards its target.
 - `New` derives the constants with `math.Pow` and `math.Expm1`, rounded to
   integers; `TestConstants` pins them for one configuration.
 
@@ -675,7 +693,8 @@ first `2K` output samples of a stream are zero.
   frames above a −50 dBFS gate, and the gain rises by 23 dB (design v1:
   10 dB, because its release was slower). Pass the VAD decision to prevent
   this.
-- In pauses the gain holds, so the noise in a pause gets the speech's gain.
+- In pauses the gain cannot rise, so the noise in a pause gets at most the
+  gain of the speech before it.
 - A downward level step smaller than 6 dB does not trigger the reset, so
   only the slow order-4 mean follows it. Measured on a sine: a −5 dB step
   takes 5.16 s to come within 2 dB of the target and 7.82 s to come within
