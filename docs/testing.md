@@ -494,6 +494,18 @@ The independent review tried 26 further mutations of its own: 19 caught, 6
 not caught and equivalent, and 1 not caught as a test gap (the VAD start
 `>=`), closed by the 77% and 84% cases.
 
+`SupportedFrameSize` (WP5b), with the full `go test ./preprocess`:
+
+| Mutation | Result |
+|---|---|
+| no lower bound | caught (`math.MinInt+80`, where `2*n` wraps to 160) |
+| `n >= 1` → `n >= 2` | caught |
+| `n <= MaxFrameSize` → `<` | caught |
+| `fft.Supported(2*n)` → `2*n+2` | caught |
+| `n >= 1` → `n >= 0` | not caught: equivalent, `fft.Supported(0)` is false |
+| `n <= MaxFrameSize` → `<= MaxFrameSize+1` | not caught: equivalent, `fft.Supported(4098)` is false |
+| no upper bound | not caught: equivalent, for `n` above 2048 `2*n` is above 4096 or wraps negative, and `fft.Supported` rejects both |
+
 ### `agc` (WP4)
 
 #### Design v2
@@ -587,18 +599,6 @@ passes), restoring `agc.go` after each.
 | Input read after the output is written (breaks aliasing) | caught (`TestAliasingProcess`) |
 | Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
 | Ramp step `(b−a)/K` → `(b−a)/(K−1)` | not caught: the ramp still stays between its endpoints, and no criterion depends on its exact slope |
-
-`SupportedFrameSize` (WP5b), with the full `go test ./preprocess`:
-
-| Mutation | Result |
-|---|---|
-| no lower bound | caught (`math.MinInt+80`, where `2*n` wraps to 160) |
-| `n >= 1` → `n >= 2` | caught |
-| `n <= MaxFrameSize` → `<` | caught |
-| `fft.Supported(2*n)` → `2*n+2` | caught |
-| `n >= 1` → `n >= 0` | not caught: equivalent, `fft.Supported(0)` is false |
-| `n <= MaxFrameSize` → `<= MaxFrameSize+1` | not caught: equivalent, `fft.Supported(4098)` is false |
-| no upper bound | not caught: equivalent, for `n` above 2048 `2*n` is above 4096 or wraps negative, and `fft.Supported` rejects both |
 
 ## Platform determinism of generated inputs
 
