@@ -185,6 +185,14 @@ those changes.
   mostly from [0, `Len`], the run counts the keep-newest calls that dropped
   something and requires that count to be above 0, and after each such call
   the consumer checks `Len` ≥ k.
+- **D9. Examples.** `buffer/example_test.go` (package `buffer_test`) has
+  `ExampleRing` (write and read with an explicit overflow policy, and the
+  two-segment read view with `ReadSlices` and `Consume`) and `ExampleSPSC`
+  (a producer goroutine hands 20 ms frames to a consumer, which keeps only
+  the newest k samples with `Consume(Len() - k)` after a stall). Each has a
+  deterministic `// Output:` comment: `ExampleSPSC` synchronises the two
+  goroutines with a channel outside the buffer calls, so its output never
+  depends on scheduling. Both pass under `go test` and `go test -race`.
 - **D7. Docs.** The package doc presents `Consume(Len() - k)` as the
   keep-newest idiom for skipping a backlog after a stall, and
   `docs/algorithms.md` extends the memory-ordering argument and the
@@ -216,3 +224,5 @@ those changes.
    that no test showed a drop expiring a held read view, which the brief
    requires, and that disabling the keep-newest branch of the stress test
    went unnoticed. Both criteria are added before the tests that meet them.
+5. **WP2b examples** (D9). Added at the owner's request, before the
+   examples are written.
