@@ -328,4 +328,22 @@ Targets:
      and ignoring pending magic samples, must each be caught.
    - **No allocation** (`TestNoAllocsMaxOut`), and no change to existing
      outputs: all 816 reference cases still pass.
+10. **Correction to change 9 before the `MaxOut` implementation commit.**
+    Justification: the first soundness run failed. With 16k→8k at quality
+    0, position 1, and 161 frames offered, the call can write 80 frames,
+    and an output of exactly 80 frames stops it after 160 frames: the
+    kernel fills the output inside the first internal 160-sample chunk,
+    and `process_int` does not start the next chunk once the output is
+    full, although that chunk would write nothing. The same happens when
+    pending magic samples fill the output. An output of the exact count
+    therefore does not guarantee that all input is consumed.
+    - `MaxOut(inFrames)` is the number of frames the call can write plus 1
+      when `inFrames` > 0, so that the output never fills; for
+      `inFrames` = 0 it is the number of frames the call can write.
+    - **Tightness** becomes: for a mono stream, and for interleaved
+      channels whose states are equal, outside the zero-output state,
+      `MaxOut(inFrames)` minus the frames written is exactly 1 when
+      `inFrames` > 0 and exactly 0 when `inFrames` = 0. The fuzz target
+      checks the same. Soundness, the mutation checks and the other
+      criteria of change 9 are unchanged.
 
