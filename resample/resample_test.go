@@ -245,7 +245,110 @@ func processAll(t testing.TB, r *Resampler, in []int16, sizes, caps []int) []int
 		got = append(got, buf[:ol*nch]...)
 		pos += il
 		if il == 0 && ol == 0 {
-			if stall++; stall > 1000 {
+			if stall++; stall > 2*len(sizes)+2 {
+				t.Fatalf("no progress at frame %d", pos)
+			}
+		} else {
+			stall = 0
+		}
+	}
+	return got
+}
+
+// Process methods driven by processWith.
+const (
+	viaProcess = iota
+	viaProcessFloat
+	viaProcessChannel
+	viaProcessChannelFloat
+	viaCount
+)
+
+// processWith is processAll through the given method. The per-channel
+// methods advance each channel through its own calls, and the result is
+// interleaved again for comparison.
+func processWith(t testing.TB, r *Resampler, in []int16, sizes, caps []int, via int) []int16 {
+	t.Helper()
+	switch via {
+	case viaProcess:
+		return processAll(t, r, in, sizes, caps)
+	case viaProcessFloat:
+		return processFloatAll(t, r, in, sizes, caps)
+	}
+	nch := r.Channels()
+	frames := len(in) / nch
+	per := make([][]int16, nch)
+	for ch := range nch {
+		pos, k, stall := 0, ch, 0
+		for pos < frames {
+			size, c := sizes[k%len(sizes)], caps[k%len(caps)]
+			k++
+			n := min(size, frames-pos)
+			start, end := pos*nch+ch, pos*nch+ch
+			if n > 0 {
+				end = start + (n-1)*nch + 1
+			}
+			var il, ol int
+			var err error
+			if via == viaProcessChannel {
+				buf := make([]int16, c)
+				il, ol, err = r.ProcessChannel(ch, in[start:end], nch, buf, 1)
+				per[ch] = append(per[ch], buf[:ol]...)
+			} else {
+				buf := make([]float32, c)
+				il, ol, err = r.ProcessChannelFloat(ch, testutil.ToFloat32(in[start:end]), nch, buf, 1)
+				for _, v := range buf[:ol] {
+					per[ch] = append(per[ch], int16(v))
+				}
+			}
+			if err != nil {
+				t.Fatalf("channel %d: %v", ch, err)
+			}
+			pos += il
+			if il == 0 && ol == 0 {
+				if stall++; stall > 2*len(sizes)+2 {
+					t.Fatalf("channel %d: no progress at frame %d", ch, pos)
+				}
+			} else {
+				stall = 0
+			}
+		}
+	}
+	var got []int16
+	for i := range len(per[0]) {
+		for ch := range nch {
+			if i >= len(per[ch]) {
+				t.Fatalf("channel %d produced %d samples, channel 0 %d", ch, len(per[ch]), len(per[0]))
+			}
+			got = append(got, per[ch][i])
+		}
+	}
+	return got
+}
+
+// processFloatAll is processAll through ProcessFloat, converting back to
+// int16, which is exact.
+func processFloatAll(t testing.TB, r *Resampler, in []int16, sizes, caps []int) []int16 {
+	t.Helper()
+	nch := r.Channels()
+	fin := testutil.ToFloat32(in)
+	var got []int16
+	pos, k, stall := 0, 0, 0
+	for pos < len(in)/nch {
+		size, c := sizes[k%len(sizes)], caps[k%len(caps)]
+		k++
+		n := min(size, len(in)/nch-pos)
+		buf := make([]float32, c*nch)
+		il, ol, err := r.ProcessFloat(fin[pos*nch:(pos+n)*nch], buf)
+		if err != nil {
+			t.Fatalf("ProcessFloat: %v", err)
+		}
+		for _, v := range buf[:ol*nch] {
+			got = append(got, int16(v))
+		}
+		pos += il
+		if il == 0 && ol == 0 {
+			if stall++; stall > 2*len(sizes)+2 {
 				t.Fatalf("no progress at frame %d", pos)
 			}
 		} else {
@@ -265,12 +368,15 @@ var invarianceConfigs = []Config{
 	{Channels: 1, InRate: 96000, OutRate: 8000, Quality: 10},
 }
 
+// TestChunkInvarianceProcess checks every process method against the
+// one-call Process output, over fixed partitions.
 func TestChunkInvarianceProcess(t *testing.T) {
 	partitions := []struct{ sizes, caps []int }{
 		{[]int{1}, []int{1}},
 		{[]int{7}, []int{3, 1000}},
 		{[]int{160, 0, 13}, []int{1 << 16}},
 		{[]int{1000, 1, 331}, []int{0, 5, 1 << 16}},
+		{[]int{1160, 7}, []int{8193, 2}},
 	}
 	for _, cfg := range invarianceConfigs {
 		in := testutil.SpeechLike(8000*cfg.Channels, 16000, 20000, testutil.Seed("inv"))
@@ -279,20 +385,25 @@ func TestChunkInvarianceProcess(t *testing.T) {
 			t.Fatalf("%+v: no output", cfg)
 		}
 		for _, p := range partitions {
-			got := processAll(t, mustNew(t, cfg), in, p.sizes, p.caps)
-			if !testutil.Compare(t, "partitioned output", want, got) {
-				t.Errorf("config %+v, partition %v/%v", cfg, p.sizes, p.caps)
+			for via := range viaCount {
+				got := processWith(t, mustNew(t, cfg), in, p.sizes, p.caps, via)
+				if !testutil.Compare(t, "partitioned output", want, got) {
+					t.Errorf("config %+v, method %d, partition %v/%v", cfg, via, p.sizes, p.caps)
+				}
 			}
 		}
 	}
 }
 
-// FuzzChunksResampler checks chunk-partition invariance and that no
-// partition panics.
+// FuzzChunksResampler checks chunk-partition invariance for every process
+// method and that no partition panics.
 func FuzzChunksResampler(f *testing.F) {
 	f.Add(uint8(0), []byte{1, 2, 3, 200, 0, 7})
 	f.Add(uint8(3), []byte{255, 255, 0, 0, 1, 1})
 	f.Add(uint8(6), []byte{17, 4, 99, 1, 0, 160})
+	f.Add(uint8(16+2), []byte{9, 9, 200, 3})
+	f.Add(uint8(32+3), []byte{1, 1, 50, 255})
+	f.Add(uint8(48+4), []byte{0, 7, 7, 0, 30, 30})
 	f.Fuzz(func(t *testing.T, which uint8, plan []byte) {
 		if len(plan) < 2 {
 			return
@@ -308,14 +419,15 @@ func FuzzChunksResampler(f *testing.F) {
 		// One call that offers both input and output guarantees progress.
 		sizes = append(sizes, 1)
 		caps = append(caps, 1)
-		got := processAll(t, mustNew(t, cfg), in, sizes, caps)
+		got := processWith(t, mustNew(t, cfg), in, sizes, caps, int(which/16)%viaCount)
 		testutil.Compare(t, "partitioned output", want, got)
 	})
 }
 
 // FuzzConfigResampler drives arbitrary configurations and call sequences
 // and checks that nothing panics and that invalid arguments are rejected.
-// Downsampling factors are kept to at most 64 so that filters stay small.
+// Ratios are either downsampling by at most 64, so that filters stay small,
+// or downsampling by more than 6e8, which the size limits always reject.
 func FuzzConfigResampler(f *testing.F) {
 	f.Add([]byte{1, 0x80, 0xbb, 0x3e, 0x80, 5, 1, 2, 3, 4, 5, 6, 7, 8})
 	f.Add([]byte{3, 0xff, 0xff, 0xff, 0xff, 10, 9, 9, 0, 1, 2, 250, 251})
@@ -327,7 +439,7 @@ func FuzzConfigResampler(f *testing.F) {
 		rd := byteReader{data: data}
 		ch := int(rd.byte()%4) + 1
 		den := int(rd.u32()%math.MaxUint32) + 1
-		num := pickNum(den, rd.u32())
+		num, den := pickRatio(den, rd.byte(), rd.u32())
 		q := int(rd.byte()) % 12
 		r, err := New(Config{Channels: ch, RatioNum: num, RatioDen: den, Quality: q})
 		if q > 10 {
@@ -358,19 +470,21 @@ func FuzzConfigResampler(f *testing.F) {
 				r.ProcessFloat(fin[:n], fout[:m])
 			case 3:
 				c := int(rd.byte()) % (ch + 1)
-				s := int(rd.byte())%4 + 1
-				_, _, err := r.ProcessChannel(c, in[:int(rd.byte())*s], s, out[:int(rd.byte())*s], s)
+				s := pickStride(rd.byte(), rd.u32())
+				_, _, err := r.ProcessChannel(c, in[:int(rd.byte())*4], s, out[:int(rd.byte())*4], s)
 				if c == ch && err != ErrChannel {
 					t.Fatalf("channel %d: %v", c, err)
 				}
 			case 4:
 				c := int(rd.byte()) % ch
-				r.ProcessChannelFloat(c, fin[:int(rd.byte())], 1, fout[:int(rd.byte())], 2)
+				r.ProcessChannelFloat(c, fin[:int(rd.byte())], pickStride(rd.byte(), rd.u32()), fout[:int(rd.byte())],
+					pickStride(rd.byte(), rd.u32()))
 			case 5:
 				r.SetQuality(int(rd.byte()) % 11)
 			case 6:
 				d := int(rd.u32()%math.MaxUint32) + 1
-				r.SetRateFrac(pickNum(d, rd.u32()), d, 48000, 48000)
+				n, d := pickRatio(d, rd.byte(), rd.u32())
+				r.SetRateFrac(n, d, 48000, 48000)
 			case 7:
 				r.Reset()
 			case 8:
@@ -382,10 +496,25 @@ func FuzzConfigResampler(f *testing.F) {
 	})
 }
 
-// pickNum returns a numerator for den with num/den at most 64.
-func pickNum(den int, v uint32) int {
+// pickRatio returns num:den with num/den at most 64, or, when kind is a
+// multiple of 4 and int is 64 bits wide, a ratio above 6e8 that update_filter
+// rejects before allocating.
+func pickRatio(den int, kind byte, v uint32) (int, int) {
+	if kind%4 == 0 && math.MaxInt > math.MaxUint32 {
+		d := uint64(kind/4)%7 + 1
+		lo := d * 600000000
+		return int(lo + uint64(v)%(math.MaxUint32-lo+1)), int(d)
+	}
 	limit := min(uint64(den)*64, math.MaxUint32)
-	return int(uint64(v)%limit) + 1
+	return int(uint64(v)%limit) + 1, den
+}
+
+// pickStride returns a small stride, or one in the full positive range.
+func pickStride(kind byte, v uint32) int {
+	if kind%2 == 0 {
+		return int(kind/2)%4 + 1
+	}
+	return int(uint64(v)<<31%uint64(math.MaxInt)) + 1
 }
 
 type byteReader struct {
