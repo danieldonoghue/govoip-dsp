@@ -233,8 +233,9 @@ stores `r` + n.
 1. No slot is read, so there is no read for rule 2 to order. The store of
    `r` still releases the dropped slots, and the producer may write into
    them as soon as its P2 observes the new `r`. The consumer never touches
-   them again, and it holds no read view across the drop, because
-   `Consume` expires the view.
+   them again. A read view taken before the drop expires at `Consume`, and
+   the caller must not use it afterwards: `TestSPSCDropExpiresReadView`
+   shows the producer overwriting it.
 2. The clip is what keeps the drop safe: `r` + n never passes the `w` that
    C2 observed, and every slot below that `w` was published by rule 1. If
    `r` could pass it, the consumer would skip slots the producer has yet to

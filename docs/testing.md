@@ -369,6 +369,30 @@ large, `Reset` zeroing only `w`, `count` with `>`): all caught. Its
 seventh, the `goto` and `atomic.AddUint32` row above, was not caught by the
 first `TestWaitFreeSource`; the test was extended and now catches it.
 
+#### `buffer` backlog drop (WP2b)
+
+`SPSC.Consume` is also the consumer's way to drop a backlog without reading
+it, so these mutations target that path. Run on a scratch copy on the Mac,
+with the tests named, under `-race` unless noted.
+
+| Mutation | Result |
+|---|---|
+| ordering: `Consume` clips to `Cap` instead of the count from the `w` it loaded | caught (`TestModelOps`, `TestClipping`; `TestStressSPSC` alone: data race, and the sequence check without `-race`) |
+| `Consume` releases one sample more than it returns | caught (`TestModelOps`, `TestStressSPSC`) |
+| `Consume` returns one less than it released | caught (`TestModelOps`, `TestClipping`, `TestStressSPSC`) |
+| `Consume`, when dropping everything, releases up to a re-loaded `w` but returns the old count (only wrong under concurrency) | caught (`TestStressSPSC` only, as expected) |
+| stress consumer does not skip the checker past a drop | caught (`TestStressSPSC`) |
+| stress consumer skips one sample more than it dropped | caught (`TestStressSPSC`) |
+| stress keep-newest branch disabled | caught (`TestStressSPSC`, which requires a keep-newest drop) |
+
+The code under test is shared with the view path, so most `Consume`
+mutations were already caught by the WP2 tests. The independent review
+checked this against `master`'s test files: only the clip-to-`Cap`
+mutation is newly caught by the stress test, through the drops. Before
+`TestStressSPSC` required a keep-newest drop, disabling that branch was not
+caught. The WP2 mutation table above was rerun on this branch (`spsc.go`
+unchanged): same results.
+
 ### `resample` (WP1)
 
 Run with `go test ./resample -run <test> -count=1` on a scratch change,

@@ -85,7 +85,7 @@
 // The SPSC never overwrites unread samples, so after a stall the consumer may
 // find a backlog of old audio. Consume drops samples without reading them,
 // with no read view needed first. To skip to recent audio and keep only the
-// newest k samples:
+// newest k samples, for 0 <= k:
 //
 //	s.Consume(s.Len() - k)
 //
