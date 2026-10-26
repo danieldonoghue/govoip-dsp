@@ -853,7 +853,8 @@ func TestHugeStrides(t *testing.T) {
 }
 
 // TestResourceCap checks the Go-only cap of maxEntries table and history
-// entries and maxChannels channels (docs/acceptance/resample.md, change 5).
+// entries and maxChannels channels (docs/acceptance/resample.md, changes 5
+// and 7).
 func TestResourceCap(t *testing.T) {
 	// 256 channels at quality 10 with d:1 need 256d + 256*(256d+159)
 	// entries: d = 254 fits, d = 255 does not.
@@ -877,17 +878,22 @@ func TestResourceCap(t *testing.T) {
 			t.Errorf("%+v: %v, want ErrAllocFailed", c, err)
 		}
 	}
-	// 256 channels, 255:1 at quality 9 fits; quality 10 or larger ratios do not.
-	r := mustNew(t, Config{Channels: 256, RatioNum: 255, RatioDen: 1, InRate: 1, OutRate: 1, Quality: 9})
-	for name, f := range map[string]func() error{
-		"SetRate(4000000, 1)":           func() error { return r.SetRate(4000000, 1) },
-		"SetRateFrac(6000001, 3, 1, 1)": func() error { return r.SetRateFrac(6000001, 3, 1, 1) },
-		"SetQuality(10)":                func() error { return r.SetQuality(10) },
+	// 256 channels, 255:1 at quality 9 fits; quality 10 or larger ratios do
+	// not. Each case gets a fresh resampler, so no case depends on another.
+	base := Config{Channels: 256, RatioNum: 255, RatioDen: 1, InRate: 1, OutRate: 1, Quality: 9}
+	for _, c := range []struct {
+		name string
+		f    func(r *Resampler) error
+	}{
+		{"SetRate(4000000, 1)", func(r *Resampler) error { return r.SetRate(4000000, 1) }},
+		{"SetRateFrac(6000001, 3, 1, 1)", func(r *Resampler) error { return r.SetRateFrac(6000001, 3, 1, 1) }},
+		{"SetQuality(10)", func(r *Resampler) error { return r.SetQuality(10) }},
 	} {
+		r := mustNew(t, base)
 		var err error
-		checkRejectionCost(t, name, func() { err = f() })
+		checkRejectionCost(t, c.name, func() { err = c.f(r) })
 		if err != ErrAllocFailed {
-			t.Errorf("%s: %v, want ErrAllocFailed", name, err)
+			t.Errorf("%s: %v, want ErrAllocFailed", c.name, err)
 		}
 	}
 }
@@ -903,7 +909,7 @@ func checkRejectionCost(t *testing.T, name string, f func()) {
 	f()
 	el := time.Since(start)
 	runtime.ReadMemStats(&after)
-	if b := after.TotalAlloc - before.TotalAlloc; b >= 1<<20 {
+	if b := after.TotalAlloc - before.TotalAlloc; b >= 1024*1024 {
 		t.Errorf("%s: rejection allocated %d bytes, want under 1 MiB", name, b)
 	}
 	if el >= time.Second {

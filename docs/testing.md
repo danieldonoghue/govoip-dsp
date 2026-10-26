@@ -403,7 +403,7 @@ restored after each.
 | `frames` as `(n+stride-1)/stride` (the code before review) | caught (`TestHugeStrides`, hang) |
 | cap comparison `>` → `>=` | caught (`TestCapBoundary`) |
 | filter length wrapping to 0 accepted (the code before review) | caught (`TestFilterLengthWrap`, panic) |
-| resource cap removed (`maxEntries` set to `math.MaxInt64`) | caught (`TestResourceCap`: the over-cap cases succeed and allocate 34 MB to 4.1 GB each, against a bound of 1 MiB; 4000000:1 at quality 10 takes 19.4 s) |
+| resource cap removed (`maxEntries` set to `math.MaxInt64`) | caught (`TestResourceCap`: each of the six rejection cases allocates 34 MB to 4.1 GB against a bound of 1 MiB; two `New` cases then succeed, and the other four fail through C's limits only after allocating, so only the allocation and time bounds catch those; `New` at 4000000:1, quality 10, takes about 15 to 19 s) |
 | history not shifted when a call produces nothing | caught (`TestChunkInvarianceProcess`; also `FuzzChunksResampler` from its committed seed) |
 | direct table `i/den` in `float64` then `float32` | not caught: equivalent on every tested table (double rounding rarely differs) |
 | `compute_func` cube in `float64` then `float32` | not caught: equivalent, the product of two `float32` is exact in `float64` |
