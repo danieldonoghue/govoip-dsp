@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/bits"
 	"time"
 
 	"github.com/danieldonoghue/govoip-dsp/internal/fixed"
@@ -15,19 +16,18 @@ var (
 	ErrBufferSize = errors.New("agc: output buffer shorter than input")
 )
 
-// Config configures an AGC. Every field must be set; DefaultConfig returns
-// recommended values. Levels are dBFS on the 16-bit scale, 0 dBFS being an
-// amplitude of 32768; gains are dB.
+// Config configures an AGC. Every field must be set (see DefaultConfig).
+// Levels are whole dBFS (0 dBFS is amplitude 32768); gains are whole dB.
 type Config struct {
 	// SampleRate is in Hz, 8000 to 48000.
 	SampleRate int
 
-	// TargetLevel is the output RMS that a stationary input above the gate
-	// converges to, -40 to -3 dBFS.
+	// TargetLevel, -40 to -3 dBFS, is the output RMS that a stationary input
+	// above the gate converges to, if its peaks then stay under LimitLevel.
 	TargetLevel int
 
-	// LimitLevel is the limiter ceiling: no output sample has a magnitude
-	// above it. -20 to 0 dBFS, and above TargetLevel.
+	// LimitLevel, -20 to 0 dBFS and above TargetLevel, sets the ceiling
+	// min(32767, round(32768·10^(LimitLevel/20))) on output magnitudes.
 	LimitLevel int
 
 	// GateLevel is the frame RMS below which a frame does not change the
@@ -63,7 +63,6 @@ func DefaultConfig(sampleRate int) Config {
 const (
 	blocksPerFrame = 10
 	unity          = 32768 // gain 1.0 in Q15
-	// limiterRelease is the time constant of the limiter's recovery.
 	limiterRelease = 20 * time.Millisecond
 )
 
@@ -173,10 +172,8 @@ func (a *AGC) Reset() {
 	a.gain, a.env, a.bound, a.ramp, a.step = unity, unity, unity, unity, 0
 }
 
-// Process writes len(in) output samples to out: the input delayed by
-// Latency samples, with gain applied. speech is the caller's speech
-// decision for all of in; pass true when there is none. It returns
-// ErrBufferSize, writing nothing, if len(out) < len(in).
+// Process writes the delayed, gain-controlled in to out[:len(in)], or returns
+// ErrBufferSize. speech is the VAD decision for all of in (true if none).
 func (a *AGC) Process(in, out []int16, speech bool) error {
 	if len(out) < len(in) {
 		return ErrBufferSize
@@ -217,7 +214,7 @@ func (a *AGC) endBlock() {
 	if a.peak > 0 {
 		allowed = fixed.Div32(a.ceiling<<15, a.peak)
 	}
-	e := a.env + fixed.Mult16x32Q15(a.limCoef, a.gain-a.env)
+	e := a.env + towards(a.limCoef, a.gain-a.env)
 	e = min(e, allowed, a.gain)
 	// Both ends of the ramp are at most the previous block's limiter gain,
 	// so no sample of that block exceeds the ceiling.
@@ -231,7 +228,7 @@ func (a *AGC) endBlock() {
 
 // endFrame updates the level estimate and the AGC gain from an active frame.
 func (a *AGC) endFrame() {
-	r := rms(int32(a.energy / a.frameLen))
+	r := rms(a.energy, a.frameLen)
 	if a.voiced && r >= a.gate {
 		x := min(r, 4*a.level)
 		c := a.release
@@ -240,7 +237,7 @@ func (a *AGC) endFrame() {
 		}
 		// The new level lies between the old one and x, and x >= gate > 0,
 		// so the divisor below is never zero.
-		a.level += fixed.Mult16x32Q15(c, x-a.level)
+		a.level += towards(c, x-a.level)
 		g := (int64(a.target) << 15) / int64(a.level)
 		a.gain = int32(min(max(g, int64(a.minGain)), int64(a.maxGain)))
 	}
@@ -248,11 +245,27 @@ func (a *AGC) endFrame() {
 	a.voiced = true
 }
 
-// rms returns the square root of a mean square in [0, 2^30], in Q12. The
-// input is scaled so that fixed.Sqrt sees at most 2^28.
-func rms(ms int32) int32 {
-	if ms < 1<<22 {
-		return int32(fixed.Sqrt(ms<<6)) << 9
+// towards returns c·d in Q15 rounded towards d, so that a one-pole update
+// always moves when d != 0 and never overshoots, since c < 1.
+func towards(c int16, d int32) int32 {
+	if d > 0 {
+		return -fixed.Mult16x32Q15(c, -d)
 	}
-	return int32(fixed.Sqrt(ms>>2)) << 13
+	return fixed.Mult16x32Q15(c, d)
+}
+
+// rms returns the RMS of n samples with the given sum of squares, in Q12.
+// The mean square is normalised to [2^26, 2^28), where fixed.Sqrt is best.
+func rms(energy, n int64) int32 {
+	if energy == 0 {
+		return 0
+	}
+	m := (energy << 20) / n // Q20; energy < 2^39
+	s := (28 - bits.Len64(uint64(m))) &^ 1
+	if s >= 0 {
+		m <<= uint(s)
+	} else {
+		m >>= uint(-s)
+	}
+	return fixed.VShr32(int32(fixed.Sqrt(int32(m))), s/2-2)
 }

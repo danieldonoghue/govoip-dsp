@@ -2,6 +2,7 @@ package agc
 
 import (
 	"errors"
+	"math"
 	"slices"
 	"testing"
 	"time"
@@ -453,4 +454,60 @@ func FuzzConfig(f *testing.F) {
 			}
 		}
 	})
+}
+
+// TestConfigEdgeAccuracy runs the configurations at the edges of the valid
+// range where a floored one-pole step could stall short of its target.
+func TestConfigEdgeAccuracy(t *testing.T) {
+	low := Config{16000, -40, -20, -80, 0, -40, 500 * time.Millisecond, 1500 * time.Millisecond}
+	slow := Config{16000, -40, -20, -80, 40, -40, 10 * time.Second, 10 * time.Second}
+	for _, c := range []struct {
+		name     string
+		cfg      Config
+		from, to float64
+		sec      int
+	}{
+		{"min gain, limiter released", low, -3, -6, 60},
+		{"10 s time constants near the gate", slow, -40, -79.5, 240},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			a := mustNew(t, c.cfg)
+			rate := c.cfg.SampleRate
+			x := slices.Concat(sine(10*rate, rate, c.from), sine(c.sec*rate, rate, c.to))
+			y := make([]int16, len(x))
+			minLevel := a.level
+			for i := 0; i < len(x); i += 160 {
+				if err := a.Process(x[i:i+160], y[i:i+160], true); err != nil {
+					t.Fatal(err)
+				}
+				minLevel = min(minLevel, a.level)
+			}
+			got := testutil.DBFS(testutil.RMS(y[len(y)-rate:]))
+			t.Logf("output %.3f dBFS, AGC gain %d, limiter gain %d, lowest level %d (gate %d)",
+				got, a.gain, a.env, minLevel, a.gate)
+			if d := got - float64(c.cfg.TargetLevel); d > 0.25 || d < -0.25 {
+				t.Errorf("output %.3f dBFS, want %d ±0.25", got, c.cfg.TargetLevel)
+			}
+			// The closest the level divisor comes to zero is the gate.
+			if minLevel < a.gate {
+				t.Errorf("level %d fell below the gate %d", minLevel, a.gate)
+			}
+		})
+	}
+}
+
+// TestRMS compares rms with the exact root mean square from 1/4 LSB RMS
+// (-102 dBFS, below any gate) to full scale.
+func TestRMS(t *testing.T) {
+	worst := 0.0
+	for _, n := range []int64{80, 160, 440, 480} {
+		for e := n / 16; e <= n<<30; e += 1 + e/1000 {
+			want := math.Sqrt(float64(e)/float64(n)) * 4096
+			worst = max(worst, math.Abs(float64(rms(e, n))/want-1))
+		}
+	}
+	t.Logf("worst relative error %.5f", worst)
+	if worst > 0.003 || rms(0, 160) != 0 {
+		t.Errorf("worst relative error %.5f, rms(0) = %d", worst, rms(0, 160))
+	}
 }

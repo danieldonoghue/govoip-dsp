@@ -26,8 +26,10 @@
 //     gain ramps linearly from block to block.
 //
 // TargetLevel is therefore the output RMS that a stationary signal above
-// the gate converges to. For speech, the AGC holds the attack- and
-// release-weighted mean of active frame RMS at the target.
+// the gate converges to, as long as its peaks at that gain stay under
+// LimitLevel; otherwise the limiter holds it lower. For speech, the AGC
+// holds the attack- and release-weighted mean of active frame RMS at the
+// target. Levels and gains are whole dB.
 //
 // Noise protection is the gate and the speech flag. Noise above GateLevel
 // passed with speech true is treated as speech and raised towards the
@@ -62,6 +64,6 @@
 // # Concurrency and allocation
 //
 // An AGC is not safe for concurrent use. Use one per stream. New allocates;
-// no other method allocates. Each Process call does work proportional to
-// len(in), and never blocks or panics.
+// no other method allocates. For an AGC returned by New, each Process call
+// does work proportional to len(in), and never blocks or panics.
 package agc
