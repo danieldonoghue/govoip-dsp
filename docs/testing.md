@@ -588,6 +588,18 @@ passes), restoring `agc.go` after each.
 | Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
 | Ramp step `(b−a)/K` → `(b−a)/(K−1)` | not caught: the ramp still stays between its endpoints, and no criterion depends on its exact slope |
 
+`SupportedFrameSize` (WP5b), with the full `go test ./preprocess`:
+
+| Mutation | Result |
+|---|---|
+| no lower bound | caught (`math.MinInt+80`, where `2*n` wraps to 160) |
+| `n >= 1` → `n >= 2` | caught |
+| `n <= MaxFrameSize` → `<` | caught |
+| `fft.Supported(2*n)` → `2*n+2` | caught |
+| `n >= 1` → `n >= 0` | not caught: equivalent, `fft.Supported(0)` is false |
+| `n <= MaxFrameSize` → `<= MaxFrameSize+1` | not caught: equivalent, `fft.Supported(4098)` is false |
+| no upper bound | not caught: equivalent, a positive `2*n` above 4096 is rejected and cannot wrap back into range |
+
 ## Platform determinism of generated inputs
 
 Tests regenerate long inputs from seeds, so generators must give the same
