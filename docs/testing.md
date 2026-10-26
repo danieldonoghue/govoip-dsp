@@ -422,12 +422,13 @@ final code, with `go test -run '^$' -fuzz '^<target>$' -fuzztime <t>
   never offer input and output together, and long runs of empty calls).
 - `FuzzConfigResampler`: arbitrary channel counts, ratios (downsampling by
   at most 64, so filters stay small, or by more than 6e8, which the size
-  limits reject before allocating), qualities, strides over the full
-  positive range, and sequences of process, rate, quality, reset and
+  limits reject before allocating), qualities, strides near 1, within 4096
+  of `math.MaxInt` and spread between, and sequences of process, rate, quality, reset and
   skip-zeros calls; checks that nothing panics and that invalid arguments
   are rejected. Fuzzed for 5 minutes on the Mac (5144408 executions), no
   failure. The independent review found a panic (ratios of 2^31 and more
   after a rejected change) and a hang (strides near `math.MaxInt`) outside
   the first version of this domain; against the code before their fix,
-  the widened target finds the panic within 2 minutes, and that input is
-  kept as a seed.
+  the widened target finds the panic within 2 minutes, and the stride
+  version finds the old stride panic within 1 s; both inputs are kept as
+  seeds. A re-review measured 372k executions in 45 s with no failure.

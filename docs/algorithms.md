@@ -283,7 +283,8 @@ rounded up to a multiple of 8.
 **Deviations.** `SetRateFrac` checks for overflow before changing state
 (C changes part of it); offered lengths are clamped to 2^31-1 frames;
 after a rejected rate change the input position saturates at 2^31-1
-where C's overflows; NaN `float32` input becomes 0; there is no
+where C's overflows (with a ratio of 2^31 or more, the count of the zeros
+produced can then differ from the `-fwrapv` reference); NaN `float32` input becomes 0; there is no
 `NULL`-input form. See the package
 doc and `docs/acceptance/resample.md`.
 

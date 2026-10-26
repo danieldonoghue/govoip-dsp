@@ -509,10 +509,14 @@ func pickRatio(den int, kind byte, v uint32) (int, int) {
 	return int(uint64(v)%limit) + 1, den
 }
 
-// pickStride returns a small stride, or one in the full positive range.
+// pickStride returns a small stride, one within 4096 of math.MaxInt, or one
+// spread over the positive range.
 func pickStride(kind byte, v uint32) int {
-	if kind%2 == 0 {
-		return int(kind/2)%4 + 1
+	switch kind % 3 {
+	case 0:
+		return int(kind/3)%4 + 1
+	case 1:
+		return math.MaxInt - int(v%4096)
 	}
 	return int(uint64(v)<<31%uint64(math.MaxInt)) + 1
 }
@@ -819,9 +823,15 @@ func TestHugeRatioAfterFailedChange(t *testing.T) {
 // TestHugeStrides checks that strides near math.MaxInt give the right frame
 // counts, and that calls with them neither panic nor hang.
 func TestHugeStrides(t *testing.T) {
-	for _, s := range []int{math.MaxInt, math.MaxInt - 10, math.MaxInt / 2} {
-		if got := frames(10, s); got != 1 {
-			t.Errorf("frames(10, %d) = %d, want 1", s, got)
+	for _, s := range []int{1, 2, 3, 1000, math.MaxInt / 2, math.MaxInt - 10, math.MaxInt} {
+		for _, n := range []int{0, 1, 2, s - 1, s, s + 1, 2 * s, 2*s + 1, math.MaxInt} {
+			if n < 0 {
+				continue
+			}
+			want := uint32(min((uint64(n)+uint64(s)-1)/uint64(s), math.MaxInt32))
+			if got := frames(n, s); got != want {
+				t.Errorf("frames(%d, %d) = %d, want %d", n, s, got, want)
+			}
 		}
 	}
 	r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 16000, Quality: 3})

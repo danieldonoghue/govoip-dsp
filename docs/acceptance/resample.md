@@ -207,12 +207,16 @@ Targets:
    - Review found a panic and a hang outside the fuzzed domain (ratios of
      2^31 and more after a rejected change; strides near `math.MaxInt`).
      After their fix, `FuzzConfigResampler` also draws ratios above 6e8,
-     which the size limits always reject, and strides over the full
-     positive range. Chunk-partition invariance is tested for all four
+     which the size limits always reject, and strides near 1, near
+     `math.MaxInt` and spread between. Chunk-partition invariance is tested for all four
      process methods, not only `Process`.
 4. **Deviation 4, decided after review:** after a rejected rate change, C's
    input position can overflow `int` (ratios of 2^31 and more, or a
-   later filter growth) and C then reads out of bounds. Go computes that
-   position in `int64` and saturates it at 2^31-1. Results are unchanged
-   wherever C does not overflow.
+   later filter growth). Go computes that position in `int64` and
+   saturates it at 2^31-1, which stops the panics that the wrapped
+   position caused in Go. Results are unchanged wherever C does not
+   overflow. Where it does, the `-fwrapv` reference build wraps and, in at
+   least one measured case (8000:8000 quality 0, then `set_rate(4000000000,
+   1)`, then 100 input and 100 output frames), produces 8 zeros where Go
+   produces 1; the output is zeros either way.
 
