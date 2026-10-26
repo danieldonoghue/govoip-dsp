@@ -191,3 +191,28 @@ Targets:
    there was not caught. Added: 1:100 at quality 10 with quality drops to
    0 (magic samples worth more than the 8192-sample output chunk), and
    44.1k→48k at quality 10 with the rejected rate change and recovery of 7.
+3. **One fractional ratio replaced, and broader Go-only checks** (recorded
+   after review; the replacement was made in the first fixture commit,
+   before the first implementation commit, without an entry here).
+   Justification:
+   - 4294967294:4294967295 was registered in the matrix of 2. With it,
+     `den_rate + frac_advance` exceeds 2^32, the fractional position wraps
+     and the input position stops advancing, so a case never consumes its
+     input. It was replaced in the matrix by 1000000007:3000000019, which
+     keeps `den_rate` above 2^31 (the negative `int32` divisor of
+     `PDIV32`). The original ratio stays covered at qualities 0 and 10 as
+     `wrap_q0_frac_4294967294_4294967295` and
+     `wrap_q10_frac_4294967294_4294967295`, which run a fixed 50 calls;
+     `TestReferenceCoverage` checks that they exist.
+   - Review found a panic and a hang outside the fuzzed domain (ratios of
+     2^31 and more after a rejected change; strides near `math.MaxInt`).
+     After their fix, `FuzzConfigResampler` also draws ratios above 6e8,
+     which the size limits always reject, and strides over the full
+     positive range. Chunk-partition invariance is tested for all four
+     process methods, not only `Process`.
+4. **Deviation 4, decided after review:** after a rejected rate change, C's
+   input position can overflow `int` (ratios of 2^31 and more, or a
+   later filter growth) and C then reads out of bounds. Go computes that
+   position in `int64` and saturates it at 2^31-1. Results are unchanged
+   wherever C does not overflow.
+
