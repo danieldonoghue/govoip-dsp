@@ -20,7 +20,7 @@ var harnessInputs = flag.String("harness-inputs", "", "directory to write harnes
 
 var mvpSizes = []int{160, 320, 640, 960, 1280, 1920}
 
-var signals = []string{"silence", "impulse_first", "impulse_mid_neg", "sine_16000", "sine_3", "noise", "square", "min", "dc"}
+var signals = []string{"silence", "impulse_first", "impulse_mid_neg", "sine_16000", "sine_3", "noise", "square", "min", "dc", "impulse_16000", "impulse_16001", "noise_min_last"}
 
 // signal returns the named input of n samples (docs/acceptance/fft.md).
 func signal(name string, n int) []int16 {
@@ -31,15 +31,22 @@ func signal(name string, n int) []int16 {
 		return testutil.Impulse(n, 0, 32767)
 	case "impulse_mid_neg":
 		return testutil.Impulse(n, n/2-1, -32768)
+	case "impulse_16000":
+		return testutil.Impulse(n, 1, 16000)
+	case "impulse_16001":
+		return testutil.Impulse(n, 1, 16001)
 	case "sine_16000":
 		return testutil.Sine(n, 16000, 1000, 16000, 0.25)
 	case "sine_3":
 		return testutil.Sine(n, 16000, 1000, 3, 0.25)
-	case "noise":
+	case "noise", "noise_min_last":
 		r := testutil.SplitMix64{State: testutil.Seed(fmt.Sprintf("%d_noise", n))}
 		x := make([]int16, n)
 		for i := range x {
 			x[i] = int16(r.Next() >> 48)
+		}
+		if name == "noise_min_last" {
+			x[n-1] = -32768
 		}
 		return x
 	case "square":

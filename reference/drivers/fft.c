@@ -41,7 +41,8 @@ struct kiss_fftr_state {
 static const int mvp_sizes[] = {160, 320, 640, 960, 1280, 1920};
 static const char *signals[] = {"silence", "impulse_first", "impulse_mid_neg",
                                 "sine_16000", "sine_3", "noise", "square",
-                                "min", "dc"};
+                                "min", "dc", "impulse_16000",
+                                "impulse_16001", "noise_min_last"};
 #define NSIZES (int)(sizeof(mvp_sizes) / sizeof(mvp_sizes[0]))
 #define NSIGNALS (int)(sizeof(signals) / sizeof(signals[0]))
 

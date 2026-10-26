@@ -50,7 +50,12 @@ forward output is also fed to the inverse (the round trip). Signals:
 6. white noise over the full `int16` range;
 7. full-scale square wave alternating between 32767 and -32768;
 8. every sample -32768 (the wrap in `maximize_range`);
-9. constant 32767.
+9. constant 32767;
+10. impulse of 16000 at index 1 and
+11. impulse of 16001 at index 1 (the two sides of the `maximize_range`
+    bound);
+12. the white noise of item 6 with its last sample set to -32768 (the wrap
+    that reaches the shift loop).
 
 Sines come from `testutil.Sine` and are written by the Go test into the
 harness input directory; every input is recorded as a stream, so a generator
@@ -98,4 +103,12 @@ and the results go into `docs/performance.md`.
 
 ## Changes
 
-(none)
+### Signals 10 to 12 added (after the first implementation commit)
+
+Mutation checks on the first implementation showed three changes to
+`maximize_range` that no input caught: a bound of 32767 instead of 32000, the
+comparison `<` instead of `<=`, and a shift loop that does not wrap. The
+original nine signals never put the peak in (16000, 16383], and in the
+-32768 signals the wrapped peak either is overwritten by a later sample or
+meets inputs that round to zero either way. Signals 10 to 12 add those inputs.
+This widens the tested domain and relaxes nothing.
