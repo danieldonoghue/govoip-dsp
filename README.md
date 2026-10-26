@@ -4,8 +4,9 @@ Pure-Go real-time audio DSP for VoIP, WebRTC-style communication and
 streaming media: resampling, echo cancellation, noise suppression with voice
 activity detection, and automatic gain control.
 
-**Status: under construction.** Only the internal foundations exist so far.
-No public package is usable yet. See the table below and
+**Status: under construction.** The resampler (`resample`) and the ring
+buffers (`buffer`) are usable; the echo canceller, noise suppression and AGC
+are still in progress. See the table below and
 [docs/status.md](docs/status.md).
 
 ## Design
@@ -16,9 +17,9 @@ No public package is usable yet. See the table below and
 - **SpeexDSP compatibility (goal).** The resampler, echo canceller and
   preprocessor are to be bit-exact ports of SpeexDSP 1.2.1, fixed-point build
   (commit `1b28a0f6`), checked against fixtures from a C reference harness.
-  Today the shared fixed-point arithmetic (`internal/fixed`) and the FFT
-  (`internal/fft`) exist, and both are bit-exact. The ring buffer and the
-  AGC will be own designs.
+  Today the resampler, the shared fixed-point arithmetic (`internal/fixed`)
+  and the FFT (`internal/fft`) exist, and all three are bit-exact. The ring
+  buffers are an own design, and so will be the AGC.
 - **Real-time safety (requirement).** No allocation, locking or blocking on
   the per-frame path, each to be verified by tests
   ([requirements §16](docs/requirements.md#16-real-time-and-memory-safety-rules)).
@@ -31,7 +32,7 @@ No public package is usable yet. See the table below and
 |---|---|---|
 | Fixed-point arithmetic | `internal/fixed` | Validated (bit-exact with the harness) |
 | Test support | `internal/testutil` | Implemented |
-| Resampler | `resample` | Planned |
+| Resampler | `resample` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Ring buffer | `buffer` | Validated (own design; lock-free SPSC variant) |
 | FFT | `internal/fft` | Validated (bit-exact with the harness) |
 | AGC | `agc` | Planned |
@@ -56,8 +57,23 @@ Status levels are defined in
 go get github.com/danieldonoghue/govoip-dsp
 ```
 
-Requires Go 1.26 or later. There is no public API to call yet; a minimal
-example will appear here with the first public package.
+Requires Go 1.26 or later. Converting one 20 ms frame of 8 kHz telephony
+audio to 16 kHz:
+
+```go
+r, err := resample.New(resample.Config{
+	Channels: 1, InRate: 8000, OutRate: 16000, Quality: 5,
+})
+if err != nil {
+	log.Fatal(err)
+}
+in := make([]int16, 160)  // one 20 ms frame at 8 kHz
+out := make([]int16, 320) // room for 20 ms at 16 kHz
+read, written, err := r.Process(in, out)
+```
+
+`Process` keeps its filter state between calls, accepts chunks of any size
+and does not allocate.
 
 ## Tests and benchmarks
 
@@ -74,7 +90,6 @@ clang; see [docs/testing.md](docs/testing.md).
 
 ## Limitations
 
-- Nothing public is implemented yet.
 - Mono echo cancellation and preprocessing only in the first release.
 - Go is not a hard real-time platform; tail latencies will be measured and
   reported, not guaranteed.
