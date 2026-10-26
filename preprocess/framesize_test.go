@@ -16,10 +16,10 @@ func TestSupportedFrameSize(t *testing.T) {
 			}
 		}
 	}
-	// New uses SupportedFrameSize, so agreement alone cannot catch a wrong
-	// bound; pin the bounds and the common sizes independently.
+	// New uses SupportedFrameSize, so pin the bounds independently. For
+	// math.MinInt+80, 2*n wraps to 160, which the FFT accepts.
 	for n, want := range map[int]bool{
-		math.MinInt: false, -1: false, 0: false, 1: true, 17: true, 19: false,
+		math.MinInt: false, math.MinInt + 80: false, -1: false, 0: false, 1: true, 17: true, 19: false,
 		80: true, 160: true, 320: true, 480: true, 640: true, 960: true,
 		MaxFrameSize: true, MaxFrameSize + 1: false, MaxFrameSize + 2: false, math.MaxInt: false,
 	} {
