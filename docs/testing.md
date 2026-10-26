@@ -239,12 +239,14 @@ for entry, and the two C builds agree with each other. No libm-induced
 difference was found, so no table is embedded. A difference would show as
 a `table` stream mismatch.
 
-`preprocess` (WP5): none. The fixed-point `preprocess.c` and `filterbank.c`
-have no floating point and call no libm function: compiled with the
-reference flags (host Apple clang), neither object references a libm
-symbol, and the only instructions on floating-point registers are `fmov`
-moves and two `fneg.4s` that build integer sign masks (`docs/algorithms.md`). Their tables are still compared with the
-harness.
+### `preprocess` (WP5)
+
+None. The fixed-point `preprocess.c` and `filterbank.c` have no floating
+point and call no libm function: compiled with the reference flags (host
+Apple clang), neither object references a libm symbol, and the only
+instructions on floating-point registers are `fmov` moves and two
+`fneg.4s` that build integer sign masks (`docs/algorithms.md`). Their
+tables are still compared with the harness.
 
 ## Mutation checks
 
@@ -546,9 +548,11 @@ final code, with `go test -run '^$' -fuzz '^<target>$' -fuzztime <t>
   version finds the old stride panic within 1 s; both inputs are kept as
   seeds. A re-review measured 372k executions in 45 s with no failure.
 
-`preprocess` has `FuzzRun`: one of three configurations (8 kHz with `N` =
-1, 16 kHz/160, 48 kHz/480), any frame contents, any `int32` residual or one
-within the range the echo canceller produces, any suppress levels and
+### `preprocess` (WP5)
+
+`FuzzRun`: one of three configurations (8 kHz with `N` = 1, 16 kHz/160,
+48 kHz/480), any frame contents, any `int32` residual or a nonnegative one
+below 2^31, any suppress levels and
 thresholds, denoise and VAD on or off, and `EstimateUpdate` mixed in. It
 checks that nothing fails or panics and that the VAD reports speech while
 off. Run on 2026-10-26 (`go test ./preprocess -run '^$' -fuzz FuzzRun

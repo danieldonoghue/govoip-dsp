@@ -361,7 +361,7 @@ func FuzzRun(f *testing.F) {
 				}
 				res[i] = int32(r.Next())
 				if mode&16 != 0 {
-					res[i] = int32(r.Next() >> 33) // within what echo produces
+					res[i] = int32(r.Next() >> 33) // nonnegative, as a power spectrum is
 				}
 			}
 			var v bool
