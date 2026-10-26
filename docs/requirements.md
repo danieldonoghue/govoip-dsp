@@ -453,6 +453,10 @@ Runner labels name an explicit image version, never `-latest`, so a runner
 image changes only by a deliberate commit that updates this list and
 `.github/workflows/ci.yml` together.
 
+CI does not run for a change that touches only documentation: Markdown files,
+`docs/`, `prompts/`, `LICENSE` and `LICENSES/`. A change that also touches
+anything else runs the full workflow.
+
 - gofmt check, vet, staticcheck, `CGO_ENABLED=0 go test ./...` on every runner.
 - Race tests on Linux amd64 and macOS.
 - `-tags purego` test run, to prove the portable paths build and pass on their

@@ -4,7 +4,19 @@ name: ci
 
 on:
   push:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'prompts/**'
+      - 'LICENSE'
+      - 'LICENSES/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'prompts/**'
+      - 'LICENSE'
+      - 'LICENSES/**'
 
 permissions:
   contents: read
