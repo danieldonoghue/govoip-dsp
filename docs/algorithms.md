@@ -574,3 +574,67 @@ reported, not thresholded:
 would divide by zero (rates below 4 Hz), overflow (above 65535 Hz) or fail
 in `spx_fft_init` (unsupported frame sizes). `Reset` has no reference
 counterpart; it equals a new instance with the same settings.
+
+## Automatic gain control (`agc`, WP4)
+
+**Algorithm.** Own design; no SpeexDSP code (SpeexDSP 1.2.1 has an AGC only
+in its floating-point build). A feed-forward AGC with a lookahead limiter,
+in integer arithmetic:
+
+1. The input is split into blocks of `K = SampleRate/1000` samples and
+   frames of `10K` samples, counted from the start of the stream.
+2. Each frame's RMS `r` comes from the sum of squares (`int64`) and
+   `fixed.Sqrt`, in Q12.
+3. A frame is active when `r` is at or above `GateLevel` and every sample
+   in it was passed with `speech = true`. An active frame moves the level
+   estimate `L` by `c · (min(r, 4L) − L)`, with the attack coefficient when
+   `r > L` and the release coefficient otherwise. Inactive frames leave `L`
+   unchanged.
+4. The AGC gain is `TargetLevel / L` in Q15, clamped to
+   `[MinGain, MaxGain]`. `L` starts at the target, so the gain starts at
+   0 dB.
+5. For each block, the limiter gain is the smallest of the AGC gain,
+   `ceiling / peak` and the previous limiter gain released towards the AGC
+   gain (20 ms time constant). The gain applied to block `j` ramps linearly
+   between `min(e[j−1], e[j])` and `min(e[j], e[j+1])`, which needs one
+   block of lookahead.
+
+**Parameters.** `DefaultConfig`: target −24 dBFS, ceiling −1 dBFS, gate
+−50 dBFS, gain −12 to +24 dB, attack 500 ms, release 1500 ms. "Target
+level" is the output RMS that a stationary signal above the gate converges
+to. For speech, the AGC holds the attack- and release-weighted mean of
+active frame RMS at the target. Measured on LibriSpeech, this puts the
+active-speech RMS of the output 0.8 dB below the target
+(`docs/acceptance/agc.md`, S1).
+
+**Latency.** `2K` samples: 2 ms at rates that are multiples of 1000. The
+first `2K` output samples of a stream are zero.
+
+**Numerical notes.**
+
+- Gains are Q15 in `int32` (up to 40 dB, 3,276,800), levels Q12 amplitudes.
+  The output is `fixed.Mult16x32Q15(x, gain)`, which floors, so with a gain
+  at most `ceiling/peak` no output magnitude exceeds the ceiling. A final
+  `fixed.Saturate32` to ±32767 is a guard that the limiter makes
+  unreachable (mutation check: removing it is not caught).
+- Every division has a non-zero divisor: the block length (at least 8), the
+  block peak (the zero case is a separate branch), and `L`, which stays at or
+  above `min(target, gate) > 0` because each update lands between the old
+  `L` and a value at or above the gate.
+- The limiter release floors its increment, so the limiter gain can settle
+  up to about 20 Q15 units (0.06 % of unity) below the AGC gain.
+- `New` derives the constants with `math.Pow` and `math.Expm1`, rounded to
+  integers; `TestConstants` pins them for one configuration.
+
+**Known limitations.**
+
+- A level gate cannot tell noise from speech. Noise whose 10 ms frames reach
+  the gate, passed with `speech = true`, is raised towards the target. For
+  example, `testutil.PinkNoise` at −55 dBFS long-term RMS has 3 % of its
+  frames above a −50 dBFS gate, and the gain rises by 10 dB. Pass the VAD
+  decision to prevent this.
+- In pauses the gain holds, so the noise in a pause gets the speech's gain.
+- Pumping on real speech (LibriSpeech) is a 3.64 dB spread of frame gain
+  (5 % to 95 %), above the 3 dB that was pre-registered. A slower attack and
+  release reduces it, but also slows convergence (`docs/status.md`, open
+  questions).

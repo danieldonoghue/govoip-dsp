@@ -206,3 +206,27 @@ Medians of five runs, after 200 adapting frames of speech in noise, VAD on:
 The machine was shared with other jobs during the run (load average 108 on
 10 cores), and single runs varied by up to 30%, so these are upper bounds.
 Cost follows the frame size, not the rate. No Linux VM numbers yet.
+
+## Automatic gain control (`agc`, WP4)
+
+Mac, 2026-10-26:
+
+```sh
+CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./agc
+```
+
+`DefaultConfig` at each rate, on full-scale `SpeechLike` input, so the
+limiter and the level estimate both run.
+
+| Benchmark | ns/op | rt-fraction | samples/s | allocs/op |
+|---|---|---|---|---|
+| `AGCProcess/8k_80` | 253.0 | 0.0000253 | 316 M | 0 |
+| `AGCProcess/16k_160` | 447.1 | 0.0000447 | 358 M | 0 |
+| `AGCProcess/32k_320` | 864.4 | 0.0000864 | 370 M | 0 |
+| `AGCProcess/48k_480` | 1219 | 0.0001219 | 394 M | 0 |
+| `AGCProcess/16k_320` (20 ms) | 873.3 | 0.0000437 | 366 M | 0 |
+| `AGCProcess/16k_37` | 108.9 | 0.0000471 | 340 M | 0 |
+| `AGCNew` (48 kHz) | 304.8 | | | 2 (400 B) |
+
+Target (`docs/acceptance/agc.md`): at most 10 µs per 10 ms frame at 48 kHz,
+0 allocs/op. Measured 1.2 µs. Not measured on the Linux VM.

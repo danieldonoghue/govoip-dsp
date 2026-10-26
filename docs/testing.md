@@ -494,6 +494,33 @@ The independent review tried 26 further mutations of its own: 19 caught, 6
 not caught and equivalent, and 1 not caught as a test gap (the VAD start
 `>=`), closed by the 77% and 84% cases.
 
+### `agc` (WP4)
+
+Run on the worktree with `go test -count=1 ./agc` per mutation, restoring
+`agc.go` after each. "Caught" names failing tests other than P4, which
+fails without any mutation (`docs/status.md`).
+
+| Mutation | Result |
+|---|---|
+| Limiter removed (block peak ignored) | caught (T1/T2 suite, T4, C1, Q4, long run, boundary configs) |
+| Limiter ceiling one LSB high | caught (same tests) |
+| Ramp end not bounded by the previous block's limiter gain | caught (T1/T2 suite, T4, Q4, long run) |
+| Limiter never releases | caught (C2, C5, C6, P3) |
+| Gate removed | caught (N1, P3, Q1) |
+| Speech flag ignored | caught (N2, `TestSpeechFlag`) |
+| Speech flag not reset at the frame end | caught (`TestSpeechFlag`) |
+| Innovation clamp `min(r, 4L)` removed | caught (T4) |
+| Attack and release coefficients swapped | caught (C1, C3, C4, P3) |
+| Gain starts at MaxGain instead of 0 dB | caught (N1, N2, Q1, `TestLatency`, `TestSpeechFlag`) |
+| Level estimate starts at the gate (gain still starts at 0 dB) | caught (`TestSpeechFlag`) |
+| Gain not clamped to MaxGain | caught (C6) |
+| Gain not clamped to MinGain | caught (C6, T1/T2 suite) |
+| RMS scale Q12 → Q11 in the loud branch | caught (C1, C3, C4, C5, C6) |
+| `Reset` keeps the delay line | caught (`TestResetProcess`) |
+| Input read after the output is written (breaks aliasing) | caught (`TestAliasingProcess`) |
+| Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
+| Ramp step `(b−a)/K` → `(b−a)/(K−1)` | not caught: the ramp still stays between its endpoints, and no criterion depends on its exact slope |
+
 ## Platform determinism of generated inputs
 
 Tests regenerate long inputs from seeds, so generators must give the same
@@ -605,4 +632,16 @@ committed.
   `OutLen`; checks that all input is consumed, that nothing more than
   `OutLen` is written, and the slack of 1. Fuzzed for 3 minutes on the
   Mac (337474 executions), no failure.
+
+### `agc` (WP4)
+
+`FuzzChunksProcess` checks that any partition of a byte-derived stream
+(with speech flags) gives bit-identical output, that no sample exceeds the
+ceiling or flips sign against its input, and that the first `Latency`
+samples are zero. `FuzzConfig` checks that `New` returns `ErrConfig` or a
+working AGC for any configuration. Run on 2026-10-26 with
+`go test ./agc -run '^$' -fuzz <target> -fuzztime 60s`: `FuzzChunksProcess`
+436,799 executions, `FuzzConfig` 5,240,765 executions, no failures. The
+seed corpora are the `f.Add` calls; the fuzzer found nothing to commit to
+`agc/testdata/fuzz/`.
 
