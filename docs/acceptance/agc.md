@@ -330,6 +330,24 @@ rounding of one step.
 allowance is rounding. R4: the cut needs 3 frames (30 ms), plus up to one
 frame of alignment. R5 is the condition the 3-frame rule was chosen for.
 
+### Regression guards for design v2 (G)
+
+Registered on 2026-10-26 at the owner's request, **after** design v2 was
+measured on these files. They are regression guards, not acceptance
+evidence: they exist to catch a revert of two design choices that no
+acceptance criterion separates, the +13 dB cut threshold and the order-4
+power mean.
+
+| ID | Test | Threshold |
+|---|---|---|
+| G1 to G4 | The P4 signal (the 20 LibriSpeech utterances), each utterance scaled to an active RMS of −38, −30, −24 and −20 dBFS, 10 s of settling, `default` at 16000 Hz | `p95 − p5` of `G_f` ≤ **3 dB** at every level |
+
+**Reasoning.** Measured before registration: design v2 gives 2.05, 2.34,
+2.42 and 2.55 dB. With the +10 dB cut threshold it gives 2.05, 2.34, 3.50
+and 5.39 dB, so G3 and G4 fail. With order 2 it gives 1.60, 1.90, 2.14 and
+6.78 dB, so G4 fails. The same 3 dB as P4 catches both, and leaves 0.45 dB
+of margin at −20 dBFS.
+
 ## Changes
 
 1. **N3, Q2, Q3: reference gain clarified** (before any test was written or
