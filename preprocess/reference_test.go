@@ -84,6 +84,39 @@ func putAll[T testutil.Elem](k checker[T], x []T) {
 	}
 }
 
+// decisions checks a per-frame stream. Such a stream is shorter than one
+// chunk, so a partial run compares only its committed prefix.
+type decisions struct {
+	t         *testing.T
+	label     string
+	k         checker[int16]
+	want, got []int16
+}
+
+func newDecisions(t *testing.T, m *testutil.Manifest, c *testutil.Case, name string, partial bool) *decisions {
+	if !partial {
+		return &decisions{k: stream[int16](t, m, c, name, false)}
+	}
+	return &decisions{t: t, label: c.Name + "/" + name, want: testutil.ReadFile[int16](t, m, c.Stream(t, name))}
+}
+
+func (d *decisions) Put(v int16) {
+	if d.k != nil {
+		d.k.Put(v)
+		return
+	}
+	d.got = append(d.got, v)
+}
+
+func (d *decisions) Done() {
+	if d.k != nil {
+		d.k.Done()
+		return
+	}
+	n := min(len(d.want), len(d.got))
+	testutil.Compare(d.t, d.label+" (committed prefix)", d.want[:n], d.got[:n])
+}
+
 func TestReferenceCaseSet(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
 	cs, gs := buildCases()
@@ -273,8 +306,8 @@ func TestReferenceRun(t *testing.T) {
 			partial := partialCheck() && int64(len(input)) > mc.Stream(t, "out").Chunk
 			in := stream[int16](t, m, mc, "in", partial)
 			out := stream[int16](t, m, mc, "out", partial)
-			vad := stream[int16](t, m, mc, "vad", partial)
-			prob := stream[int16](t, m, mc, "prob", partial)
+			vad := newDecisions(t, m, mc, "vad", partial)
+			prob := newDecisions(t, m, mc, "prob", partial)
 			var psd, noisePSD, pct checker[int32]
 			var buf []int32
 			if rc.mode == "psd" {
