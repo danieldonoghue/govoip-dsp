@@ -296,8 +296,12 @@ func TestMaxOutDivergedChannels(t *testing.T) {
 			for _, k := range []int{1, 3, 5} {
 				for via := range viaCount {
 					r := mustNew(t, cfg)
-					// Advance one channel by k input frames only.
-					r.ProcessChannel(ahead, maxOutSignal[:k], 1, make([]int16, 100), 1)
+					// Leave magic samples pending on every channel, then
+					// let one channel process its own and k more frames.
+					in := maxOutSignal[:800*cfg.Channels]
+					r.Process(in, make([]int16, r.MaxOut(800)*cfg.Channels))
+					r.SetQuality(0)
+					r.ProcessChannel(ahead, maxOutSignal[:k], 1, make([]int16, 1000), 1)
 					if channelsInSync(r) {
 						t.Fatal("channels still in sync")
 					}
