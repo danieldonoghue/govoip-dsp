@@ -139,6 +139,49 @@ Targets:
   the same for `SPSC` on one goroutine. These are targets for a copy-bound
   operation, not measured yet; results go in `docs/performance.md`.
 
+## SPSC backlog drop (WP2b)
+
+Pre-registered before the WP2b test and documentation changes. The owner
+chose to add no API: the consumer drops a backlog with `SPSC.Consume(n)`
+without reading it first, and keeps only the newest k samples with
+`Consume(Len() - k)`. The criteria below are added to those above; none of
+those changes.
+
+- **D1. Model.** The model gains a drop operation: remove min(max(n, 0),
+  length) samples from the front and return that count. `FuzzSPSC` and
+  `TestModelOps` call `Consume(n)` with no read view taken first, and the
+  keep-newest form `Consume(Len() - k)` for k from 0 to above `Len`
+  (negative counts included), and check the returned count and the state
+  against the model after every operation.
+- **D2. Stress.** In `TestStressSPSC` the consumer also drops at random
+  without reading, with both forms of D1. The sequence checker skips ahead
+  by exactly each returned count, so every gap in the received stream must
+  equal what was dropped; lost, duplicated, stale or torn samples are still
+  detected with their index. The total of delivered plus dropped samples
+  equals the samples written. The other S2 conditions (capacities, sample
+  counts, `make race`) are unchanged.
+- **D3. Checker self-test.** `TestSeqCheckerDetects` also feeds a stream
+  whose gap is one sample longer than the recorded drop, and one whose gap
+  is one sample shorter, and checks that both are reported.
+- **D4. Mutations.** Each of these mutations of the drop path, applied to a
+  scratch copy, must be caught, and is recorded in `docs/testing.md`:
+  1. ordering: `Consume` clips to `Cap` instead of the count from the `w`
+     it loaded, so `r` can pass the producer's published index;
+  2. `Consume` releases one sample more than it returns;
+  3. `Consume` returns a count different from the samples it released.
+  The WP2 mutation checks are rerun against the final code.
+- **D5. Allocation and wait-freedom.** `TestNoAllocsSPSC` covers
+  `Consume` with no read view and the keep-newest form; 0 allocations.
+  `TestWaitFreeSource` still passes; `spsc.go` gains no code unless a
+  defect is found.
+- **D6. Benchmark.** `BenchmarkSPSCConsume` measures the keep-newest drop
+  of a backlog of 480 and of 4096 samples. Target: 0 allocs/op, and a cost
+  that does not grow with the backlog (the drop copies nothing).
+- **D7. Docs.** The package doc presents `Consume(Len() - k)` as the
+  keep-newest idiom for skipping a backlog after a stall, and
+  `docs/algorithms.md` extends the memory-ordering argument and the
+  interleaving trace to a drop without a read.
+
 ## Changes
 
 1. **Criterion 7, `Commit` clipping** (changed after the first
@@ -158,3 +201,6 @@ Targets:
    exception. The same review found that `TestWaitFreeSource` missed `goto`
    and package-level atomic functions such as `atomic.AddUint32`; the test
    now rejects both, as S1 intended.
+3. **WP2b additions** (criteria D1 to D7 above). These add to the
+   criteria and change none of them; they were committed before any WP2b
+   test or documentation change.
