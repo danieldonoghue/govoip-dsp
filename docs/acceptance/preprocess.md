@@ -159,4 +159,12 @@ results go into `docs/performance.md`.
 
 ## Changes
 
-(none)
+### Two longer runs added (after the first implementation commit)
+
+`update_noise_prob` changes `min_range` at 100, 1000 and 10000 frames, and
+`speex_preprocess_run` caps `nb_adapt` at 20000 frames. The 60 s runs reach
+at most 6000 frames, so the last two branches were not covered. Added:
+`8000_80_vlong` (210 s of speech in noise, 21000 frames) and
+`16000_320_pink_long` (120 s of pink noise, which also checks against C the
+rising speech probability that the sanity test reports on long noise). This
+widens the tested domain and relaxes nothing.

@@ -109,6 +109,10 @@ func buildCases() ([]refCase, []echoGroup) {
 		ev("nodenoise", func(c *refCase) { c.denoise = false })
 		ev("alternate", func(c *refCase) { c.mode = "echo_alt" })
 	}
+	// Past 10000 and 20000 frames update_noise_prob and the nb_adapt cap
+	// take other branches, which the 60 s runs do not reach.
+	cs = append(cs, base("8000_80_vlong", 8000, 80, "speech_noise", 210),
+		base("16000_320_pink_long", 16000, 320, "noise_pink", 120))
 	for _, cfg := range extraConfigs {
 		rate, n := cfg[0], cfg[1]
 		cs = append(cs, base(fmt.Sprintf("%d_%d_extra", rate, n), rate, n, "speech_noise", 3))
