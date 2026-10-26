@@ -28,9 +28,6 @@ func unitErr(got int64, want float64) float64 {
 	return math.Abs(float64(got) - math.Round(want))
 }
 
-// sqrtMax is the largest x whose rounded square root fits int16.
-const sqrtMax = 1073709056
-
 func sqrtError() worst {
 	var w worst
 	add := func(x int64) {
@@ -40,12 +37,12 @@ func sqrtError() worst {
 		add(x)
 	}
 	// From x = 4^8, Sqrt uses only the top 14 bits of x, so its result is
-	// constant on each run of x sharing them, and the run's ends bound its error.
+	// constant on each run of x sharing them, whose ends bound its error.
 	for j := uint(8); j <= 14; j++ {
 		s := 2 * (j - 6)
-		for q := int64(4096); q < 16384 && q<<s <= sqrtMax; q++ {
+		for q := int64(4096); q < 16384; q++ {
 			add(q << s)
-			add(min((q+1)<<s-1, sqrtMax))
+			add((q+1)<<s - 1)
 		}
 	}
 	return w
@@ -71,18 +68,30 @@ func cosNormError() worst {
 }
 
 // expError returns the error in units for x < 0, and the relative error
-// for x >= 0 against the rounded true value capped at 2^31-1.
+// against the rounded true value for x in [0, 21290].
 func expError() (neg, pos worst) {
-	for x := int64(math.MinInt16); x <= math.MaxInt16; x++ {
+	for x := int64(math.MinInt16); x <= 21290; x++ {
 		got, want := int64(Exp(int16(x))), 65536*math.Exp(float64(x)/2048)
 		if x < 0 {
 			neg.add(x, unitErr(got, want))
 			continue
 		}
-		want = math.Min(math.Round(want), math.MaxInt32)
-		pos.add(x, math.Abs(float64(got)-want)/want)
+		pos.add(x, math.Abs(float64(got)-math.Round(want))/math.Round(want))
 	}
 	return neg, pos
+}
+
+func TestExpSaturation(t *testing.T) {
+	for x := 21291; x <= math.MaxInt16; x++ {
+		if got := Exp(int16(x)); got != math.MaxInt32 {
+			t.Fatalf("Exp(%d) = %d, want 2^31-1", x, got)
+		}
+	}
+	// The doc says Exp saturates three steps early.
+	if 65536*math.Exp(21293.0/2048) >= math.MaxInt32 ||
+		65536*math.Exp(21294.0/2048) < math.MaxInt32 {
+		t.Error("the true value does not first exceed 2^31-1 at x = 21294")
+	}
 }
 
 func atanError() worst {
@@ -147,7 +156,7 @@ func TestApproximationError(t *testing.T) {
 		{"Cos", units["Cos"], cosError(), 1},
 		{"CosNorm", units["CosNorm"], cosNormError(), 1},
 		{"Exp, x < 0", units["Exp"], expNeg, 1},
-		{"Exp, x >= 0", percent["Exp"], worst{expPos.err * 100, expPos.x}, 0.001},
+		{"Exp, x in [0, 21290]", percent["Exp"], worst{expPos.err * 100, expPos.x}, 0.001},
 		{"Atan", units["Atan"], atanError(), 1},
 	} {
 		if len(c.stated) != 1 {

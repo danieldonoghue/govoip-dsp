@@ -28,7 +28,7 @@ func ilog4(x uint32) int16 {
 
 // Sqrt is spx_sqrt (math_approx.h:142): the square root of a Q(2n) value in
 // Q(n), by a cubic polynomial after normalisation.
-// Within 40 units of the true root for x in [0, 1073709056]; larger x overflow.
+// Within 40 units of the true root for x in [0, 2^30), and meaningless outside.
 func Sqrt(x int32) int16 {
 	const c0, c1, c2, c3 = 3634, 21173, -12627, 4204
 	k := int(ilog4(uint32(x))) - 6
@@ -112,7 +112,8 @@ func exp2(x int16) int32 {
 
 // Exp is spx_exp (math_approx.h:265): e^x for x in Q11, in Q16, saturating
 // to 0x7fffffff.
-// Within 39 units for x < 0, and 0.122% of the true value for x >= 0.
+// Within 39 units for x < 0 and 0.090% for x in [0, 21290]. It saturates from
+// x = 21291, three steps before the true value exceeds 2^31-1.
 func Exp(x int16) int32 {
 	if x > 21290 {
 		return 0x7fffffff

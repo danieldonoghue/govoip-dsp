@@ -7,8 +7,8 @@
 //
 // # Why not package math
 //
-// The macros are integer Q-format operations with the exact rounding and
-// saturation of fixed_generic.h. Sqrt, Cos, CosNorm, Exp and Atan are the
+// The fixed_generic.h macros are integer Q-format operations with exact
+// rounding and saturation rules. Sqrt, Cos, CosNorm, Exp and Atan are the
 // integer polynomial approximations of math_approx.h, not correctly rounded
 // functions: each doc states its maximum error against the correctly rounded
 // true value over its domain, and TestApproximationError checks it. Float is
