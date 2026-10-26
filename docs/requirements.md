@@ -470,8 +470,8 @@ Never report a platform as tested because it cross-compiled.
 
 ## 11. Dependencies and licensing
 
-- Project licence: MIT (`LICENSE` already exists: "Copyright (c) 2026 Daniel
-  Donoghue"; verify, do not recreate).
+- Project licence: BSD 3-Clause (`LICENSE`: "Copyright (c) 2026, Daniel
+  Donoghue"), the same licence as upstream SpeexDSP.
 - Prefer the Go standard library. A third-party dependency is used only when
   the standard library cannot do the job.
 - Pre-approved dependency: `golang.org/x/sys` (for `cpu`). Any other dependency
@@ -484,9 +484,9 @@ Never report a platform as tested because it cross-compiled.
   FFT carries its own BSD notice (Mark Borgerding, Jean-Marc Valin) in
   `LICENSES/kissfft-COPYING`.
 - `THIRD_PARTY_NOTICES.md` lists every upstream source used, every derived file
-  or package, dependencies, and fixture/speech provenance. The README states MIT
-  for the project and points to the notices; it must not claim the repository is
-  exclusively MIT.
+  or package, dependencies, and fixture/speech provenance. The README states the
+  project licence and points to the notices, so that the upstream copyright
+  holders of derived code are visible.
 - Own-design components (`buffer`, `agc`, extensions) contain no copied upstream
   code; say so in their package docs.
 - Never copy code of unknown or incompatible licence.

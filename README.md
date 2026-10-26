@@ -79,7 +79,7 @@ clang; see [docs/testing.md](docs/testing.md).
 
 ## Licence
 
-The project is licensed under the MIT licence ([LICENSE](LICENSE)). It also
-contains code derived from SpeexDSP and KISS FFT under their BSD licences;
-see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
-[LICENSES/](LICENSES/). The repository is therefore not exclusively MIT.
+The project is licensed under the BSD 3-Clause licence ([LICENSE](LICENSE)).
+Code derived from SpeexDSP and KISS FFT also keeps the upstream copyright
+notices and BSD 3-Clause terms; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [LICENSES/](LICENSES/).

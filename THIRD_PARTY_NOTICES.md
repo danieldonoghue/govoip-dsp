@@ -1,7 +1,8 @@
 # Third-party notices
 
-govoip-dsp is licensed under the MIT licence ([LICENSE](LICENSE)). Parts of
-it are derived from the projects below, under their own licences. Each work
+govoip-dsp is licensed under the BSD 3-Clause licence ([LICENSE](LICENSE)).
+Parts of it are derived from the projects below, which keep their own
+copyright notices and BSD 3-Clause terms. Each work
 package edits only its own entries.
 
 ## Upstream sources
