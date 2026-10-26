@@ -339,6 +339,26 @@ rounded up to a multiple of 8.
   example 1073741823:2; undefined in C) is rejected the same way.
 - NaN `float32` input becomes 0; there is no `NULL`-input form.
 
+**Extension: `MaxOut`.** SpeexDSP has no way to ask how much output a
+call needs. Each kernel writes one output per position `L + floor((s +
+k·num)/den)`, k = 0, 1, …, that lies below the input it holds, where `L`
+is `last_sample`, `s` is `samp_frac_num` and `num/den` the reduced ratio;
+the loop's integer and fractional steps add up to exactly that. The
+magic samples, processed first, and the offered input form one span of
+`t = magic + n` frames, so a call can write `ceil(((t - L)·den - s)/num)`
+frames (0 if `t <= L`), per channel. `MaxOut` returns the largest of
+these over the channels, plus 1 when `n > 0`: a call stops as soon as its
+output is full, so with exactly the count it can stop before a later
+internal 160-sample chunk, or before the input after the magic samples,
+even when those would write nothing. The extra frame keeps the output
+from filling. The count is exact, so the slack is 1 (measured over 671
+configurations and the event and fuzz tests), except that a `float32`
+call offered no input writes nothing, as upstream `process_float` does,
+and the zero-output state can write fewer after the input position
+saturates. Where `den - 1 + (num mod den)` reaches 2^32, the fractional
+position can wrap and the output is not bounded by the input, so
+`MaxOut` returns 2^31-1.
+
 **Measurements.** From the Go implementation, which is bit-exact with the
 reference, so these are the reference's figures. Mac, 2026-10-26:
 
