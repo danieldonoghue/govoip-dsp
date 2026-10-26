@@ -652,3 +652,42 @@ func TestAcceptanceStationaryNoise(t *testing.T) {
 		}
 	}
 }
+
+// TestAcceptanceCutThreshold covers G5 and G6, regression guards for the
+// cut threshold registered after measurement.
+func TestAcceptanceCutThreshold(t *testing.T) {
+	type limit struct{ within, over float64 }
+	g6 := map[float64]limit{10: {1.76, 0.43}, 11: {1.88, 0.53}, 12: {1.95, 0.62}, 13: {2.05, 0.72}}
+	for _, rate := range defaultRates {
+		cfg := DefaultConfig(rate)
+		for _, step := range []float64{10, 11, 12, 13, 14} {
+			name := fmt.Sprintf("%d/+%v", rate, step)
+			t.Run(name, func(t *testing.T) {
+				r, f0 := runStep(t, stepCase{name, cfg, -44, -44 + step, sineSignal, false})
+				target := float64(cfg.TargetLevel)
+				within := r.convergence(f0, r.frames(), target, 2, cfg)
+				over := 0
+				for f := f0; f < r.frames(); f++ {
+					if r.level(f) > target+6 {
+						over++
+					}
+				}
+				overSec := float64(over) * r.frameSeconds(cfg)
+				cuts := checkRates(t, r, name, cfg)
+				t.Logf("+%v dB at %d Hz: within 2 dB %.3f s, above target+6 dB %.3f s, cuts %v",
+					step, rate, within, overSec, cuts)
+				if step == 14 {
+					late := len(cuts) > 0 && float64(cuts[0]+1-f0)*r.frameSeconds(cfg) > 0.05
+					if len(cuts) != 1 || cuts[0] < f0 || late || within > 0.05 {
+						t.Errorf("G5: cuts %v (step at frame %d), within 2 dB after %.3f s", cuts, f0, within)
+					}
+					return
+				}
+				if l := g6[step]; within > l.within || overSec > l.over {
+					t.Errorf("G6: within 2 dB after %.3f s (limit %.2f), above target+6 dB %.3f s (limit %.2f)",
+						within, l.within, overSec, l.over)
+				}
+			})
+		}
+	}
+}
