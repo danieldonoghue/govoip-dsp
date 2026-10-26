@@ -98,6 +98,29 @@ Targets (`docs/acceptance/buffer.md`): 0 allocs/op everywhere, met; a
 480-sample write/read cycle under 500 ns for `Ring` and for `SPSC` on one
 goroutine, met (81.9 ns and 231.9 ns even under load).
 
+### SPSC backlog drop (WP2b)
+
+Mac, 2026-10-26, load average about 9 on 10 cores (lighter than the table
+above, so the two are not comparable):
+
+```sh
+go test -run '^$' -bench 'SPSCConsume|SPSCWriteRead/480$' -benchmem -count 3 ./buffer
+```
+
+`BenchmarkSPSCConsume` times one cycle of `WriteSlices`, `Commit` (a refill
+with no copy), `Len`, `Consume(Len() - 80)` and a `Consume` of the 80 kept
+samples.
+
+| Benchmark | ns/op (3 runs) | allocs/op |
+|---|---|---|
+| `SPSCConsume/keep_newest_80_of_480` | 31.40, 31.62, 30.61 | 0 |
+| `SPSCConsume/keep_newest_80_of_4096` | 30.55, 30.72, 30.67 | 0 |
+| `SPSCWriteRead/480`, same run | 46.44, 47.55, 47.55 | 0 |
+| `SPSCWriteRead/wrap480`, same run | 52.66, 52.74, 52.74 | 0 |
+
+The drop costs the same for a 480- and a 4096-sample backlog, as the
+target (`docs/acceptance/buffer.md`, D6) requires: it copies nothing.
+
 ## Resampler (`resample`, WP1)
 
 Mac, 2026-10-26, Go 1.26.5, default benchtime:

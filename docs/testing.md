@@ -549,6 +549,16 @@ final code, with `go test -run '^$' -fuzz '^<target>$' -fuzztime <t>
 | `FuzzSPSC` | 10 min | 9,290,639 | none |
 | `FuzzChunksRing` | 3 min | 2,201,674 | none |
 
+With the WP2b drop and keep-newest operations (operation codes now taken
+modulo 12, so the committed seeds decode to different sequences than when
+they were added), run again on 2026-10-26 with `-timeout 15m` added (the
+default 10-minute test timeout would end a 10-minute run):
+
+| Target | Time | Executions | Failures |
+|---|---|---|---|
+| `FuzzRing` | 10 min | 29,757,663 | none |
+| `FuzzSPSC` | 10 min | 37,028,094 | none |
+
 ### `resample` (WP1)
 
 - `FuzzChunksResampler`: a configuration from a fixed list, one of the
