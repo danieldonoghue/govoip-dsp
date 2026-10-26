@@ -26,25 +26,27 @@ func TestNewInvalidConfig(t *testing.T) {
 		return c
 	}
 	bad := map[string]Config{
-		"zero":             {},
-		"rate low":         mod(func(c *Config) { c.SampleRate = 7999 }),
-		"rate high":        mod(func(c *Config) { c.SampleRate = 48001 }),
-		"target low":       mod(func(c *Config) { c.TargetLevel = -41 }),
-		"target high":      mod(func(c *Config) { c.TargetLevel = -2 }),
-		"limit low":        mod(func(c *Config) { c.LimitLevel = -21; c.TargetLevel = -30 }),
-		"limit high":       mod(func(c *Config) { c.LimitLevel = 1 }),
-		"limit at target":  mod(func(c *Config) { c.LimitLevel = -10; c.TargetLevel = -10 }),
-		"gate low":         mod(func(c *Config) { c.GateLevel = -81 }),
-		"gate at target":   mod(func(c *Config) { c.GateLevel = c.TargetLevel }),
-		"max gain low":     mod(func(c *Config) { c.MaxGain = -1 }),
-		"max gain high":    mod(func(c *Config) { c.MaxGain = 41 }),
-		"min gain low":     mod(func(c *Config) { c.MinGain = -41 }),
-		"min gain high":    mod(func(c *Config) { c.MinGain = 1 }),
-		"attack short":     mod(func(c *Config) { c.AttackTime = 10*time.Millisecond - 1 }),
-		"attack long":      mod(func(c *Config) { c.AttackTime = 10*time.Second + 1 }),
-		"release short":    mod(func(c *Config) { c.ReleaseTime = 0 }),
-		"release long":     mod(func(c *Config) { c.ReleaseTime = 10*time.Second + 1 }),
-		"release negative": mod(func(c *Config) { c.ReleaseTime = -time.Second }),
+		"zero":            {},
+		"rate low":        mod(func(c *Config) { c.SampleRate = 7999 }),
+		"rate high":       mod(func(c *Config) { c.SampleRate = 48001 }),
+		"target low":      mod(func(c *Config) { c.TargetLevel = -41 }),
+		"target high":     mod(func(c *Config) { c.TargetLevel = -2 }),
+		"limit low":       mod(func(c *Config) { c.LimitLevel = -21; c.TargetLevel = -30 }),
+		"limit high":      mod(func(c *Config) { c.LimitLevel = 1 }),
+		"limit at target": mod(func(c *Config) { c.LimitLevel = -10; c.TargetLevel = -10 }),
+		"gate low":        mod(func(c *Config) { c.GateLevel = -81 }),
+		"gate at target":  mod(func(c *Config) { c.GateLevel = c.TargetLevel }),
+		"max gain low":    mod(func(c *Config) { c.MaxGain = -1 }),
+		"max gain high":   mod(func(c *Config) { c.MaxGain = 41 }),
+		"min gain low":    mod(func(c *Config) { c.MinGain = -41 }),
+		"min gain high":   mod(func(c *Config) { c.MinGain = 1 }),
+		"rise low":        mod(func(c *Config) { c.RiseRate = 0 }),
+		"rise high":       mod(func(c *Config) { c.RiseRate = 101 }),
+		"fall low":        mod(func(c *Config) { c.FallRate = 0 }),
+		"fall high":       mod(func(c *Config) { c.FallRate = 401 }),
+		"level short":     mod(func(c *Config) { c.LevelTime = 100*time.Millisecond - 1 }),
+		"level long":      mod(func(c *Config) { c.LevelTime = 10*time.Second + 1 }),
+		"level negative":  mod(func(c *Config) { c.LevelTime = -time.Second }),
 	}
 	for name, cfg := range bad {
 		if a, err := New(cfg); !errors.Is(err, ErrConfig) || a != nil {
@@ -73,8 +75,8 @@ func TestNewBoundaryConfig(t *testing.T) {
 		"gate high":    mod(func(c *Config) { c.GateLevel = c.TargetLevel - 1 }),
 		"gains zero":   mod(func(c *Config) { c.MaxGain, c.MinGain = 0, 0 }),
 		"gains wide":   mod(func(c *Config) { c.MaxGain, c.MinGain = 40, -40 }),
-		"times short":  mod(func(c *Config) { c.AttackTime, c.ReleaseTime = 10*time.Millisecond, 10*time.Millisecond }),
-		"times long":   mod(func(c *Config) { c.AttackTime, c.ReleaseTime = 10*time.Second, 10*time.Second }),
+		"fast":         mod(func(c *Config) { c.RiseRate, c.FallRate, c.LevelTime = 100, 400, 100*time.Millisecond }),
+		"slow":         mod(func(c *Config) { c.RiseRate, c.FallRate, c.LevelTime = 1, 1, 10*time.Second }),
 		"fullscale 8k": mod(func(c *Config) { c.SampleRate, c.LimitLevel, c.MaxGain = 8000, 0, 40 }),
 	}
 	for name, cfg := range good {
@@ -101,9 +103,10 @@ func TestNewBoundaryConfig(t *testing.T) {
 // 16 kHz, values computed independently from the formulas in the package.
 func TestConstants(t *testing.T) {
 	a := mustNew(t, DefaultConfig(16000))
-	got := []int64{int64(a.blockLen), a.frameLen, int64(a.attack), int64(a.release), int64(a.limCoef),
-		int64(a.target), int64(a.gate), int64(a.ceiling), int64(a.maxGain), int64(a.minGain), int64(a.Latency())}
-	want := []int64{16, 160, 649, 218, 1598, 8468566, 424434, 29205, 519338, 8231, 32}
+	got := []int64{int64(a.blockLen), a.frameLen, int64(a.levCoef), int64(a.up), int64(a.down), int64(a.limCoef),
+		int64(a.warm), int64(a.dropRun), int64(a.target), int64(a.gate), int64(a.ceiling), int64(a.maxGain),
+		int64(a.minGain), int64(a.Latency())}
+	want := []int64{16, 160, 109, 456, 31293, 1598, 300, 100, 8468566, 424434, 29205, 519338, 8231, 32}
 	if !slices.Equal(got, want) {
 		t.Errorf("constants %v, want %v", got, want)
 	}
@@ -429,12 +432,11 @@ func FuzzChunksProcess(f *testing.F) {
 }
 
 func FuzzConfig(f *testing.F) {
-	f.Add(16000, -24, -1, -50, 24, -12, int64(500), int64(1500), []byte{1, 2, 3, 4})
-	f.Add(8000, -40, 0, -80, 40, -40, int64(10), int64(10000), []byte{255, 127, 0, 128})
-	f.Add(0, 0, 0, 0, 0, 0, int64(0), int64(0), []byte{})
-	f.Fuzz(func(t *testing.T, rate, target, limit, gate, maxG, minG int, attack, release int64, data []byte) {
-		cfg := Config{rate, target, limit, gate, maxG, minG,
-			time.Duration(attack) * time.Millisecond, time.Duration(release) * time.Millisecond}
+	f.Add(16000, -24, -1, -50, 24, -12, 12, 40, int64(3000), []byte{1, 2, 3, 4})
+	f.Add(8000, -40, 0, -80, 40, -40, 100, 1, int64(100), []byte{255, 127, 0, 128})
+	f.Add(0, 0, 0, 0, 0, 0, 0, 0, int64(0), []byte{})
+	f.Fuzz(func(t *testing.T, rate, target, limit, gate, maxG, minG, rise, fall int, level int64, data []byte) {
+		cfg := Config{rate, target, limit, gate, maxG, minG, rise, fall, time.Duration(level) * time.Millisecond}
 		a, err := New(cfg)
 		if err != nil {
 			if !errors.Is(err, ErrConfig) || a != nil {
@@ -459,8 +461,8 @@ func FuzzConfig(f *testing.F) {
 // TestConfigEdgeAccuracy runs the configurations at the edges of the valid
 // range where a floored one-pole step could stall short of its target.
 func TestConfigEdgeAccuracy(t *testing.T) {
-	low := Config{16000, -40, -20, -80, 0, -40, 500 * time.Millisecond, 1500 * time.Millisecond}
-	slow := Config{16000, -40, -20, -80, 40, -40, 10 * time.Second, 10 * time.Second}
+	low := Config{16000, -40, -20, -80, 0, -40, 12, 40, 3 * time.Second}
+	slow := Config{16000, -40, -20, -80, 40, -40, 1, 1, 10 * time.Second}
 	for _, c := range []struct {
 		name     string
 		cfg      Config

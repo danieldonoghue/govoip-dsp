@@ -6,6 +6,7 @@ package agc
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ var defaultRates = []int{8000, 16000, 44100, 48000}
 
 func fastConfig() Config {
 	c := DefaultConfig(16000)
-	c.AttackTime, c.ReleaseTime = 100*time.Millisecond, 300*time.Millisecond
+	c.RiseRate, c.FallRate, c.LevelTime = 60, 200, 600*time.Millisecond
 	return c
 }
 
@@ -67,10 +68,14 @@ func TestAcceptanceConvergence(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			r, f0 := runStep(t, c)
 			cfg := c.cfg
-			ta, tr := cfg.AttackTime.Seconds(), cfg.ReleaseTime.Seconds()
-			limit := 1.8*ta + 0.1
+			// Registered numbers (design v2, test-structure change 1).
+			up, down, over := 1.0, 5.8, 0.45
+			if cfg == fastConfig() {
+				up, down, over = 0.28, 1.24, 0.13
+			}
+			limit := up
 			if c.to < c.from {
-				limit = 3.8*tr + 0.1
+				limit = down
 			}
 			target := float64(cfg.TargetLevel)
 			got := r.convergence(f0, r.frames(), target, 2, cfg)
@@ -82,6 +87,7 @@ func TestAcceptanceConvergence(t *testing.T) {
 			if got > limit {
 				t.Errorf("convergence %.3f s > %.3f s", got, limit)
 			}
+			over6 := over
 			if c.to > c.from {
 				over := 0
 				for f := f0; f < r.frames(); f++ {
@@ -89,10 +95,19 @@ func TestAcceptanceConvergence(t *testing.T) {
 						over++
 					}
 				}
-				dur, lim := float64(over)*r.frameSeconds(cfg), 0.8*ta+0.05
+				dur, lim := float64(over)*r.frameSeconds(cfg), over6
 				t.Logf("T3 %s: %.3f s above target+6 dB (threshold %.3f s)", c.name, dur, lim)
 				if dur > lim {
 					t.Errorf("T3: %.3f s above target+6 dB > %.3f s", dur, lim)
+				}
+			}
+			cuts := checkRates(t, r, c.name, cfg)
+			if strings.HasPrefix(c.name, "C1/") {
+				// R4: one cut, within 50 ms of the step.
+				late := len(cuts) > 0 && float64(cuts[0]+1-f0)*r.frameSeconds(cfg) > 0.05
+				t.Logf("R4 %s: cuts at frames %v, step at frame %d", c.name, cuts, f0)
+				if len(cuts) != 1 || cuts[0] < f0 || late {
+					t.Errorf("R4: cuts %v, want one within 50 ms of frame %d", cuts, f0)
 				}
 			}
 			checkCeiling(t, r, c.name, false)
@@ -202,6 +217,9 @@ func pumping(t *testing.T, name string, cfg Config, x []int16, maxSpread float64
 			t.Errorf("S1: active RMS %.3f dBFS", lvl)
 		}
 	}
+	if speech {
+		t.Logf("R1/R2 %s: cuts at frames %v", name, checkRates(t, r, name, cfg))
+	}
 	checkCeiling(t, r, name, false)
 	checkGainBounds(t, r, name)
 }
@@ -233,7 +251,7 @@ func TestAcceptanceLibriSpeech(t *testing.T) {
 
 // transientSuite returns the T1 suite at rate: speech, then each event
 // followed by 2 s of speech.
-func transientSuite(rate int, cfg Config) []int16 {
+func transientSuite(rate int, cfg Config) ([]int16, int) {
 	sp := func(sec float64, seed string) []int16 { return speechLike(sec, rate, -44, seed, cfg) }
 	ms := func(d float64) int { return int(d * float64(rate) / 1000) }
 	x := sp(10, "agc-t-lead")
@@ -247,11 +265,15 @@ func transientSuite(rate int, cfg Config) []int16 {
 		testutil.Sine(ms(500), float64(rate), 50, 32767, 0),
 		dc(ms(100), -32768),
 	}
+	click := 0
 	for i, e := range events {
+		if i == 5 {
+			click = len(x)
+		}
 		x = append(x, e...)
 		x = append(x, sp(2, fmt.Sprintf("agc-t-%d", i))...)
 	}
-	return x
+	return x, click
 }
 
 func square(n, rate int, freq float64) []int16 {
@@ -280,7 +302,16 @@ func TestAcceptanceTransients(t *testing.T) {
 		t.Run(fmt.Sprint(rate), func(t *testing.T) {
 			cfg := DefaultConfig(rate)
 			r := newRecorder(t, cfg)
-			r.feed(t, transientSuite(rate, cfg), true)
+			x, click := transientSuite(rate, cfg)
+			r.feed(t, x, true)
+			cuts := checkRates(t, r, "T1 suite", cfg)
+			cf := click / r.frameLen()
+			for _, f := range cuts {
+				if f >= cf-1 && f <= cf+riseFrames+1 {
+					t.Errorf("R5: cut at frame %d near the 10 ms click at frame %d", f, cf)
+				}
+			}
+			t.Logf("R1/R2/R5 %d Hz: cuts at frames %v, click at frame %d", rate, cuts, cf)
 			peak := int32(0)
 			for _, y := range r.out {
 				peak = max(peak, int32(y), -int32(y))
@@ -294,7 +325,8 @@ func TestAcceptanceTransients(t *testing.T) {
 		cfg := DefaultConfig(16000)
 		cfg.LimitLevel = 0
 		r := newRecorder(t, cfg)
-		r.feed(t, transientSuite(16000, cfg), true)
+		x, _ := transientSuite(16000, cfg)
+		r.feed(t, x, true)
 		peak := int32(0)
 		for _, y := range r.out {
 			peak = max(peak, int32(y), -int32(y))
@@ -341,6 +373,9 @@ func TestAcceptanceClick(t *testing.T) {
 			}
 			if rec > 0.1 {
 				t.Errorf("recovery %.1f ms", rec*1000)
+			}
+			if cuts := checkRates(t, r, name, cfg); len(cuts) != 0 {
+				t.Errorf("R5: cuts at frames %v", cuts)
 			}
 			checkCeiling(t, r, name, false)
 		})
@@ -420,6 +455,7 @@ func TestAcceptanceNoise(t *testing.T) {
 		if lvl > -36 {
 			t.Errorf("noise output %.2f dBFS above -36", lvl)
 		}
+		checkRates(t, r, "N3", cfg)
 		checkCeiling(t, r, "N3", false)
 		checkGainBounds(t, r, "N3")
 	})
@@ -480,6 +516,7 @@ func TestAcceptanceSilence(t *testing.T) {
 			if agcChange != 0 || maxApplied > ref || nonzero != 0 {
 				t.Errorf("during gap: AGC change %d, max applied %d vs AGC %d, %d nonzero outputs", agcChange, maxApplied, ref, nonzero)
 			}
+			checkRates(t, r, c.name, cfg)
 			checkCeiling(t, r, c.name, false)
 			if c.after != 0 {
 				t.Logf("%s: AGC change %d, max applied %d vs AGC %d; T1/T2 checked", c.name, agcChange, maxApplied, ref)
@@ -501,5 +538,27 @@ func TestAcceptanceSilence(t *testing.T) {
 				t.Errorf("burst: %.2f dBFS after vs %.2f before", after, before)
 			}
 		})
+	}
+}
+
+// TestAcceptanceCautiousStart covers R3.
+func TestAcceptanceCautiousStart(t *testing.T) {
+	cfg := DefaultConfig(16000)
+	r := newRecorder(t, cfg)
+	r.feed(t, speechLike(20, cfg.SampleRate, -48, "agc-r3", cfg), true)
+	F := r.frameLen()
+	step := float64(cfg.RiseRate) * r.frameSeconds(cfg)
+	n, worst := 0, math.Inf(-1)
+	for f := 0; (f+1)*F <= len(r.in); f++ {
+		if r.frameActive(f) {
+			n++
+		}
+		margin := q15dB(r.agcGain[(f+1)*F-1]) - (float64(n)*step + 0.01)
+		worst = max(worst, margin)
+	}
+	g := q15dB(r.agcGain[len(r.agcGain)-1])
+	t.Logf("R3: %d active frames, final gain %.2f dB, largest excess over n·RiseRate·F/R %.4f dB (threshold 0)", n, g, worst)
+	if worst > 0 {
+		t.Errorf("R3: gain exceeded the cautious-start bound by %.4f dB", worst)
 	}
 }

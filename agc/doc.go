@@ -14,13 +14,21 @@
 //  1. For each frame, the RMS r is measured. A frame is active when its RMS
 //     is at or above GateLevel and every one of its samples was passed with
 //     speech true.
-//  2. An active frame moves the level estimate L towards min(r, 4L), with
-//     time constant AttackTime when r > L and ReleaseTime otherwise. The
-//     4L bound (+12 dB) keeps a click from knocking the gain down. Inactive
-//     frames leave L, and so the gain, unchanged.
-//  3. The AGC gain is TargetLevel/L, clamped to [MinGain, MaxGain]. L
-//     starts at TargetLevel, so the gain starts at 0 dB.
-//  4. A lookahead limiter keeps every output sample at or below LimitLevel:
+//  2. The level estimate L is a power mean of order 4 of active-frame RMS:
+//     the fourth root of an exponential mean of min(r, 2L)^4, with time
+//     constant LevelTime, or the plain mean until LevelTime of speech has
+//     been seen. Loud frames dominate it, so it follows the peaks of speech
+//     rather than the dips between syllables. Inactive frames leave it
+//     unchanged.
+//  3. Three active frames in a row more than 10 dB above L reset L to
+//     their level and cut the gain at once. A click (one or two frames)
+//     cannot do this. Active frames more than 6 dB below L for LevelTime/3
+//     in a row reset L to their level.
+//  4. The target gain is TargetLevel/L, clamped to [MinGain, MaxGain]. The
+//     AGC gain starts at 0 dB and moves towards it by at most RiseRate dB/s
+//     up, on active frames only, and FallRate dB/s down, on any frame. So
+//     the gain after t seconds of speech is at most RiseRate·t dB.
+//  5. A lookahead limiter keeps every output sample at or below LimitLevel:
 //     each block's gain is at most LimitLevel over the block's peak, and it
 //     recovers towards the AGC gain with a 20 ms time constant. The applied
 //     gain ramps linearly from block to block.
@@ -28,8 +36,10 @@
 // TargetLevel is therefore the output RMS that a stationary signal above
 // the gate converges to, as long as its peaks at that gain stay under
 // LimitLevel; otherwise the limiter holds it lower. For speech, the AGC
-// holds the attack- and release-weighted mean of active frame RMS at the
-// target. Levels and gains are whole dB.
+// holds the order-4 power mean of active frame RMS at the target, so the
+// active-speech RMS of the output is somewhat below it. Levels and gains
+// are whole dB, rates whole dB/s. The ideas of items 2 to 4 come from the
+// floating-point AGC of SpeexDSP 1.2.1; the design and code are our own.
 //
 // Noise protection is the gate and the speech flag. Noise above GateLevel
 // passed with speech true is treated as speech and raised towards the

@@ -15,7 +15,8 @@ type recorder struct {
 	in, out []int16
 	applied []int32
 	agcGain []int32
-	speech  []bool // per input sample
+	levels  []int32 // level estimate after each input sample
+	speech  []bool  // per input sample
 }
 
 func newRecorder(t testing.TB, cfg Config) *recorder {
@@ -36,6 +37,7 @@ func (r *recorder) feed(t testing.TB, x []int16, speech bool) {
 			t.Fatal(err)
 		}
 		r.agcGain = append(r.agcGain, r.a.gain)
+		r.levels = append(r.levels, r.a.level)
 		r.out = append(r.out, y[0])
 		r.in = append(r.in, x[i])
 		r.speech = append(r.speech, speech)
@@ -214,4 +216,64 @@ func checkGainBounds(t testing.TB, r *recorder, name string) {
 			t.Fatalf("%s: applied gain %d at sample %d outside (0, %d]", name, g, n, r.a.maxGain)
 		}
 	}
+}
+
+// frameActive reports whether input frame f was active.
+func (r *recorder) frameActive(f int) bool {
+	F := r.frameLen()
+	for _, v := range r.speech[f*F : (f+1)*F] {
+		if !v {
+			return false
+		}
+	}
+	return frameRMS(r.inFrame(f)) >= r.a.gate
+}
+
+// checkRates checks R1 and R2 on every frame and returns the frames where
+// the gain fell faster than FallRate (immediate cuts).
+func checkRates(t testing.TB, r *recorder, name string, cfg Config) []int {
+	t.Helper()
+	F := r.frameLen()
+	sec := float64(F) / float64(cfg.SampleRate)
+	riseMax := float64(cfg.RiseRate)*sec + 0.01
+	fallMax := float64(cfg.FallRate)*sec + 0.01
+	var cuts []int
+	prevGain, prevLevel := int32(unity), r.a.target
+	var levels []int32 // level before each frame
+	for f := 0; (f+1)*F <= len(r.in); f++ {
+		levels = append(levels, prevLevel)
+		g := r.agcGain[(f+1)*F-1]
+		d := 20 * math.Log10(float64(g)/float64(prevGain))
+		active := r.frameActive(f)
+		if g > prevGain && !active {
+			t.Errorf("%s R1: gain rose %.4f dB (%d to %d) on inactive frame %d", name, d, prevGain, g, f)
+		}
+		if g > prevGain && d > riseMax {
+			t.Errorf("%s R1: gain rose %.4f dB on frame %d (limit %.4f)", name, d, f, riseMax)
+		}
+		if g < prevGain && -d > fallMax {
+			// R2: only after riseFrames loud active frames in a row.
+			ok := f >= riseFrames-1
+			for k := f - riseFrames + 1; ok && k <= f; k++ {
+				e := frameRMS(r.inFrame(k))
+				l := int64(levels[k])
+				ok = r.frameActive(k) && int64(e)*int64(e) > 10*l*l
+			}
+			if !ok {
+				t.Errorf("%s R2: gain fell %.4f dB on frame %d without a sustained rise", name, -d, f)
+			}
+			cuts = append(cuts, f)
+		}
+		prevGain, prevLevel = g, r.levels[(f+1)*F-1]
+	}
+	return cuts
+}
+
+// frameRMS is the AGC's frame RMS of x, in Q12.
+func frameRMS(x []int16) int32 {
+	var e int64
+	for _, v := range x {
+		e += int64(v) * int64(v)
+	}
+	return rms(e, int64(len(x)))
 }

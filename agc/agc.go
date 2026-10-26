@@ -39,11 +39,13 @@ type Config struct {
 	MaxGain int
 	MinGain int
 
-	// AttackTime is the time constant with which the gain falls when the
-	// level rises; ReleaseTime, with which it rises when the level falls.
-	// Each is 10 ms to 10 s.
-	AttackTime  time.Duration
-	ReleaseTime time.Duration
+	// RiseRate and FallRate limit how fast the gain moves: 1 to 100 dB/s up
+	// (on speech frames only) and 1 to 400 dB/s down.
+	RiseRate int
+	FallRate int
+
+	// LevelTime, 100 ms to 10 s, is the averaging time of the level estimate.
+	LevelTime time.Duration
 }
 
 // DefaultConfig returns the recommended configuration for sampleRate.
@@ -55,8 +57,9 @@ func DefaultConfig(sampleRate int) Config {
 		GateLevel:   -50,
 		MaxGain:     24,
 		MinGain:     -12,
-		AttackTime:  500 * time.Millisecond,
-		ReleaseTime: 1500 * time.Millisecond,
+		RiseRate:    12,
+		FallRate:    40,
+		LevelTime:   3 * time.Second,
 	}
 }
 
@@ -64,6 +67,7 @@ const (
 	blocksPerFrame = 10
 	unity          = 32768 // gain 1.0 in Q15
 	limiterRelease = 20 * time.Millisecond
+	riseFrames     = 3 // loud frames in a row that trigger an immediate cut
 )
 
 // AGC is an automatic gain control for one mono stream. Gains are Q15 int32
@@ -77,23 +81,34 @@ type AGC struct {
 	ceiling  int32 // amplitude
 	minGain  int32
 	maxGain  int32
-	attack   int16 // Q15 smoothing coefficients
-	release  int16
-	limCoef  int16
+	limCoef  int16 // Q15 limiter release coefficient
+	levCoef  int16 // Q15 level-estimate coefficient
+	levKeep  fixed.Float
+	levStep  fixed.Float
+	up       int16   // Q15 gain increase per frame, minus 1
+	down     int16   // Q15 gain factor per frame
+	warm     int     // active frames until the level estimate is warmed up
+	dropRun  int     // quiet active frames that reset the level estimate
 	delay    []int16 // the last 2K input samples
 
-	pos    int   // next slot of delay
-	n      int32 // sample index in the current block
-	block  int   // block index in the current frame
-	energy int64 // sum of squares of the current frame
-	peak   int32 // peak magnitude of the current block
-	voiced bool  // every sample of the current frame had speech = true
-	level  int32 // level estimate, Q12
-	gain   int32 // AGC gain
-	env    int32 // limiter gain of the last completed block
-	bound  int32 // gain at the start of the block being output
-	ramp   int32 // gain at sample 0 of the output block
-	step   int32 // gain increment per output sample
+	pos     int         // next slot of delay
+	n       int32       // sample index in the current block
+	block   int         // block index in the current frame
+	energy  int64       // sum of squares of the current frame
+	peak    int32       // peak magnitude of the current block
+	voiced  bool        // every sample of the current frame had speech = true
+	level   int32       // level estimate L = e4^(1/4), Q12
+	e4      fixed.Float // mean of the 4th power of frame RMS
+	seen    int         // active frames seen, up to warm
+	louder  int         // consecutive active frames above +10 dB
+	quieter int         // consecutive active frames below -6 dB
+	runMin  int32       // smallest RMS of the current loud run
+	runMax  int32       // largest RMS of the current quiet run
+	gain    int32       // AGC gain
+	env     int32       // limiter gain of the last completed block
+	bound   int32       // gain at the start of the block being output
+	ramp    int32       // gain at sample 0 of the output block
+	step    int32       // gain increment per output sample
 }
 
 // New validates cfg and allocates everything the AGC will use.
@@ -103,6 +118,9 @@ func New(cfg Config) (*AGC, error) {
 	}
 	k := cfg.SampleRate / 1000
 	frame := blocksPerFrame * k
+	sec := float64(frame) / float64(cfg.SampleRate) // frame duration
+	lev := coefficient(frame, cfg.SampleRate, cfg.LevelTime)
+	warm := int(math.Round(cfg.LevelTime.Seconds() / sec))
 	a := &AGC{
 		cfg:      cfg,
 		blockLen: int32(k),
@@ -112,9 +130,14 @@ func New(cfg Config) (*AGC, error) {
 		ceiling:  int32(min(32767, math.Round(amplitude(cfg.LimitLevel)))),
 		minGain:  int32(math.Round(unity * dbToRatio(cfg.MinGain))),
 		maxGain:  int32(math.Round(unity * dbToRatio(cfg.MaxGain))),
-		attack:   coefficient(frame, cfg.SampleRate, cfg.AttackTime),
-		release:  coefficient(frame, cfg.SampleRate, cfg.ReleaseTime),
 		limCoef:  coefficient(k, cfg.SampleRate, limiterRelease),
+		levCoef:  lev,
+		levKeep:  q15Float(unity - int32(lev)),
+		levStep:  q15Float(int32(lev)),
+		up:       int16(math.Round(unity * (math.Pow(10, float64(cfg.RiseRate)*sec/20) - 1))),
+		down:     int16(math.Round(unity * math.Pow(10, -float64(cfg.FallRate)*sec/20))),
+		warm:     warm,
+		dropRun:  max(1, warm/3),
 		delay:    make([]int16, 2*k),
 	}
 	a.Reset()
@@ -135,17 +158,18 @@ func validate(c Config) error {
 		return fmt.Errorf("%w: max gain %d dB", ErrConfig, c.MaxGain)
 	case c.MinGain < -40 || c.MinGain > 0:
 		return fmt.Errorf("%w: min gain %d dB", ErrConfig, c.MinGain)
-	case !validTime(c.AttackTime):
-		return fmt.Errorf("%w: attack time %v", ErrConfig, c.AttackTime)
-	case !validTime(c.ReleaseTime):
-		return fmt.Errorf("%w: release time %v", ErrConfig, c.ReleaseTime)
+	case c.RiseRate < 1 || c.RiseRate > 100:
+		return fmt.Errorf("%w: rise rate %d dB/s", ErrConfig, c.RiseRate)
+	case c.FallRate < 1 || c.FallRate > 400:
+		return fmt.Errorf("%w: fall rate %d dB/s", ErrConfig, c.FallRate)
+	case c.LevelTime < 100*time.Millisecond || c.LevelTime > 10*time.Second:
+		return fmt.Errorf("%w: level time %v", ErrConfig, c.LevelTime)
 	}
 	return nil
 }
 
-func validTime(d time.Duration) bool {
-	return d >= 10*time.Millisecond && d <= 10*time.Second
-}
+// q15Float returns c/32768 as a pseudo-float.
+func q15Float(c int32) fixed.Float { return fixed.FloatShl(fixed.PseudoFloat(c), -15) }
 
 func dbToRatio(db int) float64 { return math.Pow(10, float64(db)/20) }
 
@@ -168,7 +192,8 @@ func (a *AGC) Reset() {
 	clear(a.delay)
 	a.pos, a.n, a.block = 0, 0, 0
 	a.energy, a.peak, a.voiced = 0, 0, true
-	a.level = a.target
+	a.level, a.e4 = a.target, pow4(a.target)
+	a.seen, a.louder, a.quieter, a.runMin, a.runMax = 0, 0, 0, 0, 0
 	a.gain, a.env, a.bound, a.ramp, a.step = unity, unity, unity, unity, 0
 }
 
@@ -226,23 +251,76 @@ func (a *AGC) endBlock() {
 	a.peak = 0
 }
 
-// endFrame updates the level estimate and the AGC gain from an active frame.
+// endFrame updates the level estimate from an active frame and moves the
+// AGC gain towards its target.
 func (a *AGC) endFrame() {
 	r := rms(a.energy, a.frameLen)
-	if a.voiced && r >= a.gate {
-		x := min(r, 4*a.level)
-		c := a.release
-		if x > a.level {
-			c = a.attack
-		}
-		// The new level lies between the old one and x, and x >= gate > 0,
-		// so the divisor below is never zero.
-		a.level += towards(c, x-a.level)
-		g := (int64(a.target) << 15) / int64(a.level)
-		a.gain = int32(min(max(g, int64(a.minGain)), int64(a.maxGain)))
+	active := a.voiced && r >= a.gate
+	cut := active && a.track(r)
+	g := (int64(a.target) << 15) / int64(a.level) // level >= gate > 0
+	want := int32(min(max(g, int64(a.minGain)), int64(a.maxGain)))
+	switch {
+	case cut:
+		a.gain = min(a.gain, want)
+	case want > a.gain && active:
+		a.gain = min(want, a.gain+max(1, fixed.Mult16x32Q15(a.up, a.gain)))
+	case want < a.gain:
+		a.gain = max(want, fixed.Mult16x32Q15(a.down, a.gain))
 	}
 	a.energy = 0
 	a.voiced = true
+}
+
+// track updates the level estimate with the RMS r of an active frame. It
+// reports whether a sustained rise calls for an immediate gain cut.
+func (a *AGC) track(r int32) bool {
+	l := int64(a.level)
+	if int64(r)*int64(r) > 10*l*l {
+		if a.louder == 0 {
+			a.runMin = r
+		}
+		a.louder++
+		a.runMin = min(a.runMin, r)
+	} else {
+		a.louder = 0
+	}
+	if 2*int64(r) < l {
+		if a.quieter == 0 {
+			a.runMax = r
+		}
+		a.quieter++
+		a.runMax = max(a.runMax, r)
+	} else {
+		a.quieter = 0
+	}
+	cut := false
+	switch {
+	case a.louder == riseFrames:
+		a.e4, a.louder, a.quieter, cut = pow4(a.runMin), 0, 0, true
+	case a.quieter == a.dropRun:
+		a.e4, a.louder, a.quieter = pow4(a.runMax), 0, 0
+	case a.seen == 0:
+		a.e4 = pow4(r)
+	default:
+		x := pow4(min(r, 2*a.level))
+		if a.seen < a.warm {
+			// Until warm, e4 is the plain mean of the frames seen so far.
+			c := max(int32(a.levCoef), unity/int32(a.seen+1))
+			a.e4 = fixed.FloatAdd(fixed.FloatMult(q15Float(unity-c), a.e4), fixed.FloatMult(q15Float(c), x))
+		} else {
+			a.e4 = fixed.FloatAdd(fixed.FloatMult(a.levKeep, a.e4), fixed.FloatMult(a.levStep, x))
+		}
+	}
+	a.seen = min(a.seen+1, a.warm)
+	a.level = max(a.gate, fixed.FloatExtract32(fixed.FloatSqrt(fixed.FloatSqrt(a.e4))))
+	return cut
+}
+
+// pow4 returns x^4 as a pseudo-float.
+func pow4(x int32) fixed.Float {
+	p := fixed.PseudoFloat(x)
+	p = fixed.FloatMult(p, p)
+	return fixed.FloatMult(p, p)
 }
 
 // towards returns c·d in Q15 rounded towards d, so that a one-pole update
