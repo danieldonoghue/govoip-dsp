@@ -41,7 +41,7 @@ to `|M|` in [16384, 32767]. It trades precision (about 14 bits) for range.
 - `Word2IntFloat32` and `Word2IntFloat64` return 0 for NaN; C is undefined.
 - Where C is undefined (division by zero, oversized shift counts,
   out-of-range float to `int16` conversion) Go follows its own rules; see
-  the package doc. `QConst16` saturates, which matches what the harness
-  compilers fold for upstream's one out-of-range literal.
+  the package doc. `QConst16` saturates out-of-range results; no literal in
+  the fixed-point build is out of range.
 
 **Latency.** None; every function is pure.

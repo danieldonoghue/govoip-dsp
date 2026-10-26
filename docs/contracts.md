@@ -166,6 +166,13 @@ an entry in `THIRD_PARTY_NOTICES.md`.
   with them needs an entry-by-entry harness comparison.
 - On a mismatch, find the first differing sample and the first differing
   state variable. Never add a tolerance.
+- Division by zero is undefined in C. On the canonical arm64 reference it
+  yields 0 without trapping; on amd64 it traps; the `internal/fixed`
+  divisions panic. For every division a port makes, show from the upstream
+  code that the divisor cannot be zero for any input, and test the boundary
+  that comes closest. If a zero divisor is reachable, do not add a guard
+  silently: record it under "Open questions" in `docs/status.md`, because
+  the reference itself has no defined result there.
 
 ## 9. Tests, benchmarks and shared helpers
 
