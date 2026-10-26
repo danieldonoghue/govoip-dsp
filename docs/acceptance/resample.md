@@ -1,0 +1,171 @@
+# Acceptance criteria: `resample`
+
+Pre-registered before the implementation, as requirements §9 demands. Changes
+after the first implementation commit need a written justification in the
+"Changes" section at the end of this file.
+
+## Parity class
+
+**Bit-exact** with SpeexDSP 1.2.1 `resample.c` (commit `1b28a0f6`),
+FIXED_POINT build, no SIMD, no `RESAMPLE_FULL_SINC_TABLE`, compiled by the
+reference harness with `-O2 -fwrapv -ffp-contract=off` in the canonical
+container (linux/arm64, clang 19).
+
+For every case below, the Go port must produce exactly what the C build
+produces:
+
+1. the same constructor result (success, or the error that matches the C
+   error code);
+2. the same filter state after construction: `filt_len`, `oversample`,
+   `int_advance`, `frac_advance`, the bits of `cutoff`, the choice of the
+   direct or the interpolated kernel, and every entry of the used part of
+   the sinc table (`filt_len*den_rate` entries for the direct kernel,
+   `filt_len*oversample+8` for the interpolated one);
+3. the same accounting for every process call: input and output lengths
+   offered, input consumed, output produced and the return code;
+4. the same output samples, in order;
+5. after every rate, quality, reset or skip-zeros event, the same return
+   code, input latency, output latency and reduced ratio.
+
+The driver records 2 to 5 as streams (SHA-256 per stream, committed prefixes
+for a few cases) and the scalar state as case parameters. Mismatches are
+reported with the first differing element.
+
+## Inputs and call sequences
+
+- **Signal.** One deterministic `int16` stream from SplitMix64 (seed
+  `Seed("signal")`), generated identically by the driver and the Go test. It
+  is a sequence of segments of random length (64 to 575 samples): full-scale
+  white noise, full-scale square waves (which overshoot and saturate the
+  output), low-level noise (±16), silence, impulse trains and sawtooth
+  ramps. Multichannel cases take consecutive samples as interleaved frames.
+  A `signal` case records the first 32768 samples, and the Go test checks
+  its generator against that hash.
+- **Float signal.** For `float32` cases: values `v/1.5f` for integer `v` in
+  [-50000, 50000] from SplitMix64 (seed `Seed("signal_f32")`), with every
+  97th sample replaced by a special value: ±Inf, -0, ±0.5, ±0.99999994,
+  32766, 32766.5, 32767, -32767, -32767.5, -32768, ±1e30. NaN is not sent to
+  C (undefined there); the Go-only NaN policy is tested separately.
+- **Call sequence.** Each case draws its calls from SplitMix64 seeded with
+  `Seed(<case name>)`: offered input of 0, 1 to 4, 1 to 480 or 161 to 1160
+  frames (the last exceeds the 160-sample internal buffer); offered output
+  of 0, 1 to 8 (starved), or enough for the input plus up to 64. Unconsumed
+  input is offered again. A case ends when all input is consumed.
+
+## Configurations covered
+
+Rates R = {8000, 16000, 24000, 32000, 44100, 48000, 96000} Hz.
+
+1. **Rate pairs, mono, `int16`:** every quality 0 to 10 × every ordered pair
+   in R × R (539 cases), 120 ms of input each. Each case includes the table.
+2. **Fractional ratios, mono, `int16`:** every quality 0 to 10 × the ratios
+   (num:den) 48000:47999, 47999:48000, 44101:44100, 1000003:999983, 7:5, 5:7,
+   1:100, 100:1, 2147483646:2147483647 and 4294967294:4294967295 (110
+   cases), 4800 input frames each, with the table. The last two have
+   `den_rate` at or above 2^27 and 2^31, where the C `uint32` products wrap
+   and `PDIV32` divides by a negative `int32`.
+3. **Constructor failures:** 600000000:1 at qualities 0 and 10 (overflow in
+   `multiply_frac`), 2147483647:2147483646 and 4294967295:4294967294 at
+   quality 5 (the same), 6300001:3 at quality 10 (table size limit), and
+   7000000 channels at 1:1 quality 0 (memory size limit).
+4. **Stereo interleaved, `int16`:** every quality × the pairs 8k→16k,
+   16k→8k, 16k→48k, 48k→16k, 44.1k→48k, 48k→44.1k, 48k→8k and 96k→44.1k
+   (88 cases).
+5. **`float32` interleaved:** qualities 0, 3, 5, 8, 10 × 8k→96k (output
+   calls above the 8192-sample stack buffer), 48k→16k, 44.1k→48k and
+   16k→48k, mono; plus 44.1k→48k stereo at the same qualities.
+6. **Per-channel calls with strides:** `speex_resampler_process_int` and
+   `_float` on interleaved buffers, each channel with its own call
+   sequence, output written with stride 3: `int16` at qualities 3 and 10 ×
+   48k→16k and 44.1k→48k × 2 and 3 channels; `float32` at quality 5,
+   44.1k→48k, 2 channels, and at quality 10, 48k→16k, 3 channels.
+7. **Events:**
+   - `skip_zeros` before the first call: qualities 0, 5, 10 × 48k→16k,
+     16k→48k and 44.1k→48k.
+   - Quality changes mid-stream (up, down, several in a row without
+     processing between them), mono and stereo.
+   - Rate changes mid-stream that lengthen and shorten the filter, a
+     sequence of small fractional ratio changes (drift-like), and repeated
+     identical settings (the early return), mono and stereo.
+   - `reset_mem` mid-stream: mono, stereo and 3 channels.
+   - A rate change the reference rejects (600000000:1), which leaves the
+     resampler producing zeros, followed by a valid rate that recovers.
+   - A fractional rate change that overflows in `set_rate_frac`
+     (999983:1000003 after 1000003:999983); the case ends at that event
+     (see "Deviations").
+
+## Go-only checks
+
+These have no C counterpart, or C is undefined there:
+
+- NaN `float32` input becomes 0 before saturation (contracts section 3);
+  ±Inf, ±0 and the saturation boundaries are checked against C above.
+- Chunk-partition invariance: for configurations from 1, 4, 5 and 7, any
+  partition of the same input into calls, with any output capacities,
+  gives the same concatenated output. Tested on fixed partitions and by
+  `FuzzChunksResampler`, which also checks that nothing panics.
+- `FuzzConfigResampler`: arbitrary configurations and sequences of rate,
+  quality, reset and process calls never panic, and every invalid
+  configuration returns an error.
+- Zero allocations per process call in steady state, for every process
+  method (`TestNoAllocs...`).
+- `Reset` on a mono instance gives the output of a fresh instance fed the
+  same input. For multichannel instances `Reset` reproduces the reference
+  (only the first `channels*(filt_len-1)` memory samples are cleared), and
+  the fixtures of 7 cover it.
+- Every invalid argument returns an error: channel count, quality, zero
+  ratio, stride below 1, channel index, interleaved lengths that are not a
+  multiple of the channel count.
+
+## Deviations from C, decided before implementation
+
+1. **Atomic `set_rate_frac`.** On overflow, C has already changed the
+   rates, the ratio and some channels' fractional positions, but not the
+   filter; later processing can index outside the sinc table (undefined).
+   Go checks every channel first and, on overflow, returns the error with
+   no state changed. The fixtures stop at that event.
+2. **Length clamp.** C takes `spx_uint32_t` lengths and, for an output
+   length of 2^31 or more, its `(spx_int32_t)` casts stop all progress. Go
+   clamps each offered length to 2^31-1 frames.
+3. **No `NULL` input.** C feeds zeros for a `NULL` input pointer. Go has no
+   such form; passing zeros gives identical output.
+
+## Behavioural measurements (reported, no thresholds)
+
+Bit-exactness defines correctness, so these numbers are reported in
+`docs/algorithms.md` without pass/fail thresholds. They are measured from
+the Go implementation with `float64` analysis code, for every quality 0 to
+10:
+
+1. **Latency:** `InputLatency` and `OutputLatency` for 48k→16k, 16k→48k,
+   44.1k→48k and 8k→16k, and the measured delay: the output position of
+   the peak response to an impulse, in output samples.
+2. **Passband:** gain of steady tones (amplitude 8192) at 64 frequencies
+   spaced evenly up to 0.95 f_N, where f_N is the lower Nyquist frequency.
+   Reported: ripple (maximum minus minimum gain) up to 0.5 f_N, the -3 dB
+   edge as a fraction of f_N, and the gain at 0.8 f_N and 0.9 f_N. Tone
+   levels are least-squares fits at the known frequency over a steady-state
+   window.
+3. **Stopband (downsampling 48k→16k and 48k→8k):** tones between f_N and
+   the input Nyquist frequency. Reported: the highest output level relative
+   to the input tone, over tones above 1.1 f_N, 1.25 f_N and 1.5 f_N.
+4. **Imaging (upsampling 16k→48k and 8k→16k):** tones up to 0.9 f_N. The
+   output minus its fitted tone is the image and noise residual. Reported:
+   its highest level relative to the tone.
+
+## Benchmarks
+
+`BenchmarkResamplerProcess/<config>` for 10 ms and 20 ms frames at 8k→16k,
+16k→8k, 16k→48k, 48k→16k, 44.1k→48k and 48k→8k, qualities 3, 5, 8 and 10,
+mono and stereo, plus odd chunk sizes (7 and 331 frames). Each reports
+`ns/op`, `allocs/op`, `B/op`, `samples/s` and `rt-fraction`.
+
+Targets:
+
+- 0 allocations per operation in every benchmark (also asserted by tests).
+- `rt-fraction` at most 0.1 for every 10 ms mono configuration on the Mac
+  reference environment. This is a target, reported as measured.
+
+## Changes
+
+(none)
