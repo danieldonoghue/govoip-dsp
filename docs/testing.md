@@ -534,6 +534,19 @@ included), restoring `agc.go` after each.
 | Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
 | Rise step without the one-unit minimum | not caught: equivalent, in Q22 the step rounds to zero only below −80 dB of gain, which no configuration allows |
 
+Checks of the regression guards and N5, each on a copy of the branch:
+
+| Mutation | Result |
+|---|---|
+| Cut threshold +10 dB instead of +13 dB | caught by G3 (3.50 dB) and G4 (5.39 dB) |
+| Power mean of order 2 instead of 4 | caught by G4 (6.78 dB) |
+| Gate removed | caught by N5 (3 cases) |
+| Gain not clamped to MaxGain | not caught by N5 (no N5 signal needs more than MaxGain); caught by C6 |
+
+The noise-floor safeguard trial (change 7 in `docs/acceptance/agc.md`)
+was reverted after it failed registered criteria, so it has no mutation
+checks.
+
 #### Design v1 (fallback)
 
 Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
