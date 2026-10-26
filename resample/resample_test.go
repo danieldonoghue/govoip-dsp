@@ -285,12 +285,9 @@ func FuzzChunksResampler(f *testing.F) {
 			sizes = append(sizes, int(plan[i])*3)
 			caps = append(caps, int(plan[i+1]))
 		}
-		if slices.Max(caps) == 0 {
-			caps = append(caps, 1)
-		}
-		if slices.Max(sizes) == 0 {
-			sizes = append(sizes, 1)
-		}
+		// One call that offers both input and output guarantees progress.
+		sizes = append(sizes, 1)
+		caps = append(caps, 1)
 		got := processAll(t, mustNew(t, cfg), in, sizes, caps)
 		testutil.Compare(t, "partitioned output", want, got)
 	})
