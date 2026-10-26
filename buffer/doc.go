@@ -15,7 +15,8 @@
 //
 // # Capacity and overflow
 //
-// The capacity is fixed at construction, from 1 to MaxCapacity samples, and
+// The capacity and the overflow policy are fixed at construction; to change
+// either, make a new buffer. The capacity is from 1 to MaxCapacity samples, and
 // every slot is usable: Len reaches Cap. Ring's Config chooses the overflow
 // policy explicitly. Under Reject, Write stores as much of the input as fits
 // (p[:n]) and returns n; samples already stored are untouched. Under
@@ -29,21 +30,26 @@
 //
 // ReadSlices returns the readable samples and WriteSlices the free space, each
 // as two segments (the second is empty unless the region wraps). Consume and
-// Commit finish a zero-copy read or write; both clip their count to what is
-// available and return it. Each segment's capacity equals its length, so
-// append on a view cannot write into the buffer. A view expires as follows,
+// Commit finish a zero-copy read or write. Consume clips its count to Len.
+// Commit publishes the next samples of the write view and clips its count to
+// what remains of that view, so it never publishes a slot the caller was not
+// given, even when reads have freed more space since; without a live write
+// view it returns 0. Each segment's capacity equals its length, so append on a
+// view cannot write into the buffer. A view expires as follows,
 // and the buffer never writes into a live read view or reads a live write
 // view:
 //
 //   - Ring read view: valid until the next Read, Consume or Reset, or a Write
 //     under Overwrite. Writes and commits under Reject leave it intact (it
 //     does not grow to include their samples).
-//   - Ring write view: valid until the next Write, Commit or Reset. Reads and
-//     consumes leave it intact.
+//   - Ring write view: valid until the next Write, WriteSlices or Reset. Reads
+//     and consumes leave it intact. After Commit(n), only the part after the
+//     first n samples is still a write view.
 //   - SPSC read view (consumer): valid until the consumer's next Read, Consume
 //     or Reset. The producer never writes into it.
-//   - SPSC write view (producer): valid until the producer's next Write, Commit
-//     or Reset. The consumer never reads it before Commit.
+//   - SPSC write view (producer): valid until the producer's next Write,
+//     WriteSlices or Reset, with Commit as for Ring. The consumer never reads
+//     a sample of it before Commit publishes that sample.
 //
 // Write copies from its argument and Read into its argument; neither retains
 // a caller slice. A view must not be passed to Write or Read of the same
@@ -69,7 +75,8 @@
 // goroutines.
 //
 // Every SPSC method is wait-free: at most two atomic loads, at most one atomic
-// store of the caller's own index, and one copy. There is no lock, no
+// store of the caller's own index (Reset, which needs quiescence, stores both),
+// and one copy. There is no lock, no
 // compare-and-swap and no retry, so neither side can block or delay the other.
 // The memory-ordering argument and the interleaving trace are in
 // docs/algorithms.md.

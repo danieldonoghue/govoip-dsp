@@ -140,6 +140,7 @@ these ways:
 | SpeexDSP `buffer.c` | `buffer` |
 |---|---|
 | Counts bytes | Counts `int16` samples |
+| `speex_buffer_writezeros` writes silence | No counterpart; write a zero slice |
 | Always overwrites the oldest data on overflow | `Ring` chooses `Reject` or `Overwrite` in `Config`; `SPSC` rejects |
 | `speex_buffer_read` zero-fills a short read and returns the bytes it copied | `Read` returns the count and leaves the rest of the caller's slice untouched |
 | No zero-copy access | Two-segment read and write views |
@@ -174,8 +175,9 @@ happens-before relation.
 
 Each side's steps, for `Write` and `Read` (the view methods split the same
 steps across two calls: `WriteSlices` is P1 and P2, the caller's fill is P3,
-`Commit` repeats P1 and P2 and does P4; `ReadSlices` is C1 and C2, the
-caller's use of the view is C3, `Consume` repeats C1 and C2 and does C4):
+`Commit` repeats P1 and does P4, clipped to the view so it needs no new `r`;
+`ReadSlices` is C1 and C2, the caller's use of the view is C3, `Consume`
+repeats C1 and C2 and does C4):
 
 | Step | Producer (`Write`) | Step | Consumer (`Read`) |
 |---|---|---|---|
@@ -206,8 +208,8 @@ against C4, C2 against P4, and the slot accesses P3 and C3.
 | P2 after C4 | the new `r` | Rule 2: the consumer has finished copying out of the freed slots. |
 | Full (count = Cap) | free = 0 | The producer writes nothing and stores nothing; the consumer is unaffected. |
 | Empty (`w` = `r`) | available = 0 | The consumer reads nothing and stores nothing. |
-| Wrap of a copy | — | A copy that crosses the end of the slice is two `copy` calls inside P3 or C3, before the index store, so the rules above cover both segments. |
-| Wrap of an index | — | Each index is reduced modulo 2·Cap in the store itself, so the other side never observes an out-of-range value. |
+| Wrap of a copy | no change | A copy that crosses the end of the slice is two `copy` calls inside P3 or C3, before the index store, so the rules above cover both segments. |
+| Wrap of an index | an index in [0, 2·Cap) | Each index is reduced modulo 2·Cap in the store itself, so the other side never observes an out-of-range value. |
 
 **Why count modulo 2·Cap is exact.** Each index only advances, so the
 values one side observes of the other's index never go backwards. The
@@ -219,7 +221,8 @@ Cap, it is recovered exactly. The producer's argument is symmetric. With
 indices modulo Cap instead, full and empty would both read as a count of 0;
 the mutation checks in `docs/testing.md` show the tests catch that.
 
-**Wait-freedom.** Every method is at most two atomic loads, one atomic
+**Wait-freedom.** Every method except `Reset` (which needs both sides
+quiescent and stores both indices) is at most two atomic loads, one atomic
 store of the caller's own index and at most two `copy` calls, with no loop,
 no lock and no read-modify-write atomic (`TestWaitFreeSource` checks the
 source). Neither side ever waits for the other; a side that finds the

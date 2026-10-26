@@ -39,6 +39,9 @@ func TestConfigErrors(t *testing.T) {
 		{Capacity: 10, Overflow: Overwrite + 1},
 		{Capacity: 10, Overflow: -1},
 	}
+	if err := checkCapacity(MaxCapacity); err != nil {
+		t.Errorf("MaxCapacity rejected: %v", err)
+	}
 	for _, cfg := range bad {
 		if b, err := New(cfg); !errors.Is(err, ErrConfig) || b != nil {
 			t.Errorf("New(%+v) = %v, %v; want nil, ErrConfig", cfg, b, err)
@@ -135,11 +138,48 @@ func TestClipping(t *testing.T) {
 		if n := b.Consume(10); n != 4 || b.Len() != 0 {
 			t.Fatalf("Consume(10) = %d, Len %d", n, b.Len())
 		}
+		b.WriteSlices()
 		if n := b.Commit(10); n != 6 || b.Len() != 6 {
 			t.Fatalf("Commit(10) = %d, Len %d", n, b.Len())
 		}
 		if b.Commit(1) != 0 || b.Consume(-1) != 0 || b.Commit(-1) != 0 || b.Len() != 6 {
 			t.Fatal("clipped Commit or Consume changed a full buffer")
+		}
+	}
+}
+
+// TestCommitClipsToView checks that Commit publishes only the write view, even
+// after reads have freed more space, and that a Write expires the view.
+func TestCommitClipsToView(t *testing.T) {
+	for _, b := range []fifo{newRing(t, 7, Reject), newRing(t, 7, Overwrite), fifos(t, 7)[2]} {
+		if b.Commit(3) != 0 {
+			t.Fatal("Commit without a write view published samples")
+		}
+		b.Write(ramp(0, 5))
+		w1, w2 := b.WriteSlices()
+		if len(w1)+len(w2) != 2 {
+			t.Fatalf("test setup: write view %d+%d", len(w1), len(w2))
+		}
+		w1[0], w1[1] = 5, 6
+		readAll(b) // frees 5 more slots
+		if n := b.Commit(1); n != 1 {
+			t.Fatalf("first Commit(1) = %d", n)
+		}
+		if n := b.Commit(7); n != 1 {
+			t.Fatalf("Commit(7) after a 2-sample view and Commit(1) = %d, want 1", n)
+		}
+		if got := readAll(b); !slices.Equal(got, []int16{5, 6}) {
+			t.Fatalf("read %v, want [5 6]", got)
+		}
+		b.WriteSlices()
+		b.Write(ramp(9, 1))
+		if b.Commit(1) != 0 {
+			t.Fatal("Commit after Write published samples")
+		}
+		b.WriteSlices()
+		b.Reset()
+		if b.Commit(1) != 0 || b.Len() != 0 {
+			t.Fatal("Commit after Reset published samples")
 		}
 	}
 }

@@ -8,19 +8,20 @@ type SPSCConfig struct {
 	Capacity int // samples, 1 to MaxCapacity
 }
 
-// cacheLine is at least the cache line size of every supported CPU (Apple
-// arm64 uses 128 bytes), so the two indices never share a line.
+// cacheLine covers the cache lines of amd64 and arm64 (Apple uses 128 bytes).
+// On a CPU with longer lines the indices may share one, which costs only speed.
 const cacheLine = 128
 
 // SPSC is a wait-free FIFO of int16 samples between one producer goroutine and
 // one consumer goroutine. The package doc lists each side's methods.
 type SPSC struct {
-	buf []int16
-	_   [cacheLine]byte
-	w   atomic.Uint32 // write index in [0, 2·Cap), stored by the producer only
-	_   [cacheLine - 4]byte
-	r   atomic.Uint32 // read index in [0, 2·Cap), stored by the consumer only
-	_   [cacheLine - 4]byte
+	buf  []int16
+	_    [cacheLine]byte
+	w    atomic.Uint32 // write index in [0, 2·Cap), stored by the producer only
+	view int           // producer only: samples of the write view not yet committed
+	_    [cacheLine]byte
+	r    atomic.Uint32 // read index in [0, 2·Cap), stored by the consumer only
+	_    [cacheLine - 4]byte
 }
 
 // NewSPSC validates cfg and allocates the storage, 2·Capacity bytes.
@@ -51,6 +52,7 @@ func (s *SPSC) Free() int {
 // Write stores p[:n] with n = min(len(p), Free()) and returns n. Producer
 // side.
 func (s *SPSC) Write(p []int16) int {
+	s.view = 0
 	if len(p) == 0 {
 		return 0
 	}
@@ -71,21 +73,19 @@ func (s *SPSC) Write(p []int16) int {
 // prefix of it, then call Commit. Producer side.
 func (s *SPSC) WriteSlices() (first, second []int16) {
 	w := int(s.w.Load())
-	free := len(s.buf) - s.count(w, int(s.r.Load()))
-	return segments(s.buf, s.slot(w), free)
+	s.view = len(s.buf) - s.count(w, int(s.r.Load()))
+	return segments(s.buf, s.slot(w), s.view)
 }
 
-// Commit publishes the first n samples of the write view and returns how
-// many, n clipped to [0, Free()]. Producer side.
+// Commit publishes the next n samples of the write view and returns how many,
+// n clipped to what remains of the view (0 without one). Producer side.
 func (s *SPSC) Commit(n int) int {
+	n = min(n, s.view)
 	if n <= 0 {
 		return 0
 	}
+	s.view -= n
 	w := int(s.w.Load())
-	n = min(n, len(s.buf)-s.count(w, int(s.r.Load())))
-	if n == 0 {
-		return 0
-	}
 	s.w.Store(uint32(s.advance(w, n)))
 	return n
 }
@@ -135,16 +135,18 @@ func (s *SPSC) Consume(n int) int {
 // Reset discards every sample and expires every view. Neither side may run
 // during Reset, and the caller must synchronise both sides with it.
 func (s *SPSC) Reset() {
+	s.view = 0
 	s.w.Store(0)
 	s.r.Store(0)
 }
 
 // count returns the number of samples from index r up to index w, 0 to Cap.
+// The clamp keeps a misused SPSC (two producers, say) from slicing out of range.
 func (s *SPSC) count(w, r int) int {
 	if w >= r {
-		return w - r
+		return min(w-r, len(s.buf))
 	}
-	return w + 2*len(s.buf) - r
+	return min(w+2*len(s.buf)-r, len(s.buf))
 }
 
 // slot maps an index in [0, 2·Cap) to its position in buf.

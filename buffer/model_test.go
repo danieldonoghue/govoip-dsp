@@ -54,6 +54,8 @@ type checker struct {
 	m   model
 	seq int16 // next sample value written, so order errors show
 	tmp []int16
+	// pending holds the filled, uncommitted rest of a live write view, or nil.
+	pending []int16
 }
 
 func newChecker(t *testing.T, b fifo, overwrite bool) *checker {
@@ -76,8 +78,9 @@ func (c *checker) next(n int) []int16 {
 func (c *checker) op(code byte, n int) {
 	t := c.t
 	t.Helper()
-	switch code % 8 {
+	switch code % 10 {
 	case 0: // Write
+		c.pending = nil
 		p := c.next(n)
 		if got, want := c.b.Write(p), c.m.write(p); got != want {
 			t.Fatalf("Write(%d) = %d, want %d", len(p), got, want)
@@ -93,6 +96,7 @@ func (c *checker) op(code byte, n int) {
 			t.Fatalf("Read(%d) wrote beyond the %d samples it returned", n, got)
 		}
 	case 2: // WriteSlices, fill, Commit
+		c.pending = nil
 		first, second := c.b.WriteSlices()
 		k := min(n, len(first)+len(second))
 		p := c.next(k)
@@ -116,19 +120,34 @@ func (c *checker) op(code byte, n int) {
 			t.Fatalf("Consume(%d) = %d, want 0", -n, got)
 		}
 	case 5: // empty and nil slices
+		c.pending = nil
 		if c.b.Write(nil) != 0 || c.b.Write([]int16{}) != 0 || c.b.Read(nil) != 0 || c.b.Read([]int16{}) != 0 {
 			t.Fatal("zero-length Write or Read returned nonzero")
 		}
 	case 6: // Reset, rarely
 		if n%16 == 0 {
+			c.pending = nil
 			c.b.Reset()
 			c.m.data = c.m.data[:0]
 		}
 	case 7: // Write longer than the capacity
+		c.pending = nil
 		p := c.next(c.b.Cap() + 1 + n)
 		if got, want := c.b.Write(p), c.m.write(p); got != want {
 			t.Fatalf("Write(%d) = %d, want %d", len(p), got, want)
 		}
+	case 8: // WriteSlices and fill it all, committed by later operations
+		first, second := c.b.WriteSlices()
+		p := c.next(len(first) + len(second))
+		copy(second, p[copy(first, p):])
+		c.pending = slices.Clone(p)
+	case 9: // Commit part of a view opened earlier, possibly after reads
+		want := max(0, min(n, len(c.pending)))
+		if got := c.b.Commit(n); got != want {
+			t.Fatalf("Commit(%d) of a %d-sample pending view = %d", n, len(c.pending), got)
+		}
+		c.m.write(c.pending[:want])
+		c.pending = c.pending[want:]
 	}
 	c.check()
 }
@@ -145,8 +164,11 @@ func (c *checker) check() {
 		t.Fatalf("read view %v, want %v", got, c.m.data)
 	}
 	checkSegments(t, "read", first, second, b.Len())
-	first, second = b.WriteSlices()
-	checkSegments(t, "write", first, second, b.Free())
+	if c.pending == nil { // do not replace a live view the operations use
+		first, second = b.WriteSlices()
+		checkSegments(t, "write", first, second, b.Free())
+		b.Write(nil) // expire it, so a later Commit has no view
+	}
 }
 
 // checkSegments checks a view's total length, that each segment's capacity is

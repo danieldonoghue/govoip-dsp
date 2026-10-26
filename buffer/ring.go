@@ -35,6 +35,7 @@ type Ring struct {
 	buf       []int16
 	r         int // index of the oldest unread sample
 	n         int // number of unread samples, 0 to len(buf)
+	view      int // samples of the write view not yet committed
 	overwrite bool
 }
 
@@ -68,6 +69,7 @@ func (b *Ring) Free() int { return len(b.buf) - b.n }
 // Write stores samples from p and returns how many: p[:min(len(p), Free())]
 // under Reject, the last min(len(p), Cap()) samples of p under Overwrite.
 func (b *Ring) Write(p []int16) int {
+	b.view = 0
 	if b.overwrite {
 		if len(p) > len(b.buf) {
 			p = p[len(p)-len(b.buf):]
@@ -115,13 +117,15 @@ func (b *Ring) Consume(n int) int {
 // WriteSlices returns the free space, in write order, as two segments with a
 // total length of Free(). Fill a prefix of it, then call Commit.
 func (b *Ring) WriteSlices() (first, second []int16) {
-	return segments(b.buf, b.wpos(), b.Free())
+	b.view = b.Free()
+	return segments(b.buf, b.wpos(), b.view)
 }
 
-// Commit makes the first n samples of the write view readable and returns how
-// many, n clipped to [0, Free()].
+// Commit makes the next n samples of the write view readable and returns how
+// many, n clipped to what remains of the view (0 without one).
 func (b *Ring) Commit(n int) int {
-	n = clip(n, b.Free())
+	n = clip(n, b.view)
+	b.view -= n
 	b.n += n
 	return n
 }
@@ -129,7 +133,7 @@ func (b *Ring) Commit(n int) int {
 // Reset discards every unread sample and expires every view. It keeps the
 // storage and does not allocate.
 func (b *Ring) Reset() {
-	b.r, b.n = 0, 0
+	b.r, b.n, b.view = 0, 0, 0
 }
 
 func (b *Ring) wpos() int {
