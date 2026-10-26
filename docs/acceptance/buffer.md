@@ -177,6 +177,14 @@ those changes.
 - **D6. Benchmark.** `BenchmarkSPSCConsume` measures the keep-newest drop
   of a backlog of 480 and of 4096 samples. Target: 0 allocs/op, and a cost
   that does not grow with the backlog (the drop copies nothing).
+- **D8. View expiry.** A test takes a read view, drops with `Consume`, lets
+  the producer write into the freed slots, and shows that the held view no
+  longer holds the original samples, so the documented expiry at `Consume`
+  is real and the doc's rule is needed.
+- **D2a. Keep-newest under concurrency.** In the stress test k is drawn
+  mostly from [0, `Len`], the run counts the keep-newest calls that dropped
+  something and requires that count to be above 0, and after each such call
+  the consumer checks `Len` ≥ k.
 - **D7. Docs.** The package doc presents `Consume(Len() - k)` as the
   keep-newest idiom for skipping a backlog after a stall, and
   `docs/algorithms.md` extends the memory-ordering argument and the
@@ -204,3 +212,7 @@ those changes.
 3. **WP2b additions** (criteria D1 to D7 above). These add to the
    criteria and change none of them; they were committed before any WP2b
    test or documentation change.
+4. **WP2b review additions** (D2a and D8). The independent review found
+   that no test showed a drop expiring a held read view, which the brief
+   requires, and that disabling the keep-newest branch of the stress test
+   went unnoticed. Both criteria are added before the tests that meet them.
