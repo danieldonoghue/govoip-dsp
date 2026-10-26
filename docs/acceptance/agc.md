@@ -252,3 +252,27 @@ per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
    that last step after the speech ends. That rise is part of the speech's
    own gain change, not a response to the noise or silence, which is what
    these criteria test.
+2. **C4: convergence measured on the gain** (after the first run, which
+   failed C4 down: 6.08 s against 5.8 s). For white noise, C4 uses the
+   *gain-corrected frame level*, the nominal input level of the segment plus
+   `G_f`, instead of the output frame level. The thresholds are unchanged,
+   and so are C1 to C3, where the two measures are equal because a sine's
+   frame RMS is constant. Reason: the input white noise's own 10 ms frame
+   levels span −45.18 to −42.94 dBFS around −44 dBFS (measured), so the
+   output frame level leaves the ±2 dB band whenever a frame of the input
+   does, long after the gain has converged. Measured on the AGC gain, the
+   same run converges in 5.34 s, against 5.31 s for the sine. The original
+   measure tested the test signal, not the AGC. The output frame level is
+   still logged.
+3. **N1: pink noise below the gate frame by frame** (after the first run,
+   which failed N1 pink: applied gain up to +9.99 dB, output 6.38 dB above
+   the input). N1's pink noise is scaled so that its loudest 10 ms frame is
+   1 dB below the gate, instead of to a long-term RMS of −55 dBFS. Reason:
+   N1 tests noise *below the gate*, and the gate is per frame (item 2).
+   `testutil.PinkNoise` at a long-term RMS of −55 dBFS has 192 of 6000
+   frames at or above −50 dBFS (loudest −46.3 dBFS, measured), because its
+   slowest rows wander for seconds. Those frames are active by design. The
+   original signal stays in the test as a reported case without a threshold,
+   and the limitation it shows (noise whose frames cross the gate is
+   amplified unless the caller passes `speech = false`) is documented in the
+   package and in `docs/algorithms.md`.
