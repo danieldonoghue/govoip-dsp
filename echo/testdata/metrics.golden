@@ -1,0 +1,384 @@
+capture_16k_10ms_64ms erle=-0.16 converge=-1.0
+capture_16k_10ms_128ms erle=1.12 converge=-1.0
+capture_16k_10ms_256ms erle=0.02 converge=-1.0
+capture_16k_20ms_64ms erle=0.02 converge=-1.0
+capture_16k_20ms_128ms erle=0.04 converge=-1.0
+capture_16k_20ms_256ms erle=-0.09 converge=-1.0
+capture_32k_10ms_64ms erle=0.28 converge=-1.0
+capture_32k_10ms_128ms erle=0.15 converge=-1.0
+capture_32k_10ms_256ms erle=0.47 converge=-1.0
+capture_32k_20ms_64ms erle=0.47 converge=4.5
+capture_32k_20ms_128ms erle=0.40 converge=-1.0
+capture_32k_20ms_256ms erle=0.16 converge=-1.0
+capture_48k_10ms_64ms erle=0.41 converge=-1.0
+capture_48k_10ms_128ms erle=0.88 converge=-1.0
+capture_48k_10ms_256ms erle=0.42 converge=-1.0
+capture_48k_20ms_64ms erle=0.86 converge=-1.0
+capture_48k_20ms_128ms erle=1.17 converge=-1.0
+capture_48k_20ms_256ms erle=0.79 converge=-1.0
+capture_8k_10ms_64ms erle=1.02 converge=-1.0
+capture_8k_10ms_128ms erle=0.68 converge=-1.0
+capture_8k_10ms_256ms erle=0.51 converge=-1.0
+capture_8k_20ms_64ms erle=1.27 converge=-1.0
+capture_8k_20ms_128ms erle=0.50 converge=1.5
+capture_8k_20ms_256ms erle=1.14 converge=-1.0
+diverge_16k_10ms_64ms erle=16.95 converge=1.5
+diverge_16k_10ms_128ms erle=11.56 converge=1.5
+diverge_16k_10ms_256ms erle=6.24 converge=3.0
+diverge_16k_20ms_64ms erle=22.64 converge=1.0
+diverge_16k_20ms_128ms erle=21.74 converge=1.0
+diverge_16k_20ms_256ms erle=16.34 converge=1.0
+diverge_32k_10ms_64ms erle=23.60 converge=1.0
+diverge_32k_10ms_128ms erle=21.83 converge=1.0
+diverge_32k_10ms_256ms erle=16.25 converge=1.5
+diverge_32k_20ms_64ms erle=16.18 converge=1.5
+diverge_32k_20ms_128ms erle=11.56 converge=2.0
+diverge_32k_20ms_256ms erle=8.17 converge=3.0
+diverge_48k_10ms_64ms erle=17.34 converge=1.0
+diverge_48k_10ms_128ms erle=18.31 converge=1.0
+diverge_48k_10ms_256ms erle=16.53 converge=1.0
+diverge_48k_20ms_64ms erle=10.79 converge=1.5
+diverge_48k_20ms_128ms erle=7.72 converge=-1.0
+diverge_48k_20ms_256ms erle=11.51 converge=1.5
+diverge_8k_10ms_64ms erle=20.78 converge=1.0
+diverge_8k_10ms_128ms erle=11.84 converge=1.5
+diverge_8k_10ms_256ms erle=8.76 converge=3.0
+diverge_8k_20ms_64ms erle=15.04 converge=1.5
+diverge_8k_20ms_128ms erle=11.03 converge=2.0
+diverge_8k_20ms_256ms erle=6.64 converge=3.0
+doubletalk_16k_10ms_64ms erle=30.78 converge=0.5 dt_out=18.32 dt_in=-0.93 dt_gain=19.25
+doubletalk_16k_10ms_128ms erle=28.58 converge=0.5 dt_out=18.91 dt_in=-0.93 dt_gain=19.85
+doubletalk_16k_10ms_256ms erle=26.58 converge=0.5 dt_out=18.93 dt_in=-0.93 dt_gain=19.87
+doubletalk_16k_20ms_64ms erle=25.05 converge=0.5 dt_out=21.26 dt_in=-0.93 dt_gain=22.20
+doubletalk_16k_20ms_128ms erle=24.86 converge=0.5 dt_out=20.09 dt_in=-0.93 dt_gain=21.02
+doubletalk_16k_20ms_256ms erle=23.66 converge=0.5 dt_out=20.72 dt_in=-0.93 dt_gain=21.66
+doubletalk_32k_10ms_64ms erle=18.12 converge=0.0 dt_out=10.17 dt_in=-4.30 dt_gain=14.48
+doubletalk_32k_10ms_128ms erle=18.74 converge=0.5 dt_out=10.96 dt_in=-4.30 dt_gain=15.26
+doubletalk_32k_10ms_256ms erle=11.03 converge=0.5 dt_out=7.47 dt_in=-4.30 dt_gain=11.77
+doubletalk_32k_20ms_64ms erle=15.24 converge=0.5 dt_out=5.92 dt_in=-4.30 dt_gain=10.22
+doubletalk_32k_20ms_128ms erle=13.06 converge=1.5 dt_out=0.58 dt_in=-4.30 dt_gain=4.88
+doubletalk_32k_20ms_256ms erle=10.07 converge=1.5 dt_out=2.24 dt_in=-4.30 dt_gain=6.54
+doubletalk_48k_10ms_64ms erle=16.39 converge=0.0 dt_out=11.82 dt_in=-6.56 dt_gain=18.38
+doubletalk_48k_10ms_128ms erle=17.01 converge=0.0 dt_out=12.86 dt_in=-6.56 dt_gain=19.42
+doubletalk_48k_10ms_256ms erle=15.75 converge=0.0 dt_out=13.10 dt_in=-6.56 dt_gain=19.66
+doubletalk_48k_20ms_64ms erle=11.30 converge=3.0 dt_out=3.74 dt_in=-6.56 dt_gain=10.30
+doubletalk_48k_20ms_128ms erle=12.06 converge=3.5 dt_out=8.41 dt_in=-6.56 dt_gain=14.97
+doubletalk_48k_20ms_256ms erle=11.01 converge=3.5 dt_out=4.60 dt_in=-6.56 dt_gain=11.16
+doubletalk_8k_10ms_64ms erle=33.55 converge=0.0 dt_out=20.15 dt_in=-2.69 dt_gain=22.84
+doubletalk_8k_10ms_128ms erle=32.53 converge=0.0 dt_out=20.35 dt_in=-2.69 dt_gain=23.04
+doubletalk_8k_10ms_256ms erle=30.18 converge=0.5 dt_out=20.50 dt_in=-2.69 dt_gain=23.19
+doubletalk_8k_20ms_64ms erle=30.60 converge=0.5 dt_out=25.76 dt_in=-2.69 dt_gain=28.45
+doubletalk_8k_20ms_128ms erle=30.64 converge=0.5 dt_out=29.81 dt_in=-2.69 dt_gain=32.50
+doubletalk_8k_20ms_256ms erle=29.65 converge=0.5 dt_out=29.98 dt_in=-2.69 dt_gain=32.67
+edges_16k_10ms_64ms
+edges_16k_10ms_128ms
+edges_16k_10ms_256ms
+edges_16k_20ms_64ms
+edges_16k_20ms_128ms
+edges_16k_20ms_256ms
+edges_32k_10ms_64ms
+edges_32k_10ms_128ms
+edges_32k_10ms_256ms
+edges_32k_20ms_64ms
+edges_32k_20ms_128ms
+edges_32k_20ms_256ms
+edges_48k_10ms_64ms
+edges_48k_10ms_128ms
+edges_48k_10ms_256ms
+edges_48k_20ms_64ms
+edges_48k_20ms_128ms
+edges_48k_20ms_256ms
+edges_8k_10ms_64ms
+edges_8k_10ms_128ms
+edges_8k_10ms_256ms
+edges_8k_20ms_64ms
+edges_8k_20ms_128ms
+edges_8k_20ms_256ms
+farend_16k_10ms_64ms erle=35.34 converge=0.5
+reset_16k_10ms_64ms erle=30.11 converge=0.5
+rate_switch_16k_10ms_64ms erle=35.13 converge=0.5
+farend_16k_10ms_128ms erle=34.13 converge=0.5
+reset_16k_10ms_128ms erle=26.32 converge=0.5
+rate_switch_16k_10ms_128ms erle=33.44 converge=0.5
+farend_16k_10ms_256ms erle=32.92 converge=0.5
+reset_16k_10ms_256ms erle=26.51 converge=0.5
+rate_switch_16k_10ms_256ms erle=32.66 converge=0.5
+farend_16k_20ms_64ms erle=32.06 converge=0.5
+reset_16k_20ms_64ms erle=29.52 converge=0.5
+rate_switch_16k_20ms_64ms erle=31.59 converge=0.5
+farend_16k_20ms_128ms erle=30.85 converge=0.5
+reset_16k_20ms_128ms erle=26.78 converge=0.5
+rate_switch_16k_20ms_128ms erle=31.86 converge=0.5
+farend_16k_20ms_256ms erle=30.32 converge=0.5
+reset_16k_20ms_256ms erle=24.75 converge=0.5
+rate_switch_16k_20ms_256ms erle=29.75 converge=0.5
+farend_32k_10ms_64ms erle=9.90 converge=0.0
+reset_32k_10ms_64ms erle=9.37 converge=0.0
+rate_switch_32k_10ms_64ms erle=9.93 converge=0.0
+farend_32k_10ms_128ms erle=10.02 converge=0.5
+reset_32k_10ms_128ms erle=10.07 converge=0.5
+rate_switch_32k_10ms_128ms erle=10.10 converge=0.5
+farend_32k_10ms_256ms erle=9.11 converge=0.5
+reset_32k_10ms_256ms erle=9.86 converge=0.5
+rate_switch_32k_10ms_256ms erle=8.86 converge=0.5
+farend_32k_20ms_64ms erle=9.67 converge=0.5
+reset_32k_20ms_64ms erle=8.08 converge=0.5
+rate_switch_32k_20ms_64ms erle=7.09 converge=0.5
+farend_32k_20ms_128ms erle=5.93 converge=1.5
+reset_32k_20ms_128ms erle=5.52 converge=0.5
+rate_switch_32k_20ms_128ms erle=8.97 converge=1.5
+farend_32k_20ms_256ms erle=4.65 converge=1.5
+reset_32k_20ms_256ms erle=9.97 converge=0.5
+rate_switch_32k_20ms_256ms erle=10.46 converge=1.5
+farend_48k_10ms_64ms erle=18.75 converge=0.0
+reset_48k_10ms_64ms erle=14.76 converge=0.0
+rate_switch_48k_10ms_64ms erle=17.67 converge=0.0
+farend_48k_10ms_128ms erle=18.58 converge=0.0
+reset_48k_10ms_128ms erle=13.66 converge=0.0
+rate_switch_48k_10ms_128ms erle=16.43 converge=0.0
+farend_48k_10ms_256ms erle=18.88 converge=0.0
+reset_48k_10ms_256ms erle=17.78 converge=0.5
+rate_switch_48k_10ms_256ms erle=15.44 converge=0.0
+farend_48k_20ms_64ms erle=6.43 converge=3.0
+reset_48k_20ms_64ms erle=12.88 converge=0.5
+rate_switch_48k_20ms_64ms erle=17.26 converge=3.0
+farend_48k_20ms_128ms erle=15.74 converge=3.5
+reset_48k_20ms_128ms erle=10.81 converge=0.5
+rate_switch_48k_20ms_128ms erle=15.14 converge=3.5
+farend_48k_20ms_256ms erle=15.97 converge=3.5
+reset_48k_20ms_256ms erle=8.22 converge=0.5
+rate_switch_48k_20ms_256ms erle=14.24 converge=3.5
+farend_8k_10ms_64ms erle=34.65 converge=0.0
+reset_8k_10ms_64ms erle=33.16 converge=0.0
+rate_switch_8k_10ms_64ms erle=30.77 converge=0.0
+farend_8k_10ms_128ms erle=35.64 converge=0.0
+reset_8k_10ms_128ms erle=32.64 converge=0.5
+rate_switch_8k_10ms_128ms erle=32.04 converge=0.0
+farend_8k_10ms_256ms erle=34.66 converge=0.5
+reset_8k_10ms_256ms erle=27.21 converge=0.0
+rate_switch_8k_10ms_256ms erle=29.74 converge=0.5
+farend_8k_20ms_64ms erle=37.78 converge=0.5
+reset_8k_20ms_64ms erle=29.72 converge=0.5
+rate_switch_8k_20ms_64ms erle=31.80 converge=0.5
+farend_8k_20ms_128ms erle=36.72 converge=0.5
+reset_8k_20ms_128ms erle=31.24 converge=0.5
+rate_switch_8k_20ms_128ms erle=32.06 converge=0.5
+farend_8k_20ms_256ms erle=35.53 converge=0.5
+reset_8k_20ms_256ms erle=23.78 converge=0.5
+rate_switch_8k_20ms_256ms erle=29.30 converge=0.5
+ir_long_16k_10ms_64ms erle=10.56 converge=2.0
+ir_long_16k_10ms_128ms erle=17.33 converge=1.5
+ir_long_16k_10ms_256ms erle=30.54 converge=1.5
+ir_long_16k_20ms_64ms erle=12.50 converge=3.5
+ir_long_16k_20ms_128ms erle=18.38 converge=1.5
+ir_long_16k_20ms_256ms erle=14.49 converge=3.5
+ir_long_32k_10ms_64ms erle=11.87 converge=1.5
+ir_long_32k_10ms_128ms erle=13.96 converge=1.5
+ir_long_32k_10ms_256ms erle=14.20 converge=1.5
+ir_long_32k_20ms_64ms erle=7.01 converge=1.5
+ir_long_32k_20ms_128ms erle=4.94 converge=1.5
+ir_long_32k_20ms_256ms erle=3.45 converge=2.5
+ir_long_48k_10ms_64ms erle=13.98 converge=3.5
+ir_long_48k_10ms_128ms erle=15.75 converge=3.5
+ir_long_48k_10ms_256ms erle=16.01 converge=3.0
+ir_long_48k_20ms_64ms erle=14.36 converge=4.5
+ir_long_48k_20ms_128ms erle=14.28 converge=4.5
+ir_long_48k_20ms_256ms erle=9.55 converge=-1.0
+ir_long_8k_10ms_64ms erle=13.23 converge=1.5
+ir_long_8k_10ms_128ms erle=26.85 converge=1.5
+ir_long_8k_10ms_256ms erle=34.34 converge=1.5
+ir_long_8k_20ms_64ms erle=15.83 converge=1.5
+ir_long_8k_20ms_128ms erle=26.84 converge=1.5
+ir_long_8k_20ms_256ms erle=33.38 converge=1.5
+ir_short_16k_10ms_64ms erle=26.40 converge=0.0
+ir_short_16k_10ms_128ms erle=26.32 converge=0.0
+ir_short_16k_10ms_256ms erle=26.03 converge=0.0
+ir_short_16k_20ms_64ms erle=26.26 converge=0.0
+ir_short_16k_20ms_128ms erle=26.17 converge=0.0
+ir_short_16k_20ms_256ms erle=25.91 converge=0.0
+ir_short_32k_10ms_64ms erle=20.24 converge=0.0
+ir_short_32k_10ms_128ms erle=20.35 converge=0.0
+ir_short_32k_10ms_256ms erle=20.00 converge=0.0
+ir_short_32k_20ms_64ms erle=19.57 converge=0.0
+ir_short_32k_20ms_128ms erle=17.71 converge=0.0
+ir_short_32k_20ms_256ms erle=19.60 converge=0.5
+ir_short_48k_10ms_64ms erle=15.13 converge=0.0
+ir_short_48k_10ms_128ms erle=14.85 converge=1.5
+ir_short_48k_10ms_256ms erle=14.84 converge=5.5
+ir_short_48k_20ms_64ms erle=15.02 converge=0.5
+ir_short_48k_20ms_128ms erle=13.77 converge=1.5
+ir_short_48k_20ms_256ms erle=14.40 converge=3.0
+ir_short_8k_10ms_64ms erle=36.88 converge=0.0
+ir_short_8k_10ms_128ms erle=35.89 converge=0.0
+ir_short_8k_10ms_256ms erle=33.63 converge=0.0
+ir_short_8k_20ms_64ms erle=36.93 converge=0.0
+ir_short_8k_20ms_128ms erle=36.26 converge=0.0
+ir_short_8k_20ms_256ms erle=34.61 converge=0.0
+lownoise_16k_10ms_64ms erle_unthresholded=1.63
+lownoise_16k_10ms_128ms erle_unthresholded=1.63
+lownoise_16k_10ms_256ms erle_unthresholded=1.63
+lownoise_16k_20ms_64ms erle_unthresholded=1.63
+lownoise_16k_20ms_128ms erle_unthresholded=1.63
+lownoise_16k_20ms_256ms erle_unthresholded=1.63
+lownoise_32k_10ms_64ms erle_unthresholded=3.41
+lownoise_32k_10ms_128ms erle_unthresholded=3.41
+lownoise_32k_10ms_256ms erle_unthresholded=3.41
+lownoise_32k_20ms_64ms erle_unthresholded=3.41
+lownoise_32k_20ms_128ms erle_unthresholded=3.41
+lownoise_32k_20ms_256ms erle_unthresholded=3.41
+lownoise_48k_10ms_64ms erle_unthresholded=4.33
+lownoise_48k_10ms_128ms erle_unthresholded=4.33
+lownoise_48k_10ms_256ms erle_unthresholded=4.33
+lownoise_48k_20ms_64ms erle_unthresholded=4.33
+lownoise_48k_20ms_128ms erle_unthresholded=4.33
+lownoise_48k_20ms_256ms erle_unthresholded=4.33
+lownoise_8k_10ms_64ms erle_unthresholded=5.08
+lownoise_8k_10ms_128ms erle_unthresholded=5.08
+lownoise_8k_10ms_256ms erle_unthresholded=5.08
+lownoise_8k_20ms_64ms erle_unthresholded=5.08
+lownoise_8k_20ms_128ms erle_unthresholded=5.08
+lownoise_8k_20ms_256ms erle_unthresholded=5.08
+misaligned_early_16k_10ms_64ms erle=0.12 converge=-1.0
+misaligned_early_16k_10ms_128ms erle=0.10 converge=-1.0
+misaligned_early_16k_10ms_256ms erle=0.11 converge=-1.0
+misaligned_early_16k_20ms_64ms erle=-0.06 converge=-1.0
+misaligned_early_16k_20ms_128ms erle=-0.12 converge=-1.0
+misaligned_early_16k_20ms_256ms erle=0.09 converge=-1.0
+misaligned_early_32k_10ms_64ms erle=0.05 converge=-1.0
+misaligned_early_32k_10ms_128ms erle=0.06 converge=-1.0
+misaligned_early_32k_10ms_256ms erle=0.08 converge=-1.0
+misaligned_early_32k_20ms_64ms erle=0.00 converge=-1.0
+misaligned_early_32k_20ms_128ms erle=-0.41 converge=-1.0
+misaligned_early_32k_20ms_256ms erle=-0.19 converge=-1.0
+misaligned_early_48k_10ms_64ms erle=0.41 converge=-1.0
+misaligned_early_48k_10ms_128ms erle=0.43 converge=-1.0
+misaligned_early_48k_10ms_256ms erle=0.41 converge=-1.0
+misaligned_early_48k_20ms_64ms erle=0.66 converge=-1.0
+misaligned_early_48k_20ms_128ms erle=0.65 converge=-1.0
+misaligned_early_48k_20ms_256ms erle=0.64 converge=-1.0
+misaligned_early_8k_10ms_64ms erle=1.32 converge=-1.0
+misaligned_early_8k_10ms_128ms erle=1.29 converge=-1.0
+misaligned_early_8k_10ms_256ms erle=1.11 converge=-1.0
+misaligned_early_8k_20ms_64ms erle=0.90 converge=-1.0
+misaligned_early_8k_20ms_128ms erle=0.85 converge=-1.0
+misaligned_early_8k_20ms_256ms erle=0.79 converge=-1.0
+misaligned_late_16k_10ms_128ms erle=-0.10 converge=-1.0
+misaligned_late_16k_20ms_128ms erle=0.01 converge=-1.0
+misaligned_late_16k_10ms_256ms erle=-0.01 converge=-1.0
+misaligned_late_16k_20ms_256ms erle=0.03 converge=-1.0
+misaligned_late_16k_10ms_64ms erle=-0.02 converge=-1.0
+misaligned_late_16k_20ms_64ms erle=-0.03 converge=-1.0
+misaligned_late_32k_10ms_128ms erle=0.08 converge=-1.0
+misaligned_late_32k_20ms_128ms erle=0.35 converge=-1.0
+misaligned_late_32k_10ms_256ms erle=0.07 converge=-1.0
+misaligned_late_32k_20ms_256ms erle=0.23 converge=-1.0
+misaligned_late_32k_10ms_64ms erle=0.09 converge=-1.0
+misaligned_late_32k_20ms_64ms erle=0.32 converge=-1.0
+misaligned_late_48k_10ms_128ms erle=0.36 converge=-1.0
+misaligned_late_48k_20ms_128ms erle=0.52 converge=-1.0
+misaligned_late_48k_10ms_256ms erle=0.50 converge=-1.0
+misaligned_late_48k_20ms_256ms erle=0.60 converge=-1.0
+misaligned_late_48k_10ms_64ms erle=0.35 converge=-1.0
+misaligned_late_48k_20ms_64ms erle=0.52 converge=-1.0
+misaligned_late_8k_10ms_128ms erle=0.63 converge=-1.0
+misaligned_late_8k_20ms_128ms erle=0.54 converge=-1.0
+misaligned_late_8k_10ms_256ms erle=0.78 converge=-1.0
+misaligned_late_8k_20ms_256ms erle=0.49 converge=-1.0
+misaligned_late_8k_10ms_64ms erle=1.02 converge=-1.0
+misaligned_late_8k_20ms_64ms erle=0.60 converge=-1.0
+nearend_16k_10ms_64ms near_change=0.00 near_vs_raw=-0.11
+nearend_16k_10ms_128ms near_change=0.00 near_vs_raw=-0.11
+nearend_16k_10ms_256ms near_change=0.00 near_vs_raw=-0.11
+nearend_16k_20ms_64ms near_change=0.00 near_vs_raw=-0.11
+nearend_16k_20ms_128ms near_change=0.00 near_vs_raw=-0.11
+nearend_16k_20ms_256ms near_change=0.00 near_vs_raw=-0.11
+nearend_32k_10ms_64ms near_change=0.00 near_vs_raw=-0.12
+nearend_32k_10ms_128ms near_change=0.00 near_vs_raw=-0.12
+nearend_32k_10ms_256ms near_change=0.00 near_vs_raw=-0.12
+nearend_32k_20ms_64ms near_change=0.00 near_vs_raw=-0.12
+nearend_32k_20ms_128ms near_change=0.00 near_vs_raw=-0.12
+nearend_32k_20ms_256ms near_change=0.00 near_vs_raw=-0.12
+nearend_48k_10ms_64ms near_change=0.00 near_vs_raw=-0.28
+nearend_48k_10ms_128ms near_change=0.00 near_vs_raw=-0.28
+nearend_48k_10ms_256ms near_change=0.00 near_vs_raw=-0.28
+nearend_48k_20ms_64ms near_change=0.00 near_vs_raw=-0.28
+nearend_48k_20ms_128ms near_change=0.00 near_vs_raw=-0.28
+nearend_48k_20ms_256ms near_change=0.00 near_vs_raw=-0.28
+nearend_8k_10ms_64ms near_change=0.00 near_vs_raw=-1.03
+nearend_8k_10ms_128ms near_change=0.00 near_vs_raw=-1.03
+nearend_8k_10ms_256ms near_change=0.00 near_vs_raw=-1.03
+nearend_8k_20ms_64ms near_change=0.00 near_vs_raw=-1.03
+nearend_8k_20ms_128ms near_change=0.00 near_vs_raw=-1.03
+nearend_8k_20ms_256ms near_change=0.00 near_vs_raw=-1.03
+path_gradual_16k_10ms_64ms erle=29.30 converge=0.5
+path_gradual_16k_10ms_128ms erle=29.54 converge=0.5
+path_gradual_16k_10ms_256ms erle=28.73 converge=0.5
+path_gradual_16k_20ms_64ms erle=25.05 converge=0.5
+path_gradual_16k_20ms_128ms erle=24.92 converge=0.5
+path_gradual_16k_20ms_256ms erle=24.17 converge=0.5
+path_gradual_32k_10ms_64ms erle=34.10 converge=0.0
+path_gradual_32k_10ms_128ms erle=33.62 converge=0.5
+path_gradual_32k_10ms_256ms erle=13.49 converge=0.5
+path_gradual_32k_20ms_64ms erle=29.02 converge=0.5
+path_gradual_32k_20ms_128ms erle=29.58 converge=1.5
+path_gradual_32k_20ms_256ms erle=21.67 converge=1.5
+path_gradual_48k_10ms_64ms erle=31.40 converge=0.0
+path_gradual_48k_10ms_128ms erle=30.42 converge=0.0
+path_gradual_48k_10ms_256ms erle=25.60 converge=0.0
+path_gradual_48k_20ms_64ms erle=17.10 converge=3.0
+path_gradual_48k_20ms_128ms erle=16.00 converge=3.5
+path_gradual_48k_20ms_256ms erle=11.77 converge=3.5
+path_gradual_8k_10ms_64ms erle=34.21 converge=0.0
+path_gradual_8k_10ms_128ms erle=32.49 converge=0.0
+path_gradual_8k_10ms_256ms erle=31.57 converge=0.5
+path_gradual_8k_20ms_64ms erle=32.43 converge=0.5
+path_gradual_8k_20ms_128ms erle=32.34 converge=0.5
+path_gradual_8k_20ms_256ms erle=31.41 converge=0.5
+path_sudden_16k_10ms_64ms erle=34.78 converge=0.5 erle_after=29.84 reconverge=0.5
+path_sudden_16k_10ms_128ms erle=32.21 converge=0.5 erle_after=29.37 reconverge=0.5
+path_sudden_16k_10ms_256ms erle=30.02 converge=0.5 erle_after=28.76 reconverge=1.0
+path_sudden_16k_20ms_64ms erle=29.61 converge=0.5 erle_after=23.62 reconverge=1.0
+path_sudden_16k_20ms_128ms erle=29.40 converge=0.5 erle_after=23.85 reconverge=1.0
+path_sudden_16k_20ms_256ms erle=27.24 converge=0.5 erle_after=25.19 reconverge=1.0
+path_sudden_32k_10ms_64ms erle=16.20 converge=0.0 erle_after=31.76 reconverge=1.0
+path_sudden_32k_10ms_128ms erle=16.64 converge=0.5 erle_after=31.18 reconverge=1.0
+path_sudden_32k_10ms_256ms erle=11.58 converge=0.5 erle_after=16.22 reconverge=1.0
+path_sudden_32k_20ms_64ms erle=11.28 converge=0.5 erle_after=5.63 reconverge=2.5
+path_sudden_32k_20ms_128ms erle=8.80 converge=1.5 erle_after=3.46 reconverge=1.0
+path_sudden_32k_20ms_256ms erle=10.93 converge=1.5 erle_after=23.32 reconverge=5.0
+path_sudden_48k_10ms_64ms erle=17.20 converge=0.0 erle_after=3.79 reconverge=-1.0
+path_sudden_48k_10ms_128ms erle=19.00 converge=0.0 erle_after=8.55 reconverge=-1.0
+path_sudden_48k_10ms_256ms erle=17.82 converge=0.0 erle_after=7.14 reconverge=-1.0
+path_sudden_48k_20ms_64ms erle=12.17 converge=3.0 erle_after=14.51 reconverge=1.0
+path_sudden_48k_20ms_128ms erle=13.16 converge=3.5 erle_after=15.62 reconverge=6.0
+path_sudden_48k_20ms_256ms erle=12.98 converge=3.5 erle_after=10.51 reconverge=8.0
+path_sudden_8k_10ms_64ms erle=36.54 converge=0.0 erle_after=35.00 reconverge=1.0
+path_sudden_8k_10ms_128ms erle=34.52 converge=0.0 erle_after=32.67 reconverge=1.0
+path_sudden_8k_10ms_256ms erle=32.47 converge=0.5 erle_after=31.83 reconverge=1.0
+path_sudden_8k_20ms_64ms erle=35.05 converge=0.5 erle_after=32.32 reconverge=1.0
+path_sudden_8k_20ms_128ms erle=33.46 converge=0.5 erle_after=31.84 reconverge=1.0
+path_sudden_8k_20ms_256ms erle=33.12 converge=0.5 erle_after=30.14 reconverge=1.0
+silence_16k_10ms_64ms erle=34.82 converge=0.5
+silence_16k_10ms_128ms erle=32.98 converge=0.5
+silence_16k_10ms_256ms erle=32.16 converge=0.5
+silence_16k_20ms_64ms erle=30.07 converge=0.5
+silence_16k_20ms_128ms erle=29.71 converge=0.5
+silence_16k_20ms_256ms erle=29.03 converge=0.5
+silence_32k_10ms_64ms erle=9.23 converge=0.0
+silence_32k_10ms_128ms erle=9.97 converge=0.5
+silence_32k_10ms_256ms erle=8.80 converge=0.5
+silence_32k_20ms_64ms erle=9.00 converge=1.5
+silence_32k_20ms_128ms erle=7.77 converge=1.5
+silence_32k_20ms_256ms erle=4.87 converge=1.5
+silence_48k_10ms_64ms erle=19.19 converge=0.0
+silence_48k_10ms_128ms erle=18.47 converge=0.0
+silence_48k_10ms_256ms erle=19.76 converge=0.0
+silence_48k_20ms_64ms erle=14.35 converge=3.0
+silence_48k_20ms_128ms erle=16.54 converge=3.5
+silence_48k_20ms_256ms erle=13.05 converge=3.5
+silence_8k_10ms_64ms erle=36.32 converge=0.0
+silence_8k_10ms_128ms erle=35.98 converge=0.0
+silence_8k_10ms_256ms erle=34.72 converge=0.5
+silence_8k_20ms_64ms erle=34.64 converge=0.5
+silence_8k_20ms_128ms erle=35.38 converge=0.5
+silence_8k_20ms_256ms erle=34.72 converge=0.5
