@@ -191,7 +191,7 @@ those changes.
   (a producer goroutine hands 20 ms frames to a consumer, which keeps only
   the newest k samples with `Consume(Len() - k)` after a stall). Each has a
   deterministic `// Output:` comment: `ExampleSPSC` synchronises the two
-  goroutines with a channel outside the buffer calls, so its output never
+  goroutines with channels outside the buffer calls, so its output never
   depends on scheduling. Both pass under `go test` and `go test -race`.
 - **D7. Docs.** The package doc presents `Consume(Len() - k)` as the
   keep-newest idiom for skipping a backlog after a stall, and

@@ -91,8 +91,9 @@
 //
 // This drops the oldest Len()-k samples (nothing if Len() <= k) and returns how
 // many it dropped. Samples the producer publishes in between are kept, so at
-// least the newest k remain. Like every Consume, it is wait-free, makes the
-// dropped slots free for the producer, and expires any open read view.
+// least the newest min(k, Len()) remain. Like every Consume, it is wait-free,
+// makes the dropped slots free for the producer, and expires any open read
+// view.
 // Consume(n) drops up to n of the oldest samples.
 //
 // # Allocation and latency

@@ -48,9 +48,8 @@ func ExampleSPSC() {
 		return
 	}
 
-	// The producer, for example a network goroutine, writes frame f as 160
-	// samples of value f. The channels only make the example's output
-	// deterministic; the buffer calls themselves never wait.
+	// The producer writes frame f as 160 samples of value f. The channels only
+	// make the output deterministic; the buffer calls never wait.
 	request := make(chan int)
 	done := make(chan struct{})
 	go func() {

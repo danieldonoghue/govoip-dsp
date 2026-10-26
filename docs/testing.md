@@ -385,13 +385,11 @@ with the tests named, under `-race` unless noted.
 | stress consumer skips one sample more than it dropped | caught (`TestStressSPSC`) |
 | stress keep-newest branch disabled | caught (`TestStressSPSC`, which requires a keep-newest drop) |
 
-The code under test is shared with the view path, so most `Consume`
-mutations were already caught by the WP2 tests. The independent review
-checked this against `master`'s test files: only the clip-to-`Cap`
-mutation is newly caught by the stress test, through the drops. Before
-`TestStressSPSC` required a keep-newest drop, disabling that branch was not
-caught. The WP2 mutation table above was rerun on this branch (`spsc.go`
-unchanged): same results.
+The drop path shares its code with the view path, so the WP2 tests already
+catch most of these mutations. The stress test adds detection of the
+clip-to-`Cap` mutation through its drops, and its keep-newest requirement
+catches the disabled branch. The WP2 mutation table above was rerun on this
+branch (`spsc.go` unchanged): same results.
 
 ### `resample` (WP1)
 
