@@ -114,12 +114,12 @@ func TestMaxOutMatrix(t *testing.T) {
 				cfgs = append(cfgs, Config{Channels: 1, InRate: a, OutRate: b, Quality: q})
 			}
 		}
-		for _, f := range [][2]int{{48000, 47999}, {47999, 48000}, {44101, 44100}, {1000003, 999983}, {7, 5},
+		for _, f := range [][2]uint64{{48000, 47999}, {47999, 48000}, {44101, 44100}, {1000003, 999983}, {7, 5},
 			{5, 7}, {1, 100}, {100, 1}, {2147483646, 2147483647}, {1000000007, 3000000019}} {
 			if f[1] > math.MaxInt32 && math.MaxInt == math.MaxInt32 {
 				continue
 			}
-			cfgs = append(cfgs, Config{Channels: 1, RatioNum: f[0], RatioDen: f[1], InRate: 1, OutRate: 1, Quality: q})
+			cfgs = append(cfgs, Config{Channels: 1, RatioNum: asInt(f[0]), RatioDen: asInt(f[1]), InRate: 1, OutRate: 1, Quality: q})
 		}
 		cfgs = append(cfgs, Config{Channels: 2, InRate: 44100, OutRate: 48000, Quality: q},
 			Config{Channels: 3, InRate: 48000, OutRate: 16000, Quality: q})
@@ -208,7 +208,7 @@ func TestMaxOutEdges(t *testing.T) {
 		t.Errorf("MaxOut(MaxInt) = %d, want %d (clamped)", m, maxFrames)
 	}
 	if math.MaxInt > math.MaxUint32 {
-		big := int(uint64(4294967294))
+		big := asInt(4294967294)
 		w := mustNew(t, Config{Channels: 1, RatioNum: big, RatioDen: big + 1, Quality: 0})
 		if m := w.MaxOut(1); m != maxFrames {
 			t.Errorf("wrapping ratio: MaxOut(1) = %d, want %d", m, maxFrames)
@@ -312,5 +312,44 @@ func TestMaxOutDivergedChannels(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestMaxOutWrapBoundary checks the wrap condition at its edge: with
+// den = 2^31+1, num = 2^31-1 gives den - 1 + num = 2^32 - 1, which cannot
+// wrap, and num = 2^31 gives 2^32, which can.
+func TestMaxOutWrapBoundary(t *testing.T) {
+	if math.MaxInt == math.MaxInt32 {
+		t.Skip("needs ratios above 2^31-1")
+	}
+	den := asInt(1<<31 + 1)
+	r := mustNew(t, Config{Channels: 1, RatioNum: asInt(1<<31 - 1), RatioDen: den, Quality: 0})
+	if m := r.MaxOut(1); m == maxFrames || m > 3 {
+		t.Errorf("(2^31-1):(2^31+1) cannot wrap, but MaxOut(1) = %d", m)
+	}
+	w := mustNew(t, Config{Channels: 1, RatioNum: asInt(1 << 31), RatioDen: den, Quality: 0})
+	if m := w.MaxOut(1); m != maxFrames {
+		t.Errorf("2^31:(2^31+1) can wrap, MaxOut(1) = %d, want %d", m, maxFrames)
+	}
+}
+
+// asInt converts at run time, so that tests compile where int is 32 bits
+// wide; callers skip there.
+func asInt(v uint64) int { return int(v) }
+
+// TestMaxOutNoStateChange checks MaxOut with magic samples pending.
+func TestMaxOutNoStateChange(t *testing.T) {
+	r := mustNew(t, Config{Channels: 2, InRate: 44100, OutRate: 48000, Quality: 10})
+	r.Process(maxOutSignal[:2*500], make([]int16, 2*r.MaxOut(500)))
+	r.SetQuality(0)
+	if r.magicSamples[0] == 0 {
+		t.Fatal("no magic samples pending")
+	}
+	before := fmt.Sprint(r.lastSample, r.sampFracNum, r.magicSamples, r.filtLen, len(r.mem))
+	for _, n := range []int{0, 1, 441, math.MaxInt} {
+		r.MaxOut(n)
+	}
+	if after := fmt.Sprint(r.lastSample, r.sampFracNum, r.magicSamples, r.filtLen, len(r.mem)); after != before {
+		t.Errorf("MaxOut changed the state: %s -> %s", before, after)
 	}
 }

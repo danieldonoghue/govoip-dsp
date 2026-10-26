@@ -11,7 +11,10 @@ import "math"
 // output is full, even if the input left would write nothing. Where the
 // fractional position can wrap (den + (num mod den) - 1 at least 2^32), the
 // output is not bounded by the input and MaxOut returns 2^31-1, the largest
-// length a call accepts. Negative inFrames gives 0.
+// length a call accepts. The result is clamped to 2^31-1, and then the
+// guarantee does not hold: strong upsampling (for example 1:1000 with
+// millions of input frames) can need more. Multiplying by Channels() can
+// overflow int where int is 32 bits wide. Negative inFrames gives 0.
 //
 // MaxOut is an extension; SpeexDSP has no equivalent. It does not allocate
 // or change state.

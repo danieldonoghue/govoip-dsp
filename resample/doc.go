@@ -52,8 +52,9 @@
 // frames per channel to offer a call of n input frames per channel so
 // that it consumes all of them: the frames the call can write, from the
 // current position and any magic samples pending after a filter change,
-// plus 1. For Process and ProcessFloat the buffer is MaxOut(n) times
-// Channels() samples.
+// plus 1 when n > 0. For Process and ProcessFloat the buffer is MaxOut(n)
+// times Channels() samples. The result is clamped to 2^31-1, where the
+// guarantee no longer holds (see MaxOut).
 //
 // Interleaved calls (Process, ProcessFloat) process every channel with the
 // same offered lengths and report the counts of the last channel, as the

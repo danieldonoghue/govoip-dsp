@@ -432,6 +432,7 @@ restored after each.
 | `MaxOut` count one higher | caught (`TestMaxOutMatrix`, slack 2) |
 | `MaxOut` ignoring pending magic samples | caught (`TestMaxOutEvents`: input left unconsumed) |
 | `MaxOut` without the wrap check | caught (`TestMaxOutEdges`) |
+| `MaxOut` wrap check `>` → `>=` | caught (`TestMaxOutWrapBoundary`) |
 | `MaxOut` from the first channel only, or the last only | caught (`TestMaxOutDivergedChannels`, after a first version that did not make the channels differ enough was not caught) |
 | history not shifted when a call produces nothing | caught (`TestChunkInvarianceProcess`; also `FuzzChunksResampler` from its committed seed) |
 | direct table `i/den` in `float64` then `float32` | not caught: equivalent on every tested table (double rounding rarely differs) |

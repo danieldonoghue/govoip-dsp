@@ -349,7 +349,8 @@ magic samples, processed first, and the offered input form one span of
 frames (0 if `t <= L`), per channel. `MaxOut` returns the largest of
 these over the channels, plus 1 when `n > 0`: a call stops as soon as its
 output is full, so with exactly the count it can stop before a later
-internal 160-sample chunk, or before the input after the magic samples,
+internal input chunk (`mem_alloc_size - (filt_len - 1)` samples, 160 by
+default), or before the input after the magic samples,
 even when those would write nothing. The extra frame keeps the output
 from filling. The count is exact, so the slack is 1 (measured over 671
 configurations and the event and fuzz tests), except that a `float32`
@@ -357,7 +358,13 @@ call offered no input writes nothing, as upstream `process_float` does,
 and the zero-output state can write fewer after the input position
 saturates. Where `den - 1 + (num mod den)` reaches 2^32, the fractional
 position can wrap and the output is not bounded by the input, so
-`MaxOut` returns 2^31-1.
+`MaxOut` returns 2^31-1. The result is clamped to 2^31-1 in every case,
+the largest length a call accepts; above that the guarantee does not
+hold, for example for 1:1000 with 3·10^6 input frames, or 1:4000000000
+with one. In the zero-output state after a rejected change with a ratio
+of 2^31 or more, the saturated position could in theory allow one more
+output than counted if more than about 2^31 input frames were offered
+at once; this was analysed by review, not run.
 
 **Measurements.** From the Go implementation, which is bit-exact with the
 reference, so these are the reference's figures. Mac, 2026-10-26:
