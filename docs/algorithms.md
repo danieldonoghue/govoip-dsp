@@ -224,6 +224,34 @@ against C4, C2 against P4, and the slot accesses P3 and C3.
 | Wrap of a copy | no change | A copy that crosses the end of the slice is two `copy` calls inside P3 or C3, before the index store, so the rules above cover both segments. |
 | Wrap of an index | an index in [0, 2·Cap) | Each index is reduced modulo 2·Cap in the store itself, so the other side never observes an out-of-range value. |
 
+**Dropping without reading.** After a stall the consumer can skip its
+backlog with `Consume(n)`, taking no read view first, or keep only the
+newest k samples with `Consume(Len() - k)`. Such a drop is C1, C2 and C4
+with no C3: `Consume` loads `r` and `w`, clips n to count(`w`, `r`), and
+stores `r` + n.
+
+1. No slot is read, so there is no read for rule 2 to order. The store of
+   `r` still releases the dropped slots, and the producer may write into
+   them as soon as its P2 observes the new `r`. The consumer never touches
+   them again, and it holds no read view across the drop, because
+   `Consume` expires the view.
+2. The clip is what keeps the drop safe: `r` + n never passes the `w` that
+   C2 observed, and every slot below that `w` was published by rule 1. If
+   `r` could pass it, the consumer would skip slots the producer has yet to
+   write, and its next count would be wrong; the mutation checks in
+   `docs/testing.md` show the tests catch this.
+3. In the keep-newest form, `Len` and `Consume` each load `w`. If the
+   producer publishes between them, the drop still removes only `Len() - k`
+   of the oldest samples, so at least the newest k remain, plus whatever
+   arrived in between.
+
+| Interleaving (drop) | What the other side sees | Why it is safe |
+|---|---|---|
+| C2 before P4 | the old `w` | The drop stops at the old `w`; the samples P3 is writing stay unread and are kept. |
+| C2 after P4 | the new `w` | The drop may include the new samples. They were complete (rule 1) and are released unread. |
+| P2 before C4 | the old `r`: less free space | The producer writes only [`w`, old `r`+Cap), which excludes the slots being dropped. |
+| P2 after C4 | the new `r` | The producer reuses the dropped slots; the consumer neither reads them nor holds a view of them. |
+
 **Why count modulo 2·Cap is exact.** Each index only advances, so the
 values one side observes of the other's index never go backwards. The
 consumer's own `r` is current, and the `w` it observes lies between the
