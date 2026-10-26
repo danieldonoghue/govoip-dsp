@@ -11,6 +11,7 @@ package fixed
 
 // Float is spx_float_t, the pseudo-float of the fixed-point build: the value
 // M * 2^E. Operations normalise |M| into [16384, 32767] where upstream does.
+// float32 cannot replace it: a 24-bit rounded mantissa gives different results.
 type Float struct {
 	M, E int16
 }

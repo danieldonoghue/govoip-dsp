@@ -5,6 +5,20 @@
 // domains listed in docs/acceptance/fixed.md, as checked against the
 // reference harness (testdata/speexdsp/fixed).
 //
+// # Why not package math
+//
+// The macros are integer Q-format operations with the exact rounding and
+// saturation of fixed_generic.h. Sqrt, Cos, CosNorm, Exp and Atan are the
+// integer polynomial approximations of math_approx.h, not correctly rounded
+// functions: each doc states its maximum error against the correctly rounded
+// true value over its domain, and TestApproximationError checks it. Float is
+// the 16-bit-mantissa pseudo-float of pseudofloat.h, which float32 does not
+// reproduce. Bit-exact output needs these exact operations, and the echo
+// canceller's adaptive filter amplifies small differences over a call. Where
+// the standard library gives the exact result, the package uses it: ILog2 uses
+// math/bits. Code outside the SpeexDSP ports should use package math, not this
+// package.
+//
 // # Coverage
 //
 // The package holds every macro and inline function that resample.c,
