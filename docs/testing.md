@@ -236,34 +236,44 @@ nine signals; the inputs were added for them (`docs/acceptance/fft.md`,
 ### `buffer` (WP2)
 
 Run on a scratch copy of the package on the Mac (darwin/arm64, GOMAXPROCS
-10). The four ordering mutations ran with `go test -race -run
-'TestStressSPSC|TestResetSPSC'`, the source mutations with `-run
-TestWaitFreeSource`, and the rest with the whole package (`-race` for the
-SPSC index mutations).
+10), against the final code. The four ordering mutations ran with `go test
+-race -run 'TestStressSPSC|TestResetSPSC'` and again without `-race`; the
+source mutations ran with `-run TestWaitFreeSource`; the rest ran the whole
+package (with `-race` for the SPSC index mutations).
 
 | Mutation | Result |
 |---|---|
-| SPSC producer stores `w` before copying the samples | caught (data race reported; without `-race`: sequence check, stale sample) |
+| SPSC producer stores `w` before copying the samples | caught (data race; without `-race`: sequence check, stale sample) |
 | SPSC consumer stores `r` before copying the samples out | caught (data race; without `-race`: sequence check) |
-| SPSC indices as plain `uint32` loads and stores | caught (data race; without `-race`: sequence check in the read view, on arm64) |
-| SPSC producer free count one too large | caught (data race and an out-of-range slice; also without `-race`) |
-| SPSC indices modulo Cap instead of 2·Cap (full reads as empty) | caught (`TestModelOps`, `TestFullAndEmpty` and others) |
+| SPSC indices as plain `uint32` loads and stores | caught (data race; without `-race`: sequence check, on arm64) |
+| SPSC producer free count one too large | caught (data race; without `-race`: sequence check) |
+| SPSC indices modulo Cap instead of 2·Cap (full reads as empty) | caught (`TestModelOps`, `TestFullAndEmpty`) |
 | SPSC `Consume` releases one slot more than it returns | caught (`TestModelOps`, `TestStressSPSC`) |
 | SPSC `Reset` sets `w` to `r` instead of zeroing both | caught (`TestResetRing`, `TestResetSPSC`) |
-| SPSC `Commit` not clipped to the free space | caught (`TestModelOps`, `TestClipping`, `FuzzSPSC` seeds) |
-| a retry loop added to SPSC `Write` | caught (`TestWaitFreeSource`) |
+| SPSC `Commit` clipped to `Free` instead of the write view | caught (`TestModelOps`, `TestCommitClipsToView`) |
+| SPSC `Commit` does not shrink the remaining view | caught (`TestModelOps`, `TestClipping`) |
+| a `for` retry loop added to SPSC `Write` | caught (`TestWaitFreeSource`) |
+| a `goto` retry loop and `atomic.AddUint32` added to SPSC `Write` | caught (`TestWaitFreeSource`) |
 | `CompareAndSwap` instead of `Store` in SPSC `Consume` | caught (`TestWaitFreeSource`) |
+| SPSC `count` without the clamp to `Cap` | not caught: equivalent for correct use, where the count never exceeds `Cap`; the clamp only guards misuse |
 | `Ring` under `Overwrite` discards one sample too few | caught (`TestModelOps`, `TestOverwriteDiscardsOldest`) |
 | `Ring` under `Reject` keeps the last samples of the input | caught (`TestModelOps`, `TestRejectKeepsStoredSamples`) |
 | `Ring` read position wraps at `>` instead of `>=` | caught (`TestModelOps`) |
 | views returned without a capacity limit | caught (`TestModelOps`, `TestAppendOnView`) |
 | `Ring` under `Overwrite` keeps the first `Cap` samples of a long write | caught (`TestModelOps`, `TestOverwriteDiscardsOldest`) |
 | `Ring` `Reset` keeps the read position | caught (`TestResetRing`) |
+| `Ring` `Commit` clipped to `Free` instead of the write view | caught (`TestModelOps`, `TestCommitClipsToView`) |
+| `Ring` `Write` does not expire the write view | caught (`TestModelOps`, `TestCommitClipsToView`) |
 
 The ordering mutations without `-race` were caught on arm64, whose memory
 model is weak; on amd64 a plain-store mutation may only be caught by the
 race detector. `TestSeqCheckerDetects` checks that the sequence checker
-reports a lost, a duplicated and a stale sample.
+reports a lost, a duplicated and a stale sample. The independent review ran
+six further mutations of its own (a re-loaded `w` in `Read`, index stores
+between the two wrap segments on each side, a write view one sample too
+large, `Reset` zeroing only `w`, `count` with `>`): all caught. Its
+seventh, the `goto` and `atomic.AddUint32` row above, was not caught by the
+first `TestWaitFreeSource`; the test was extended and now catches it.
 
 ## Platform determinism of generated inputs
 
@@ -307,3 +317,18 @@ length gives `ErrBufferSize`, that neither call fails otherwise, that
 without -32768. Runs on 2026-10-26 (`go test ./internal/fft -run '^$' -fuzz
 FuzzTransform -fuzztime <t>`): 60 s before the length check was added, 2.5
 million executions; 30 s with it; no failure in either.
+
+### `buffer` (WP2)
+
+`FuzzRing` (both policies) and `FuzzSPSC` (one goroutine) decode an
+operation sequence and compare the buffer with a slice-queue model after
+every operation; `FuzzChunksRing` checks chunk-partition invariance. Seeds
+are in `buffer/testdata/fuzz/`. Run on the Mac on 2026-10-26 against the
+final code, with `go test -run '^$' -fuzz '^<target>$' -fuzztime <t>
+-parallel 4 ./buffer`:
+
+| Target | Time | Executions | Failures |
+|---|---|---|---|
+| `FuzzRing` | 10 min | 27,972,227 | none |
+| `FuzzSPSC` | 10 min | 9,290,639 | none |
+| `FuzzChunksRing` | 3 min | 2,201,674 | none |
