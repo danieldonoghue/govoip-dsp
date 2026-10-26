@@ -615,3 +615,46 @@ func TestAcceptanceCautiousStart(t *testing.T) {
 		t.Errorf("R3: gain exceeded the cautious-start bound by %.4f dB", worst)
 	}
 }
+
+// TestAcceptanceStationaryNoise covers N5, and reports N4.
+func TestAcceptanceStationaryNoise(t *testing.T) {
+	cfg := DefaultConfig(16000)
+	n := 120 * cfg.SampleRate
+	for _, kind := range []string{"white", "pink"} {
+		for _, lvl := range []float64{-60, -52, -45, -35, -24} {
+			name := fmt.Sprintf("%s/%v", kind, lvl)
+			t.Run(name, func(t *testing.T) {
+				x := white(n, lvl, testutil.Seed("agc-n5-w"))
+				if kind == "pink" {
+					x = toRMS(testutil.PinkNoise(n, 20000, testutil.Seed("agc-n5-p")), lvl)
+				}
+				r := newRecorder(t, cfg)
+				r.feed(t, x, true)
+				maxApplied := int32(0)
+				for _, g := range r.applied {
+					maxApplied = max(maxApplied, g)
+				}
+				out := testutil.DBFS(testutil.RMS(r.out[len(r.out)-10*cfg.SampleRate:]))
+				below := loudestFrame(x, r.frameLen()) < float64(cfg.GateLevel)
+				t.Logf("N5 %s: loudest frame below gate %v, max applied %.2f dB, output %.2f dBFS (target %d)",
+					name, below, q15dB(maxApplied), out, cfg.TargetLevel)
+				switch {
+				case below && maxApplied > unity:
+					t.Errorf("N5: applied gain %.2f dB on noise below the gate", q15dB(maxApplied))
+				case !below && (out > float64(cfg.TargetLevel)+0.5 || maxApplied > r.a.maxGain):
+					t.Errorf("N5: output %.2f dBFS, max applied gain %d", out, maxApplied)
+				}
+				checkCeiling(t, r, name, false)
+			})
+		}
+	}
+	// N4 (noise-floor trial, change 7): reported only.
+	x := toRMS(testutil.PinkNoise(60*cfg.SampleRate, 20000, testutil.Seed("agc-n1-pink")), -55)
+	r := newRecorder(t, cfg)
+	r.feed(t, x, true)
+	maxApplied := int32(0)
+	for _, g := range r.applied {
+		maxApplied = max(maxApplied, g)
+	}
+	t.Logf("N4 (reported only): max applied gain %.2f dB", q15dB(maxApplied))
+}
