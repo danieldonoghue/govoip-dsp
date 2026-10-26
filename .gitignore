@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# VS Code: keep shared workspace settings, ignore personal state
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+*.code-workspace
+.history/
+
+# Claude Code: keep shared project settings, ignore personal ones
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Go build and test output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+*.prof
+*.pprof
+coverage.*
+cover.out
+go.work
+go.work.sum
+
+# SpeexDSP reference harness: fetched upstream source and build output
+/reference/speexdsp/
+/reference/build/
+
+# Downloaded speech corpora and other large caches (never committed)
+/.cache/
+
+# Editors
+*.swp
+*~
