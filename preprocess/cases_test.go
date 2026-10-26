@@ -79,7 +79,7 @@ func buildCases() ([]refCase, []echoGroup) {
 			c.ns = ns
 			cs = append(cs, c)
 		}
-		for _, pr := range [][2]int{{0, 0}, {100, 100}, {60, 10}} {
+		for _, pr := range [][2]int{{0, 0}, {100, 100}, {60, 10}, {77, 77}, {84, 84}} {
 			c := base(fmt.Sprintf("%sprob%d_%d", pre, pr[0], pr[1]), rate, n, "speech_noise", 10)
 			c.pStart, c.pCont = pr[0], pr[1]
 			cs = append(cs, c)

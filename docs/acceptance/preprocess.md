@@ -170,3 +170,20 @@ frames) reached them. Added:
 `16000_320_pink_long` (120 s of pink noise, which also checks against C the
 rising speech probability that the sanity test reports on long noise). This
 widens the tested domain and relaxes nothing.
+
+### VAD thresholds of 77% and 84% added (after review)
+
+The independent review found that `>` changed to `>=` in the VAD
+comparisons passed every test: no fixture threshold equals a value that
+`Pframe` can take. Of the integer percentages, only 77% and 84% give a Q15
+threshold that `Pframe` can equal, so cases (77, 77) and (84, 84) were added
+at each MVP configuration; both mutations are now caught.
+
+### Zero-divisor case added (after review)
+
+The review reached a zero divisor in `compute_gain_floor` through
+`RunEcho`. `reference/drivers/preprocess_zero.c` records that input against
+the reference (with a stand-in for `speex_echo_get_residual`), so the
+behaviour at a zero divisor is compared with the canonical arm64 build
+rather than only with a Go unit test. Criterion 7 is unchanged: the site is
+listed under "Open questions" in `docs/status.md`.
