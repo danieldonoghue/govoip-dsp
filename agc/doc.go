@@ -42,11 +42,14 @@
 // are whole dB, rates whole dB/s. The ideas of items 2 to 4 come from the
 // floating-point AGC of SpeexDSP 1.2.1; the design and code are our own.
 //
-// Noise protection is the gate and the speech flag. Noise above GateLevel
-// passed with speech true is treated as speech and raised towards the
-// target; pass the VAD decision (for example from preprocess) to prevent
-// that. In pauses the gain cannot rise, but it may finish falling, so
-// background noise in a pause gets at most the gain of the speech before it.
+// Noise protection is the level gate and the speech flag, and nothing
+// else. Frames below GateLevel never raise the gain or change the level
+// estimate. Noise above GateLevel passed with speech true is treated as
+// speech and driven to TargetLevel, with a gain of up to MaxGain. The VAD of
+// the SpeexDSP 1.2.1 fixed-point preprocessor reported speech on every frame
+// of a stationary pink-noise test signal, so passing its decision does not
+// prevent this; only a gate above the noise does. In pauses the gain cannot
+// rise, but it may finish falling.
 //
 // # Rates, chunking and latency
 //
