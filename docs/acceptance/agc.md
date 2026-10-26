@@ -240,6 +240,96 @@ energy, a compare for the peak and a ring-buffer step; per block one division;
 per frame one square root and one 64-bit division. That is a few nanoseconds
 per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
 
+## Design v2 (level-estimator redesign)
+
+The owner chose to redesign the level estimator (2026-10-26) after design
+v1 above failed P4. Design v1 stays on record as the fallback: its last code
+state is the commit "agc: check the ceiling and exact gain limits in more
+acceptance tests", and its measurements stay in "Results". Design v2 is
+judged against the same criteria and the same threshold numbers, with
+changes 2 and 3, and the additions in this section. It was written down here
+before its implementation was committed. A prototype on a private copy of the
+branch was used to choose LevelTime and the drop window; no threshold was
+chosen or changed from it.
+
+Items 1, 2 and 5 of "Design under test" stay. Items 3 and 4 become:
+
+3. **Level estimate.** `E` is an exponential mean of `x⁴` over active
+   frames, and `L = E^(1/4)`: a power mean of order 4 of frame RMS. Each
+   active frame updates `E` towards `x⁴` with `x = min(r, 2L)` (+6 dB of
+   innovation at most) and time constant `LevelTime`. Until one `LevelTime`
+   of active frames has been seen, the weight is `max(c, 1/n)` for the
+   `n`-th active frame, so `E` starts as the plain mean of the frames seen
+   (no prior level). `E` and its roots use `fixed.Float`.
+   - **Why order 4.** Speex's float AGC uses order 5. Order 4 needs only
+     two squarings and two `FloatSqrt` calls, which `internal/fixed` has;
+     order 5 needs a fifth root, which it does not. Both weight a frame
+     10 dB above the rest by 100 or more (10² against 10^2.5), so the
+     estimate follows the loud frames of speech rather than the dips.
+   - **Sustained rise (immediate cut).** If 3 consecutive active frames each
+     have energy above `10·L²` (+10 dB), `E` becomes the 4th power of the
+     smallest of their `r`, and the AGC gain is set to the new target gain
+     at once, bypassing the fall limit. Three frames (30 ms) is the
+     shortest run a 10 ms click cannot produce, since a click touches at
+     most two frames.
+   - **Sustained drop.** If `LevelTime/3` consecutive active frames each have
+     `r < L/2` (−6 dB), `E` becomes the 4th power of the largest of their
+     `r`. Without this, the order-4 mean would need about 18·`LevelTime` to
+     fall 20 dB.
+4. **Gain.** The target gain is `TargetLevel/L`, clamped to
+   `[MinGain, MaxGain]`. The AGC gain starts at 0 dB and moves towards the
+   target gain by at most `RiseRate` dB/s up, and only on active frames, and
+   by at most `FallRate` dB/s down, on any frame. The immediate cut is the
+   only exception.
+   - **Cautious start.** Starting at 0 dB and rising only on active frames
+     already bounds the gain after `t` seconds of active frames by
+     `RiseRate · t` dB, which is what Speex's growing maximum gain
+     (`init_max`) provides. No separate cap is added, because it could never
+     bind; criterion R3 checks the bound.
+
+`Config` replaces `AttackTime` and `ReleaseTime` with `RiseRate` and
+`FallRate` (whole dB/s) and `LevelTime`. The speech input stays a `bool`.
+
+### Configurations for design v2
+
+| Name | Change from the v1 table |
+|---|---|
+| default | `RiseRate` 12 dB/s, `FallRate` 40 dB/s, `LevelTime` 3 s, instead of the attack and release times |
+| fast | `RiseRate` 60 dB/s, `FallRate` 200 dB/s, `LevelTime` 600 ms: five times the default speed, as v1's fast was five times v1's default |
+| fullscale | as default, with `LimitLevel` 0 dBFS |
+
+### Test-structure changes for design v2
+
+These change how tests are set up, never a threshold value:
+
+1. **C1, C2, T3 thresholds** are the registered numbers: 1.0 s, 5.8 s and
+   0.45 s for `default`, and 0.28 s, 1.24 s and 0.13 s for `fast`. The tests
+   no longer compute them from the v1 formulas in τa and τr, which have no
+   meaning in v2.
+2. **`fast`** is defined by the table above.
+3. **"AGC gain"** (T4, N3, Q2 to Q4) is v2's gain before the limiter, as in
+   v1.
+4. Every other signal, length, settling window and measurement stays as
+   registered.
+
+### New criteria for design v2 (R)
+
+All of these use the per-frame AGC gain that the in-package test reads,
+`default` at 16000 Hz unless stated. The tolerance of 0.01 dB covers Q15
+rounding of one step.
+
+| ID | Test | Threshold |
+|---|---|---|
+| R1 | Every signal of C1 to C4, P3, P4, the T1 suite, N3 and Q2 to Q4 | the AGC gain rises by at most `RiseRate · F/R` + 0.01 dB per frame (0.13 dB at 16000 Hz), and never rises after an inactive frame |
+| R2 | Same signals | apart from immediate cuts, the AGC gain falls by at most `FallRate · F/R` + 0.01 dB per frame (0.41 dB) |
+| R3 | `SpeechLike` with active RMS −48 dBFS (needs +24 dB), fresh instance | after `n` active frames the AGC gain is at most `n · RiseRate · F/R` + 0.01 dB |
+| R4 | C1 signal (+20 dB sine step), `default` and `fast` | exactly one immediate cut, within 50 ms of the step |
+| R5 | T4 click signals (aligned and straddling) and the T1 suite's 10 ms click | no immediate cut |
+
+**Reasoning.** R1 to R3 are the definitions of the mechanisms, so the only
+allowance is rounding. R4: the cut needs 3 frames (30 ms), plus up to one
+frame of alignment. R5 is the condition the 3-frame rule was chosen for.
+
 ## Changes
 
 1. **N3, Q2, Q3: reference gain clarified** (before any test was written or
