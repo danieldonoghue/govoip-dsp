@@ -111,6 +111,19 @@ tables are still compared entry by entry with the harness.
   for the range shift, so each stage's division loses bits. The sines use
   `testutil.Sine` at 1000 Hz and a 16 kHz rate.
 
+**Sanity results** (`go test ./preprocess -run Sanity -v`, 2026-10-26),
+reported, not thresholded:
+
+- Noise only, after the first second, default -15 dB: white noise at -35
+  dBFS is reduced by 13.3 to 14.1 dB, pink noise at -37 dBFS by 3.7 to 5.8
+  dB, over the eight MVP configurations.
+- Speech in white noise at 16 kHz, 10 and 20 ms frames: segmental SNR
+  improves by 5.3 to 6.0 dB at 0 dB SNR, 4.9 to 5.1 dB at 5 dB and 4.0 to
+  4.3 dB at 10 dB, for `SpeechLike` and for 62 s of LibriSpeech.
+- With denoise off, the output matches the input delayed by one frame to
+  39.6 to 54.5 dB SNR: the analysis and synthesis are not transparent.
+- VAD: see the numerical notes above.
+
 **Deviations.** None in output. `New` returns an error where the reference
 returns NULL (odd sizes) or aborts (`speex_fatal` for a radix above 17); it
 also rejects sizes above 4096, which no MVP component needs.
@@ -407,9 +420,10 @@ thresholds truncate: the default `prob_start` reads back as 34.
 **Floating point and libm.** None in the fixed-point build. `toBARK` uses
 the integer `spx_atan`; `toMEL` and the `exp` calls are in float-build
 branches only. Checked by compiling `preprocess.c` and `filterbank.c` with
-the reference flags: neither object references a libm symbol, and the only
-floating-point instructions are `fmov` moves between integer and vector
-registers. The window and filterbank tables are still compared entry by
+the reference flags (host Apple clang): neither object references a libm
+symbol, and the only instructions on floating-point registers are `fmov`
+moves and two `fneg.4s` that build integer sign masks for `eor`. None is
+float arithmetic. The window and filterbank tables are still compared entry by
 entry with the harness for every fixture configuration and a rate sweep.
 
 **Latency.** `N` samples: the output of a frame completes the overlap-add of
@@ -445,6 +459,8 @@ nonzero. Shown nonzero, with the test that covers the closest boundary:
 | Site | Divisor | Bound |
 |---|---|---|
 | `conj_window` | `2N` | at least 2 |
+| `filterbank_new` | `sampling/2` | 2 |
+| `SET_PROB_START`, `SET_PROB_CONTINUE` | 100 | 100 |
 | `filterbank_new` | `2*len`, `banks-1`, `mel_interval` | at least 2, 23, and 16384 or more for rates of 4 Hz and up |
 | `filterbank_new` (`filterbank.c:85`) | `EXTRACT16(PSHR32(mel_interval,15))` | nonzero exactly for rates of 4 Hz and up (`TestFilterbankDivisors`, every rate) |
 | `beta` (`preprocess.c:740`) | `nb_adapt` | 1 to 20000 |
@@ -464,13 +480,39 @@ Not shown nonzero, so the port uses `fixed.Div32x16OrZero` and
 | `prior_ratio` (`preprocess.c:846`, `:887`) | `ADD16(prior, 256)` | `prior` = -256 |
 | band `gain2` (`preprocess.c:862`) | `ADD16(256, tmp)` | `tmp` = -256, which needs `prior` < -256 |
 
-Each needs a value that is nonnegative in normal operation to go negative.
-That happens through the wraps above and the -32768 of `DIV32_16_Q8`, so a
-zero is plausible but has not been seen: the sanitizer reports no division
-by zero over the 294 fixture cases, and a counting build of the port found
-none in about 50 minutes of stress audio (edge signals, loud tones, bursts,
-random residuals) or in 528 000 fuzz executions. `docs/status.md` asks the
-owner to confirm this policy.
+Each needs a value that is nonnegative in normal operation to go negative,
+which happens through the wraps above and the -32768 of `DIV32_16_Q8`.
+
+- **Reached:** the gain-floor `DIV32_16_Q15`, through `RunEcho`. After
+  silence a band's noise estimate is 0; a residual that wraps the band's
+  echo estimate to -1 (three bins: two at 2^31-1, one solved) gives
+  `DIV32_16_Q15(-1, 1 + 0 - 1)`. The case is in
+  `testdata/speexdsp/preprocess_zero`: the sanitizer reports the division
+  by zero at `preprocess.c:140`, and the canonical arm64 build gives gain
+  floor 0 there, as the port does. On amd64 the C reference would trap.
+  Residuals from a real echo canceller are bounded by Parseval and have
+  not been shown to reach this.
+- **Not seen otherwise:** the sanitizer reports no division by zero over
+  the other 310 fixture cases. A counting build of the port found none in
+  about 50 minutes of stress audio (edge signals, loud tones, bursts,
+  random residuals) or in 528 000 fuzz executions, and the independent
+  review found none in 1.28 million frames of random input checked
+  against C.
+
+The policy is an open question for the owner in `docs/status.md`.
+
+**Sanity results** (`go test ./preprocess -run Sanity -v`, 2026-10-26),
+reported, not thresholded:
+
+- Noise only, after the first second, default -15 dB: white noise at -35
+  dBFS is reduced by 13.3 to 14.1 dB, pink noise at -37 dBFS by 3.7 to 5.8
+  dB, over the eight MVP configurations.
+- Speech in white noise at 16 kHz, 10 and 20 ms frames: segmental SNR
+  improves by 5.3 to 6.0 dB at 0 dB SNR, 4.9 to 5.1 dB at 5 dB and 4.0 to
+  4.3 dB at 10 dB, for `SpeechLike` and for 62 s of LibriSpeech.
+- With denoise off, the output matches the input delayed by one frame to
+  39.6 to 54.5 dB SNR: the analysis and synthesis are not transparent.
+- VAD: see the numerical notes above.
 
 **Deviations.** None in output. `New` returns an error where the reference
 would divide by zero (rates below 4 Hz), overflow (above 65535 Hz) or fail
