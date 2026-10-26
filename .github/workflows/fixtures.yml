@@ -34,8 +34,10 @@ jobs:
         run: |
           # shellcheck disable=SC2086 # word splitting is intended
           sh reference/fixtures.sh $COMPONENTS
-      - name: compare with the committed fixtures
-        run: git diff --stat --exit-code -- testdata/speexdsp
+      - name: compare with the committed fixtures, new files included
+        run: |
+          changes="$(git status --porcelain -- testdata/speexdsp)"
+          if [ -n "$changes" ]; then echo "$changes"; exit 1; fi
       - name: sanitizer logs
         if: always()
         run: cat reference/build/container/ubsan/*.log || true

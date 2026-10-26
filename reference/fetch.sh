@@ -17,21 +17,22 @@ if [ ! -d "$dest/.git" ]; then
 	git -C "$dest" remote add origin "$URL"
 fi
 
-if ! git -C "$dest" cat-file -e "$COMMIT^{commit}" 2>/dev/null; then
-	git -C "$dest" fetch -q --depth 1 origin "refs/tags/$TAG:refs/tags/$TAG"
-fi
-
-git -C "$dest" -c advice.detachedHead=false checkout -q --force "$COMMIT"
-git -C "$dest" clean -q -fdx
-
-head=$(git -C "$dest" rev-parse HEAD)
-tagged=$(git -C "$dest" rev-parse "refs/tags/$TAG^{commit}")
-if [ "$head" != "$COMMIT" ] || [ "$tagged" != "$COMMIT" ]; then
-	echo "fetch.sh: expected $COMMIT, have HEAD $head and $TAG $tagged" >&2
+if [ -n "$(git -C "$dest" status --porcelain)" ]; then
+	echo "fetch.sh: $dest has local changes; remove the directory to refetch" >&2
 	exit 1
 fi
-if [ -n "$(git -C "$dest" status --porcelain)" ]; then
-	echo "fetch.sh: $dest has local modifications" >&2
+if ! git -C "$dest" rev-parse -q --verify "refs/tags/$TAG^{commit}" >/dev/null; then
+	git -C "$dest" fetch -q --depth 1 origin "refs/tags/$TAG:refs/tags/$TAG"
+fi
+tagged=$(git -C "$dest" rev-parse -q --verify "refs/tags/$TAG^{commit}" || true)
+if [ "$tagged" != "$COMMIT" ]; then
+	echo "fetch.sh: tag $TAG is ${tagged:-missing}, expected $COMMIT" >&2
+	exit 1
+fi
+git -C "$dest" -c advice.detachedHead=false checkout -q "$COMMIT"
+head=$(git -C "$dest" rev-parse HEAD)
+if [ "$head" != "$COMMIT" ]; then
+	echo "fetch.sh: HEAD is $head, expected $COMMIT" >&2
 	exit 1
 fi
 echo "speexdsp $TAG at $COMMIT in $dest"

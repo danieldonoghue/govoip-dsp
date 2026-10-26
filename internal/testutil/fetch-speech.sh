@@ -29,7 +29,7 @@ if [ "$sum" != "$MD5" ]; then
 	exit 1
 fi
 
-tar -tzf "$tarball" | grep '\.flac$' | sort | head -n "$COUNT" >"$cache/list.txt"
+tar -tzf "$tarball" | grep '\.flac$' | LC_ALL=C sort | head -n "$COUNT" >"$cache/list.txt"
 rm -rf "$cache/src" "$out"
 mkdir -p "$cache/src" "$out"
 tar -xzf "$tarball" -C "$cache/src" -T "$cache/list.txt"
