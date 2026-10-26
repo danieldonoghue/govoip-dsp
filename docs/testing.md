@@ -28,6 +28,14 @@ make fixtures-host   # rebuild with the host clang and compare with the committe
 make speech          # download LibriSpeech dev-clean into .cache/speech/
 ```
 
+CI runs `make speech` on one job, `test (ubuntu-24.04, Go 1.27.x)`, and
+caches the converted files under a key made from the hash of
+`internal/testutil/fetch-speech.sh`. The speech tests (for example the AGC's
+P4 and G1 to G4) run there on every CI run that changes code and skip in the
+other jobs. A cache miss downloads about 338 MB from OpenSLR, which happens
+when the script changes or when GitHub has evicted the cache after 7 days
+without use.
+
 ## Reference harness
 
 `reference/` builds one C driver per component against the pinned SpeexDSP

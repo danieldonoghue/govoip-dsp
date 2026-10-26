@@ -409,7 +409,9 @@ non-finite policy.
 - **Speech:** committed fixtures are synthetic. Real speech comes from
   LibriSpeech (CC BY 4.0) through a download script into the git-ignored
   `.cache/speech/` directory; tests using it skip cleanly when it is absent and
-  say so. Record attribution in `THIRD_PARTY_NOTICES.md`.
+  say so. CI fetches and caches it on one job (Linux amd64, the newest Go),
+  so those tests run on every CI run that changes code. Record attribution
+  in `THIRD_PARTY_NOTICES.md`.
 - **Fuzzing:** Go fuzz tests for configuration handling, chunk sequences, buffer
   boundaries and the jitter buffer's packet sequences; they check for panics and
   documented invariants (for example chunk-partition invariance). Keep each

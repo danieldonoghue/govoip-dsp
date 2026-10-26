@@ -49,6 +49,21 @@ jobs:
         run: go vet ./...
       - name: staticcheck
         run: go run ${{ env.STATICCHECK }} ./...
+      # Only this job has the speech corpus, so the LibriSpeech tests run once
+      # per push; the cache key changes only when the fetch script does.
+      - name: restore speech corpus
+        if: matrix.os == 'ubuntu-24.04' && matrix.go == '1.27.x'
+        id: speech
+        uses: actions/cache@v6
+        with:
+          path: .cache/speech/librispeech
+          key: speech-${{ hashFiles('internal/testutil/fetch-speech.sh') }}
+      - name: fetch speech corpus
+        if: matrix.os == 'ubuntu-24.04' && matrix.go == '1.27.x' && steps.speech.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flac
+          make speech
       - name: test
         run: go test ./...
       - name: test (purego)
