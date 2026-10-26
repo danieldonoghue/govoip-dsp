@@ -348,6 +348,33 @@ and 5.39 dB, so G3 and G4 fail. With order 2 it gives 1.60, 1.90, 2.14 and
 6.78 dB, so G4 fails. The same 3 dB as P4 catches both, and leaves 0.45 dB
 of margin at −20 dBFS.
 
+### Regression guards for the cut threshold (G5, G6)
+
+Registered on 2026-10-26 at the owner's request, **after** measuring design
+v2. The owner accepted that steps of +10 to +13 dB do not cut. These guards
+pin the +13 dB cut threshold from above (G5) and the accepted overshoot of
+the steps just below it (G6). They are regression guards, not acceptance
+evidence.
+
+| ID | Test | Threshold |
+|---|---|---|
+| G5 | Sine, 15 s at −44 dBFS then 15 s at −30 dBFS (+14 dB step), `default` at 8000, 16000, 44100 and 48000 Hz | exactly one immediate cut, within 50 ms of the step (as R4); within 2 dB of the target at most **0.05 s** after the step |
+| G6 | Sine, 15 s at −44 dBFS then +10, +11, +12 and +13 dB, same rates | time to within 2 dB of the target at most **1.76, 1.88, 1.95, 2.05 s**; time more than 6 dB above the target at most **0.43, 0.53, 0.62, 0.72 s** |
+
+**Reasoning.** Measured before registration at the four rates: the +14 dB
+step cuts at the third frame and is within 2 dB after 0.03 s. The +10 to
++13 dB steps take 1.71, 1.81 to 1.83, 1.90 and 1.995 to 2.00 s to come
+within 2 dB, and spend 0.379 to 0.38, 0.479 to 0.48, 0.569 to 0.57 and
+0.668 to 0.67 s more than 6 dB above the target. G6's thresholds are the
+largest of these plus 0.05 s (5 frames). The arithmetic is deterministic,
+the spread across rates is at most 0.02 s, and 5 frames also covers a
+change of one unit in a rounded constant on another platform. A change of
+the level estimate's dynamics, its clamp or the cut rule that lengthens
+these times by more than 5 frames (2.5 % to 13 % of them) fails G6. G5
+fails if the threshold rises above +14 dB (for example `cutRatio` 40,
++16 dB). Lowering the threshold makes G6 pass trivially, which G3 and G4
+catch.
+
 ### Noise-floor safeguard (NF), trial
 
 Registered on 2026-10-26 at the owner's request, before implementation.
