@@ -242,3 +242,33 @@ per-frame level estimate and the rest in the per-sample loop.
 
 Target (`docs/acceptance/agc.md`): at most 10 µs per 10 ms frame at 48 kHz,
 0 allocs/op. Measured 1.3 µs. Not measured on the Linux VM.
+
+## Acoustic echo canceller (`echo`, WP6)
+
+Mac, 2026-10-27, three runs (the range of `ns/op` is shown):
+
+```sh
+CGO_ENABLED=0 go test ./echo -run '^$' -bench BenchmarkCancellerCancel -benchmem -count 1
+```
+
+`Cancel` on the `farend` scenario after warm-up. `adapted` = 1 means the
+reference's adapted path (with `mdf_adjust_prop`) ran; the 8 kHz, 256 ms
+canceller never sets that flag on this input, so its figure is the
+non-adapted path.
+
+| Rate, frame, filter | ns/op | rt-fraction | adapted | allocs/op |
+|---|---|---|---|---|
+| 8 kHz, 80, 64 ms | 22265 to 22891 | 0.0023 | 1 | 0 |
+| 8 kHz, 80, 128 ms | 26548 to 27269 | 0.0027 | 1 | 0 |
+| 8 kHz, 80, 256 ms | 33232 to 34040 | 0.0034 | 0 | 0 |
+| 16 kHz, 160, 64 ms | 46907 to 47805 | 0.0048 | 1 | 0 |
+| 16 kHz, 160, 128 ms | 55335 to 56137 | 0.0056 | 1 | 0 |
+| 16 kHz, 160, 256 ms | 73551 to 74756 | 0.0075 | 1 | 0 |
+| 32 kHz, 320, 256 ms | 145740 to 150291 | 0.0150 | 1 | 0 |
+| 48 kHz, 480, 256 ms | 224824 to 234055 | 0.0234 | 1 | 0 |
+| 16 kHz, 320 (20 ms), 256 ms | 110119 to 111906 | 0.0056 | 1 | 0 |
+
+Target (`docs/acceptance/echo.md`): every 10 ms case at most 10% of the
+frame duration on the Mac. Met: the largest is 2.3% (48 kHz). No Linux VM
+numbers yet. The work per frame is nine FFTs of `2F` points plus loops
+over `M*2F` values; no profile-guided optimisation has been done.

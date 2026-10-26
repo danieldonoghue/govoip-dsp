@@ -765,3 +765,166 @@ RMS with attack and release time constants (500 ms and 1500 ms), and no
 rate limits. It met every criterion except P4 (3.64 dB). Its last code
 state is the commit "agc: check the ceiling and exact gain limits in more
 acceptance tests"; its measurements are in `docs/acceptance/agc.md`.
+
+## Acoustic echo canceller (`echo`, WP6)
+
+**Algorithm.** MDF, the multidelay block frequency-domain adaptive filter
+(Soo and Pang, 1990), in the alternately updated variant (AUMDF), with the
+variable learning rate of Valin (2007). Per frame of `F` samples, with
+`N = 2F` and `M` = filter length / `F` blocks:
+
+1. The microphone frame passes a DC notch and a pre-emphasis (0.9); the
+   far-end frame gets the same pre-emphasis and joins the last frame in
+   `x`, whose spectrum becomes block 0 of the far-end history `X`.
+2. Two filters run on `X`: the foreground (16-bit weights, gives the
+   output) and the background (32-bit weights, adapts). Their error
+   energies decide whether the background is copied to the foreground or
+   reset from it.
+3. The background adapts with a per-bin step from the leak estimate (how
+   much of the filter output is still in the error), the residual-to-error
+   ratio and the smoothed far-end power. Before the filter has "adapted",
+   a simpler step from the far-end to error energy ratio is used.
+4. Each frame, block 0 and one other block are constrained to a causal
+   response (two FFTs each): this is the AUMDF part.
+5. The output is the foreground error with de-emphasis.
+
+**Reference behaviour.** `mdf.c` with `FIXED_POINT` and `TWO_PATH`, one
+microphone and one loudspeaker. Nine FFTs of `N` points per frame (seven
+for `M = 1`).
+
+**Supported rates.** 8 and 16 kHz only (owner decision, 2026-10-26).
+Callers resample higher rates down first. The port accepts rates up to
+48 kHz and is bit-exact there, but the two reference defects below make
+the canceller weak at 32 and 48 kHz (see "Measured behaviour"). A
+correction for high rates would be an extension outside the compatibility
+path; none is built.
+
+**Parameters.** Frame size, filter length (rounded up to `M` whole frames),
+sampling rate. The rate sets `spec_average = F/rate`, `beta0 = 2F/rate`
+and `beta_max = F/(2·rate)` (Q15) and the notch radius (0.9 below 12 kHz,
+0.982 below 24 kHz, 0.992 above).
+
+**16-bit rate truncation.** `DIV32_16` casts its divisor to
+`spx_word16_t`, so the rate is truncated to 16 bits in those three
+constants (`mdf.c:1233-1236`). At 44.1 kHz it becomes -21436 and at 48 kHz
+-17536, which makes the constants negative:
+
+| Rate, frame | `int16(rate)` | `spec_average` | `beta0` | `beta_max` | Intended |
+|---|---|---|---|---|---|
+| 32000, 320 | 32000 | 327 | 655 | 163 | same |
+| 44100, 441 | -21436 | -674 | -1348 | -337 | 327, 655, 163 |
+| 48000, 480 | -17536 | -896 | -1793 | -448 | 327, 655, 163 |
+| 48000, 960 | -17536 | -1793 | -3587 | -896 | 655, 1310, 327 |
+
+The port reproduces this, and the 48 kHz fixtures match it. It is upstream
+behaviour of the fixed-point build, not a property of this port.
+
+**Internal resets.** The reference resets itself (as
+`speex_echo_state_reset`) when an energy sum is negative or the
+foreground error is much larger than the input for 50 frames. The energy
+sums are 32-bit (`mdf_inner_prod`). With 640- and 960-sample frames (20 ms
+at 32 and 48 kHz) and speech peaks of 16000, the error energy `See` and the
+echo-estimate energy `Syy` overflow, so the reference resets every few
+seconds in ordinary scenarios (2 to 22 resets per case in the fixtures; a
+temporary count over `farend` and `doubletalk` at 32 and 48 kHz with 20 ms
+frames found `See` negative 43 times and `Syy` 14 times). At 8 and 16 kHz
+the resets occur only in the `diverge` scenario.
+
+**Shifts outside [0, 31].** In C a shift by 32 or more is undefined. The
+sanitizer build reports such shifts in `FLOAT_EXTRACT32` (`pseudofloat.h:236`,
+from `mdf.c:1108`, exponent 32 and below), when `Sey` is near 0 and `Syy`
+is large. clang 19 (container) and Apple clang 21 (host) compile
+`FLOAT_EXTRACT16`, `FLOAT_EXTRACT32` and `FLOAT_DIV32_FLOAT` in `mdf.c` to
+scalar `LSLV`/`ASRV` on 32-bit registers, which take the count modulo 32,
+so the port uses the masked variants of `internal/fixed` there. A
+temporary count over all fixture cases found 53 frames with such an
+exponent, 3 of them where the two semantics give a different comparison;
+in all 3 the later clamp to `See/2` made the result equal, so the fixtures
+do not tell the two apart, and the disassembly is the evidence.
+`FLOAT_MUL32` in `weighted_spectral_mul_conj` differs between the two
+toolchains: clang 19 vectorises it for the interior bins (NEON
+`SSHL`/`USHL`, which saturate like Go's shifts) and keeps the edge bins
+scalar (modulo 32), while Apple clang 21 keeps it all scalar. So for a
+count outside [-31, 31] the C result depends on the compiler and the bin,
+and no single Go behaviour matches both builds. The port uses the unmasked
+`FloatMul32`, which equals clang 19's vector lanes. No fixture reaches
+such a count (the sanitizer reports none at `pseudofloat.h:243`). The
+owner accepted this on 2026-10-26: saturation is a documented deviation
+where the two reference compilers disagree, and is unreachable in the
+fixtures.
+
+**Divisions.** Every division the port makes, and why its divisor is not 0:
+
+| Site | Divisor | Why nonzero |
+|---|---|---|
+| `setRate` (`mdf.c:1233-1236`) | `int16(rate)` | `New` and `SetSampleRate` accept 8000 to 48000 Hz; none is a multiple of 65536 |
+| window (`mdf.c:468`) | `int16(N)` | `N = 2F` in [2, 4096] |
+| decay and `ss` (`mdf.c:482`, `:709`) | `int16(M)` | `New` keeps `M` in [1, 32767] |
+| initial `prop` (`mdf.c:492`) | `sum` | at least `prop[0]` = 22937 |
+| `mdf_adjust_prop` (`mdf.c:373`) | `prop_sum` | 1 plus non-negative terms, each below 32767, so in [1, 2^31) for `M` at most 32767 |
+| `FLOAT_DIV32(tmp32, See)` (alpha, `RER`, `adapt_rate`) | `See` | floored at `N*100/64` >= 3 (`mdf.c:1040`) before every use |
+| `FLOAT_DIV32(adapt_rate, power+10)` | `power[i]+10` | `power` stays >= 0: it starts at 0 and adds `Xf` >= 0, which is below 2^31 because the forward FFT is scaled by `1/N`, so `|X| <= 32767`; `TestDivisorInvariantsUnderExtremes` and `FuzzCanceller` check `power >= 0` and `Xf >= 0` after every frame |
+| `FLOAT_DIV32_FLOAT(r, e*(power+10))` | mantissa of `FLOAT_MUL32U` | `e = 8*Rf+1` is odd, so not 0, and `power+10 >= 10`; `FLOAT_MUL32U` of two nonzero values has `|m| >= 8192`. A negative `e` (from `Rf >= 2^28`) gives a negative mantissa, which the masked division handles as the compiled reference does |
+| `FLOAT_DIVU` | `b.m` | guarded in `internal/fixed`, as upstream: `b.m <= 0` returns 1 |
+
+**Measured behaviour.** From `go test ./echo -run TestScenarioMeasurements`
+(figures pinned in `echo/testdata/metrics.golden`, one line per case;
+definitions in `docs/acceptance/echo.md`). Ranges are over the six frame
+and filter combinations of each rate. ERLE and gains in dB, times in
+seconds at 0.5 s resolution (convergence "0.0" means the first window
+already reached 10 dB); -1 means not reached.
+
+| Scenario | Figure | 8 kHz | 16 kHz | 32 kHz | 48 kHz |
+|---|---|---|---|---|---|
+| `farend` | steady-state ERLE | 34.6 to 37.8 | 30.3 to 35.3 | 4.7 to 10.0 | 6.4 to 18.9 |
+| `farend` | convergence | 0.0 to 0.5 | 0.5 | 0.0 to 1.5 | 0.0 to 3.5 |
+| `ir_short` | ERLE | 33.6 to 36.9 | 25.9 to 26.4 | 17.7 to 20.4 | 13.8 to 15.1 |
+| `ir_long` | ERLE | 13.2 to 34.3 | 10.6 to 30.5 | 3.5 to 14.2 | 9.6 to 16.0 |
+| `doubletalk` | ERLE before double talk | 29.6 to 33.5 | 23.7 to 30.8 | 10.1 to 18.7 | 11.0 to 17.0 |
+| `doubletalk` | near-to-residual gain | 22.8 to 32.7 | 19.2 to 22.2 | 4.9 to 15.3 | 10.3 to 19.7 |
+| `silence` | ERLE, last segment | 34.6 to 36.3 | 29.0 to 34.8 | 4.9 to 10.0 | 13.1 to 19.8 |
+| `path_sudden` | ERLE before change | 32.5 to 36.5 | 27.2 to 34.8 | 8.8 to 16.6 | 12.2 to 19.0 |
+| `path_sudden` | ERLE after change | 30.1 to 35.0 | 23.6 to 29.8 | 3.5 to 31.8 | 3.8 to 15.6 |
+| `path_sudden` | reconvergence | 1.0 | 0.5 to 1.0 | 1.0 to 5.0 | -1 to 8.0 |
+| `path_gradual` | ERLE after the fade | 31.4 to 34.2 | 24.2 to 29.5 | 13.5 to 34.1 | 11.8 to 31.4 |
+| `misaligned_late` | ERLE | 0.5 to 1.0 | -0.1 to 0.0 | 0.1 to 0.3 | 0.3 to 0.6 |
+| `misaligned_early` | ERLE | 0.8 to 1.3 | -0.1 to 0.1 | -0.4 to 0.1 | 0.4 to 0.7 |
+| `diverge` | ERLE, last 4 s | 6.6 to 20.8 | 6.2 to 22.6 | 8.2 to 23.6 | 7.7 to 18.3 |
+| `reset` | ERLE after reset | 23.8 to 33.2 | 24.8 to 30.1 | 5.5 to 10.1 | 8.2 to 17.8 |
+| `rate_switch` | ERLE after switch | 29.3 to 32.1 | 29.8 to 35.1 | 7.1 to 10.5 | 14.2 to 17.7 |
+| `capture` | ERLE | 0.5 to 1.3 | -0.2 to 1.1 | 0.1 to 0.5 | 0.4 to 1.2 |
+| `nearend` | level change against `ref` | 0.0 | 0.0 | 0.0 | 0.0 |
+| `nearend` | level change against the raw near end | -1.0 | -0.1 | -0.1 | -0.3 |
+| `lownoise` | ERLE without threshold | 5.1 | 1.6 | 3.4 | 4.3 |
+
+Notes on the figures:
+
+- `misaligned_late` (echo beyond the filter) and `misaligned_early`
+  (acausal echo) are near 0 dB, as the stream alignment rules predict.
+- `capture` changes the queue on about 10% of frames (underruns and
+  overruns) to cover those code paths, so the alignment keeps jumping and
+  the filter does not converge. With the calls strictly alternating,
+  `TestCaptureEqualsDelayedCancel` shows that `Capture` equals `Cancel`
+  with the second-most-recent `Playback` frame, and measures 33.3 to 35.1
+  dB at 8 and 16 kHz.
+- `lownoise` (far end peak 200, about -44 dBFS) stays below the reference's
+  adaptation threshold (`Sxx > N*1000/64`, `mdf.c:1153`): the filter never
+  adapts, and the figure is the DC notch alone. Its echo is also below the
+  -50 dBFS ERLE window threshold, so it has no pre-registered ERLE.
+- `nearend` against `ref` is 0.0 by construction: `ref` is the same input
+  without the mic noise, and with a silent far end the filter does
+  nothing. The change against the raw near end is the DC notch.
+- The 32 kHz figures are lower than the 48 kHz ones despite the 48 kHz
+  constant truncation; the cause has not been investigated.
+
+**Speech.** `TestSpeechScenario` (LibriSpeech dev-clean, 16 kHz; skips when
+the files are absent) is reported in `docs/testing.md`.
+
+**Deviations.** None in the fixtures. For `FLOAT_MUL32` shift counts
+outside [-31, 31], which no fixture reaches, the port saturates as the
+clang 19 vector lanes do; the Apple clang build and clang 19's edge bins
+shift modulo 32 instead. The reference's warnings (`speex_warning`)
+are not printed or reported. `New` rejects configurations for which the
+reference would divide by zero or which exceed the documented limits.
+
+**Latency.** None: each call returns the processed frame.
