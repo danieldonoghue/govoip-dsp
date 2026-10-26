@@ -102,6 +102,13 @@ has it). Any literal whose result is out of range is reported in
 5. Every port of a `fixed_generic.h` or `arch.h` macro, and every pseudo-float
    operation without a loop, inlines (`-gcflags=-m`), checked by a test.
 6. All functions are allocation-free (they take and return values only).
+7. The doc comment of every public approximation (`Sqrt`, `Cos`, `CosNorm`,
+   `Exp`, `Atan`) states its maximum error against the correctly rounded
+   true value from `math`, measured over its whole documented domain, and
+   where that error is large. A test computes the error over the domain,
+   exhaustively or by an argument that covers every input, and fails if it
+   exceeds the stated figure. Each figure is the measured maximum, so
+   lowering it makes the test fail.
 
 ## Benchmark targets
 
@@ -130,3 +137,10 @@ call costs little. Criterion 5 now reads:
    `FloatLT`, `FloatMult`, `FloatAMult`, `FloatShl`, `FloatExtract16`,
    `FloatExtract32` and `FloatMul32` (`-gcflags=-m`), checked by a test. The
    other pseudo-float operations are benchmarked (see "Benchmark targets").
+
+### Criterion 7 added (WP0b, before its comment and test commits)
+
+The package did not say how far its approximations are from `math`, so a
+reader could not tell that they are not interchangeable. Criterion 7 makes
+each doc state the measured error and a test keep it true. It changes no
+behaviour and no other criterion.
