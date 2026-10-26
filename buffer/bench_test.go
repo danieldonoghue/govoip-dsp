@@ -93,8 +93,8 @@ func BenchmarkSPSCWriteRead(b *testing.B) {
 	}
 }
 
-// BenchmarkSPSCConsume drops a backlog with Consume(Len() - 80), keeping the
-// newest 80. Commit refills the backlog without copying, so both are O(1).
+// BenchmarkSPSCConsume times one cycle of WriteSlices, Commit (a refill with no
+// copy), Len and Consume(Len() - 80), plus a Consume of the 80 kept samples.
 func BenchmarkSPSCConsume(b *testing.B) {
 	for _, backlog := range []int{480, 4096} {
 		b.Run(fmt.Sprintf("keep_newest_80_of_%d", backlog), func(b *testing.B) {
@@ -111,6 +111,7 @@ func BenchmarkSPSCConsume(b *testing.B) {
 				}
 				s.Consume(80)
 			}
+			testutil.ReportFrameMetrics(b, backlog, 48000)
 		})
 	}
 }

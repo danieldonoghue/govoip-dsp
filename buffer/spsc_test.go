@@ -46,8 +46,8 @@ func (c *seqChecker) skip(n int) {
 	c.next += uint64(n)
 }
 
-// TestSeqCheckerDetects feeds the checker one lost, one duplicated and one
-// stale sample, each in an otherwise correct stream.
+// TestSeqCheckerDetects feeds the checker a lost, a duplicated and a stale
+// sample, and gaps one longer or shorter than a recorded drop.
 func TestSeqCheckerDetects(t *testing.T) {
 	good := make([]int16, 3000)
 	for i := range good {
@@ -101,7 +101,7 @@ func stressSamples() int {
 }
 
 // TestStressSPSC runs a real producer and consumer goroutine through each
-// capacity, with random chunk sizes and both access styles on each side.
+// capacity, with random chunks, both access styles and consumer drops.
 func TestStressSPSC(t *testing.T) {
 	t.Logf("GOMAXPROCS %d, race %v, %d samples per capacity", runtime.GOMAXPROCS(0), raceEnabled, stressSamples())
 	for _, capacity := range []int{1, 2, 3, 7, 64, 1000} {
@@ -133,7 +133,7 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 		}
 		return failed.Load()
 	}
-	var delivered, dropped int // consumer only; read after Wait
+	var delivered, dropped, keepDrops int // consumer only; read after Wait
 	var wg sync.WaitGroup
 	wg.Go(func() { // producer
 		rng := testutil.SplitMix64{State: seed}
@@ -176,13 +176,26 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 			n := 0
 			switch mode := rng.Intn(5); {
 			case mode == 4: // drop without reading, as after a stall
-				want := size
-				if rng.Intn(2) == 0 { // keep only the newest k samples
-					want = s.Len() - rng.Intn(2*s.Cap()+1)
+				want, keep, before := size, -1, 0
+				if rng.Intn(2) == 0 { // keep only the newest k samples, k mostly <= Len
+					before = s.Len()
+					keep = rng.Intn(before + 1)
+					if rng.Intn(4) == 0 {
+						keep = rng.Intn(2*s.Cap() + 1)
+					}
+					want = before - keep
 				}
 				n = s.Consume(want)
 				if n < 0 || n > max(want, 0) {
 					fail("Consume(%d) = %d", want, n)
+				}
+				if keep >= 0 {
+					if after := s.Len(); after < min(keep, before) {
+						fail("keeping the newest %d of %d left %d", keep, before, after)
+					}
+					if n > 0 {
+						keepDrops++
+					}
 				}
 				c.skip(n)
 				dropped += n
@@ -227,9 +240,9 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 	if delivered+dropped != total {
 		t.Errorf("%d delivered + %d dropped, want %d written", delivered, dropped, total)
 	}
-	t.Logf("%d delivered, %d dropped", delivered, dropped)
-	if dropped == 0 || delivered == 0 {
-		t.Errorf("%d delivered, %d dropped: the run did not exercise both", delivered, dropped)
+	t.Logf("%d delivered, %d dropped, %d keep-newest drops", delivered, dropped, keepDrops)
+	if dropped == 0 || delivered == 0 || keepDrops == 0 {
+		t.Errorf("%d delivered, %d dropped, %d keep-newest drops: the run missed a path", delivered, dropped, keepDrops)
 	}
 }
 
@@ -252,6 +265,30 @@ func TestResetSPSC(t *testing.T) {
 		t.Fatalf("after Reset the write view is %d+%d, want 7+0 as fresh", len(w1), len(w2))
 	}
 	stressSPSC(t, s, 50*1000, 1)
+}
+
+// TestSPSCDropExpiresReadView shows why a read view expires at Consume: the
+// producer reuses the dropped slots while the old view still points at them.
+func TestSPSCDropExpiresReadView(t *testing.T) {
+	s, err := NewSPSC(SPSCConfig{Capacity: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Write(ramp(0, 8))
+	first, second := s.ReadSlices()
+	held := slices.Concat(first, second)
+	if n := s.Consume(s.Len() - 3); n != 5 {
+		t.Fatalf("keep newest 3 of 8 dropped %d, want 5", n)
+	}
+	if n := s.Write(ramp(100, 5)); n != 5 {
+		t.Fatalf("Write into the dropped slots = %d, want 5", n)
+	}
+	if now := slices.Concat(first, second); slices.Equal(now, held) {
+		t.Fatalf("held view still reads %v; the producer did not reuse the dropped slots", now)
+	}
+	if got := readAll(s); !slices.Equal(got, []int16{5, 6, 7, 100, 101, 102, 103, 104}) {
+		t.Fatalf("read %v after the drop and refill", got)
+	}
 }
 
 // TestNoAllocsSPSC covers every method on wrap, full, empty and clipping
