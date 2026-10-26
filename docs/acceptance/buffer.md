@@ -89,7 +89,8 @@ compare-and-swap loop or a lock, both forbidden (requirements §16).
 
 - **S1. Wait-free by construction.** Every method does a bounded amount of
   work: at most two atomic loads, at most one atomic store and one copy of
-  at most len(p) or `Cap` samples. No mutex, no `sync` import, no
+  at most len(p) or `Cap` samples. The exception is `Reset`, which needs
+  both sides quiescent and stores both indices. No mutex, no `sync` import, no
   compare-and-swap, swap or add, no loop that retries. A test parses the
   package source and fails on a `sync` import or any call to
   `CompareAndSwap`, `Swap` or `Add`.
@@ -149,3 +150,11 @@ Targets:
    is what the caller filled, so `Commit` now clips to it. No test passed or
    failed because of the old wording; the change makes the API safer and
    adds a requirement that the tests must check.
+2. **Criterion S1, `Reset`** (clarification, after the first
+   implementation commit). "At most one atomic store" does not hold for
+   `SPSC.Reset`, which stores both indices. `Reset` is not a per-side
+   operation: it requires both sides to be quiescent and synchronised with
+   the caller, so it cannot delay either side. S1 now names it as the
+   exception. The same review found that `TestWaitFreeSource` missed `goto`
+   and package-level atomic functions such as `atomic.AddUint32`; the test
+   now rejects both, as S1 intended.
