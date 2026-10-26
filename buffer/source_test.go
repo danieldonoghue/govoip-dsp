@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-// TestWaitFreeSource checks the package source for the constructs that could
-// block or retry: a sync import, read-modify-write atomics, and any loop.
+// TestWaitFreeSource checks the package source for constructs that could block
+// or retry: a sync import, read-modify-write atomics, and any loop or goto.
 func TestWaitFreeSource(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {
@@ -38,12 +38,17 @@ func TestWaitFreeSource(t *testing.T) {
 		}
 		ast.Inspect(f, func(n ast.Node) bool {
 			switch n := n.(type) {
-			case *ast.ForStmt, *ast.RangeStmt, *ast.GoStmt, *ast.SelectStmt, *ast.SendStmt:
+			case *ast.ForStmt, *ast.RangeStmt, *ast.GoStmt, *ast.SelectStmt, *ast.SendStmt, *ast.LabeledStmt:
 				t.Errorf("%s: %T at %v", name, n, fset.Position(n.Pos()))
+			case *ast.BranchStmt:
+				if n.Tok == token.GOTO {
+					t.Errorf("%s: goto at %v", name, fset.Position(n.Pos()))
+				}
 			case *ast.SelectorExpr:
-				switch n.Sel.Name {
-				case "CompareAndSwap", "Swap", "Add", "And", "Or":
-					t.Errorf("%s: read-modify-write atomic %s at %v", name, n.Sel.Name, fset.Position(n.Pos()))
+				for _, rmw := range []string{"CompareAndSwap", "Swap", "Add", "And", "Or"} {
+					if strings.HasPrefix(n.Sel.Name, rmw) {
+						t.Errorf("%s: read-modify-write atomic %s at %v", name, n.Sel.Name, fset.Position(n.Pos()))
+					}
 				}
 			case *ast.UnaryExpr:
 				if n.Op == token.ARROW {

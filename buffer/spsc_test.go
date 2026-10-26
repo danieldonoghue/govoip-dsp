@@ -86,16 +86,19 @@ func TestStressSPSC(t *testing.T) {
 	t.Logf("GOMAXPROCS %d, race %v, %d samples per capacity", runtime.GOMAXPROCS(0), raceEnabled, stressSamples())
 	for _, capacity := range []int{1, 2, 3, 7, 64, 1000} {
 		t.Run(fmt.Sprint(capacity), func(t *testing.T) {
-			stressSPSC(t, capacity, stressSamples(), testutil.Seed(fmt.Sprint("stress", capacity)))
+			s, err := NewSPSC(SPSCConfig{Capacity: capacity})
+			if err != nil {
+				t.Fatal(err)
+			}
+			stressSPSC(t, s, stressSamples(), testutil.Seed(fmt.Sprint("stress", capacity)))
 		})
 	}
 }
 
-func stressSPSC(t *testing.T, capacity, total int, seed uint64) {
-	s, err := NewSPSC(SPSCConfig{Capacity: capacity})
-	if err != nil {
-		t.Fatal(err)
-	}
+// stressSPSC moves total samples through s. Chunks go up to 2·Cap+3 samples,
+// but at most 300, so large capacities still see thousands of operations.
+func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
+	maxChunk := min(2*s.Cap()+3, 300)
 	var failed atomic.Bool
 	fail := func(format string, args ...any) {
 		t.Helper()
@@ -113,7 +116,7 @@ func stressSPSC(t *testing.T, capacity, total int, seed uint64) {
 	var wg sync.WaitGroup
 	wg.Go(func() { // producer
 		rng := testutil.SplitMix64{State: seed}
-		p := make([]int16, 2*capacity+3)
+		p := make([]int16, maxChunk)
 		for sent := 0; sent < total && !stalled(); {
 			size := min(rng.Intn(len(p)+1), total-sent)
 			n := 0
@@ -145,7 +148,7 @@ func stressSPSC(t *testing.T, capacity, total int, seed uint64) {
 	})
 	wg.Go(func() { // consumer
 		rng := testutil.SplitMix64{State: ^seed}
-		p := make([]int16, 2*capacity+3)
+		p := make([]int16, maxChunk)
 		var c seqChecker
 		for int(c.next) < total && !stalled() {
 			size := rng.Intn(len(p) + 1)
@@ -158,16 +161,17 @@ func stressSPSC(t *testing.T, capacity, total int, seed uint64) {
 			} else {
 				r1, r2 := s.ReadSlices()
 				n = min(size, len(r1)+len(r2))
-				n1 := min(n, len(r1))
-				if err := c.peek(r1[:n1]); err != nil {
+				view := slices.Concat(r1, r2)[:n]
+				if err := c.peek(view); err != nil {
 					fail("ReadSlices before yield: %v", err)
 				}
 				runtime.Gosched() // hold the view while the producer runs
+				n1 := min(n, len(r1))
 				if err := c.take(r1[:n1]); err != nil {
-					fail("ReadSlices after yield: %v", err)
+					fail("ReadSlices first segment after yield: %v", err)
 				}
 				if err := c.take(r2[:n-n1]); err != nil {
-					fail("ReadSlices second segment: %v", err)
+					fail("ReadSlices second segment after yield: %v", err)
 				}
 				if k := s.Consume(n); k != n {
 					fail("Consume(%d) = %d", n, k)
@@ -184,8 +188,8 @@ func stressSPSC(t *testing.T, capacity, total int, seed uint64) {
 	}
 }
 
-// TestResetSPSC checks Reset between quiescent runs: the stream restarts and
-// matches a fresh buffer.
+// TestResetSPSC resets a used, wrapped SPSC, checks it is laid out as a fresh
+// one, and stresses it with two goroutines.
 func TestResetSPSC(t *testing.T) {
 	s, err := NewSPSC(SPSCConfig{Capacity: 7})
 	if err != nil {
@@ -202,9 +206,7 @@ func TestResetSPSC(t *testing.T) {
 	if len(w1) != 7 || len(w2) != 0 {
 		t.Fatalf("after Reset the write view is %d+%d, want 7+0 as fresh", len(w1), len(w2))
 	}
-	var wg sync.WaitGroup
-	wg.Go(func() { stressSPSC(t, 7, 50*1000, 1) })
-	wg.Wait()
+	stressSPSC(t, s, 50*1000, 1)
 }
 
 // TestNoAllocsSPSC covers every method on wrap, full, empty and clipping

@@ -46,7 +46,8 @@ func BenchmarkRingWriteRead(b *testing.B) {
 	}
 }
 
-func BenchmarkRingViews(b *testing.B) {
+// BenchmarkRingWriteSlices is a write/read cycle through the two views.
+func BenchmarkRingWriteSlices(b *testing.B) {
 	for _, c := range benchCases {
 		b.Run(c.name, func(b *testing.B) {
 			r := newRing(b, c.capacity, Reject)
@@ -91,9 +92,13 @@ func BenchmarkSPSCWriteRead(b *testing.B) {
 	}
 }
 
-// BenchmarkSPSCHandoff moves 480-sample frames from a producer goroutine to
-// the benchmark goroutine; each side yields when it cannot make progress.
-func BenchmarkSPSCHandoff(b *testing.B) {
+// BenchmarkSPSCRead/handoff_480 reads 480-sample frames that a producer
+// goroutine writes; each side yields when it cannot make progress.
+func BenchmarkSPSCRead(b *testing.B) {
+	b.Run("handoff_480", benchHandoff)
+}
+
+func benchHandoff(b *testing.B) {
 	const chunk = 480
 	s, err := NewSPSC(SPSCConfig{Capacity: 4 * chunk})
 	if err != nil {
