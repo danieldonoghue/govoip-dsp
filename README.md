@@ -5,9 +5,9 @@ streaming media: resampling, echo cancellation, noise suppression with voice
 activity detection, and automatic gain control.
 
 **Status: under construction.** The resampler (`resample`), the ring
-buffers (`buffer`) and noise suppression with VAD (`preprocess`) are usable;
-the echo canceller and AGC are still in progress. See the table below and
-[docs/status.md](docs/status.md).
+buffers (`buffer`), noise suppression with VAD (`preprocess`) and the AGC
+(`agc`) are usable; the echo canceller is still in progress. See the table
+below and [docs/status.md](docs/status.md).
 
 ## Design
 
@@ -19,8 +19,7 @@ the echo canceller and AGC are still in progress. See the table below and
   (commit `1b28a0f6`), checked against fixtures from a C reference harness.
   Today the resampler, the preprocessor, the shared fixed-point arithmetic
   (`internal/fixed`) and the FFT (`internal/fft`) exist, and all four are
-  bit-exact. The ring
-  buffers are an own design, and so will be the AGC.
+  bit-exact. The ring buffers and the AGC are own designs.
 - **Real-time safety (requirement).** No allocation, locking or blocking on
   the per-frame path, each to be verified by tests
   ([requirements §16](docs/requirements.md#16-real-time-and-memory-safety-rules)).
@@ -36,7 +35,7 @@ the echo canceller and AGC are still in progress. See the table below and
 | Resampler | `resample` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Ring buffer | `buffer` | Validated (own design; lock-free SPSC variant) |
 | FFT | `internal/fft` | Validated (bit-exact with the harness) |
-| AGC | `agc` | Planned |
+| AGC | `agc` | Validated (own design, behavioural criteria) |
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Echo canceller | `echo` | Planned |
 
