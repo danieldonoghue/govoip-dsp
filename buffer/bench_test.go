@@ -1,6 +1,7 @@
 package buffer
 
 import (
+	"fmt"
 	"runtime"
 	"testing"
 
@@ -88,6 +89,28 @@ func BenchmarkSPSCWriteRead(b *testing.B) {
 				}
 			}
 			testutil.ReportFrameMetrics(b, c.chunk, c.rate)
+		})
+	}
+}
+
+// BenchmarkSPSCConsume drops a backlog with Consume(Len() - 80), keeping the
+// newest 80. Commit refills the backlog without copying, so both are O(1).
+func BenchmarkSPSCConsume(b *testing.B) {
+	for _, backlog := range []int{480, 4096} {
+		b.Run(fmt.Sprintf("keep_newest_80_of_%d", backlog), func(b *testing.B) {
+			s, err := NewSPSC(SPSCConfig{Capacity: backlog})
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				s.WriteSlices()
+				s.Commit(backlog)
+				if s.Consume(s.Len()-80) != backlog-80 {
+					b.Fatal("short drop")
+				}
+				s.Consume(80)
+			}
 		})
 	}
 }

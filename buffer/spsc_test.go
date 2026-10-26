@@ -40,6 +40,12 @@ func (c *seqChecker) take(p []int16) error {
 	return err
 }
 
+// skip records n samples dropped without reading: the next one expected is n
+// further on.
+func (c *seqChecker) skip(n int) {
+	c.next += uint64(n)
+}
+
 // TestSeqCheckerDetects feeds the checker one lost, one duplicated and one
 // stale sample, each in an otherwise correct stream.
 func TestSeqCheckerDetects(t *testing.T) {
@@ -66,6 +72,20 @@ func TestSeqCheckerDetects(t *testing.T) {
 			t.Errorf("%s sample not detected", name)
 		} else {
 			t.Logf("%s: %v", name, err)
+		}
+	}
+	// A drop of 1000 samples recorded after sample 999: the gap in the stream
+	// must be exactly 1000.
+	gaps := map[string]int{"gap equal to the drop": 1000, "gap one longer": 1001, "gap one shorter": 999}
+	for name, gap := range gaps {
+		var c seqChecker
+		err := c.take(good[:1000])
+		c.skip(1000)
+		if err == nil {
+			err = c.take(good[1000+gap:])
+		}
+		if (err == nil) != (gap == 1000) {
+			t.Errorf("%s: checker returned %v", name, err)
 		}
 	}
 }
@@ -113,6 +133,7 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 		}
 		return failed.Load()
 	}
+	var delivered, dropped int // consumer only; read after Wait
 	var wg sync.WaitGroup
 	wg.Go(func() { // producer
 		rng := testutil.SplitMix64{State: seed}
@@ -153,12 +174,25 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 		for int(c.next) < total && !stalled() {
 			size := rng.Intn(len(p) + 1)
 			n := 0
-			if rng.Intn(2) == 0 {
+			switch mode := rng.Intn(5); {
+			case mode == 4: // drop without reading, as after a stall
+				want := size
+				if rng.Intn(2) == 0 { // keep only the newest k samples
+					want = s.Len() - rng.Intn(2*s.Cap()+1)
+				}
+				n = s.Consume(want)
+				if n < 0 || n > max(want, 0) {
+					fail("Consume(%d) = %d", want, n)
+				}
+				c.skip(n)
+				dropped += n
+			case mode < 2:
 				n = s.Read(p[:size])
 				if err := c.take(p[:n]); err != nil {
 					fail("Read: %v", err)
 				}
-			} else {
+				delivered += n
+			default:
 				r1, r2 := s.ReadSlices()
 				n = min(size, len(r1)+len(r2))
 				view := slices.Concat(r1, r2)[:n]
@@ -176,6 +210,7 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 				if k := s.Consume(n); k != n {
 					fail("Consume(%d) = %d", n, k)
 				}
+				delivered += n
 			}
 			if n == 0 {
 				runtime.Gosched()
@@ -183,8 +218,18 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 		}
 	})
 	wg.Wait()
-	if !failed.Load() && s.Len() != 0 {
+	if failed.Load() {
+		return
+	}
+	if s.Len() != 0 {
 		t.Errorf("Len %d after the consumer took every sample", s.Len())
+	}
+	if delivered+dropped != total {
+		t.Errorf("%d delivered + %d dropped, want %d written", delivered, dropped, total)
+	}
+	t.Logf("%d delivered, %d dropped", delivered, dropped)
+	if dropped == 0 || delivered == 0 {
+		t.Errorf("%d delivered, %d dropped: the run did not exercise both", delivered, dropped)
 	}
 }
 
@@ -235,6 +280,10 @@ func TestNoAllocsSPSC(t *testing.T) {
 		s.Read(nil)
 		_ = s.Len() + s.Free() + s.Cap()
 		s.Read(out[:3])
+		s.Write(in[:50])
+		s.Consume(10)          // drop with no read view
+		s.Consume(s.Len() - 7) // keep the newest 7
+		s.Consume(s.Len() - 500)
 		if s.Len() > 90 {
 			s.Reset()
 		}

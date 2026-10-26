@@ -78,7 +78,7 @@ func (c *checker) next(n int) []int16 {
 func (c *checker) op(code byte, n int) {
 	t := c.t
 	t.Helper()
-	switch code % 10 {
+	switch code % 12 {
 	case 0: // Write
 		c.pending = nil
 		p := c.next(n)
@@ -148,6 +148,19 @@ func (c *checker) op(code byte, n int) {
 		}
 		c.m.write(c.pending[:want])
 		c.pending = c.pending[want:]
+	case 10: // drop the oldest samples without reading them
+		if got, want := c.b.Consume(n), len(c.m.read(n)); got != want {
+			t.Fatalf("Consume(%d) without a view = %d, want %d", n, got, want)
+		}
+	case 11: // keep only the newest k samples, k from -1 to Len()+1
+		old := c.b.Len()
+		k := n%(old+3) - 1
+		if got, want := c.b.Consume(old-k), len(c.m.read(old-k)); got != want {
+			t.Fatalf("Consume(Len() - %d) = %d, want %d", k, got, want)
+		}
+		if c.b.Len() != max(0, min(k, old)) {
+			t.Fatalf("keeping the newest %d of %d left Len %d", k, old, c.b.Len())
+		}
 	}
 	c.check()
 }
