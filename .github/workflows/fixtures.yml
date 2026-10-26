@@ -1,0 +1,46 @@
+# Regenerates the SpeexDSP reference fixtures in the pinned container on a
+# native arm64 runner and checks them against the committed ones. It never
+# pushes; with "upload" set it attaches the regenerated testdata as an
+# artifact for review.
+name: fixtures
+
+on:
+  workflow_dispatch:
+    inputs:
+      components:
+        description: "Space-separated components (empty for all)"
+        required: false
+        default: ""
+      upload:
+        description: "Upload the regenerated testdata as an artifact"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.x"
+      - name: regenerate in the container
+        env:
+          HARNESS_MODE: container
+          COMPONENTS: ${{ inputs.components }}
+        run: |
+          # shellcheck disable=SC2086 # word splitting is intended
+          sh reference/fixtures.sh $COMPONENTS
+      - name: compare with the committed fixtures
+        run: git diff --stat --exit-code -- testdata/speexdsp
+      - name: sanitizer logs
+        if: always()
+        run: cat reference/build/container/ubsan/*.log || true
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() && inputs.upload }}
+        with:
+          name: speexdsp-fixtures
+          path: testdata/speexdsp

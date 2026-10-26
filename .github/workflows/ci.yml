@@ -1,0 +1,90 @@
+# Continuous integration (docs/requirements.md §10). Fixture regeneration is
+# the separate, manually triggered fixtures.yml.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  STATICCHECK: honnef.co/go/tools/cmd/staticcheck@v0.8.2
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, Go ${{ matrix.go }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        go: ["1.26.x", "1.27.x"]
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+      - name: gofmt
+        shell: bash
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then echo "gofmt needed on:"; echo "$out"; exit 1; fi
+      - name: vet
+        run: go vet ./...
+      - name: staticcheck
+        run: go run ${{ env.STATICCHECK }} ./...
+      - name: test
+        run: go test ./...
+      - name: test (purego)
+        run: go test -tags purego ./...
+      - name: benchmarks (smoke, timings not published)
+        run: go test -run "^$" -bench . -benchtime 1x ./...
+
+  race:
+    name: race (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.x"
+      # On Linux the race detector needs cgo and a C toolchain; this is the
+      # development-only exception in requirements §8.
+      - name: race
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
+
+  cross:
+    name: cross-compile (build-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.x"
+      - name: build-only targets (compiled, never run)
+        run: make cross
+
+  deps:
+    name: native-dependency guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.x"
+      - name: no cgo, no unexpected modules
+        run: make deps-guard
+      - name: build without cgo
+        env:
+          CGO_ENABLED: "0"
+        run: go build ./...
