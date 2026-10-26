@@ -507,6 +507,13 @@ func TestReferenceCoverage(t *testing.T) {
 		}
 	}
 	want("q0_frac_270000001_270000000", "i", 0, 1, 270000001, 270000000, true)
+	for _, q := range []int{0, 10} {
+		name := fmt.Sprintf("wrap_q%d_frac_4294967294_4294967295", q)
+		want(name, "i", q, 1, 4294967294, 4294967295, true)
+		if have[name].MaxCalls != 50 {
+			t.Errorf("case %s: max_calls %d, want 50", name, have[name].MaxCalls)
+		}
+	}
 	want("mixed_q5_44100_48000_2ch", "m", 5, 2, 44100, 48000, false)
 	want("mixed_q10_48000_16000_3ch", "m", 10, 3, 48000, 16000, false)
 	want("splitf_q5_44100_48000_2ch", "g", 5, 2, 44100, 48000, false)
