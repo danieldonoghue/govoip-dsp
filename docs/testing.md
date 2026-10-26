@@ -240,8 +240,8 @@ bits everywhere. `internal/testutil` uses integer arithmetic or IEEE basic
 operations with explicit rounding, and its own sine (`dsin`) instead of
 `math.Sin`. `TestGeneratorsAreDeterministic` pins SHA-256 hashes recorded on
 darwin/arm64; the same test binary passes on linux/arm64 (container) and
-linux/amd64 (emulated). CI is configured to repeat it natively on all four
-runners; it has not run yet.
+linux/amd64 (emulated). CI repeats it natively on all four runners, where
+it passes.
 
 ## Race detector and short mode
 

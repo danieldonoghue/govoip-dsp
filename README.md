@@ -16,8 +16,9 @@ No public package is usable yet. See the table below and
 - **SpeexDSP compatibility (goal).** The resampler, echo canceller and
   preprocessor are to be bit-exact ports of SpeexDSP 1.2.1, fixed-point build
   (commit `1b28a0f6`), checked against fixtures from a C reference harness.
-  Today only the shared fixed-point arithmetic (`internal/fixed`) exists,
-  and it is bit-exact. The ring buffer and the AGC will be own designs.
+  Today the shared fixed-point arithmetic (`internal/fixed`) and the FFT
+  (`internal/fft`) exist, and both are bit-exact. The ring buffer and the
+  AGC will be own designs.
 - **Real-time safety (requirement).** No allocation, locking or blocking on
   the per-frame path, each to be verified by tests
   ([requirements §16](docs/requirements.md#16-real-time-and-memory-safety-rules)).
@@ -32,7 +33,7 @@ No public package is usable yet. See the table below and
 | Test support | `internal/testutil` | Implemented |
 | Resampler | `resample` | Planned |
 | Ring buffer | `buffer` | Planned |
-| FFT | `internal/fft` | Planned |
+| FFT | `internal/fft` | Validated (bit-exact with the harness) |
 | AGC | `agc` | Planned |
 | Noise suppression and VAD | `preprocess` | Planned |
 | Echo canceller | `echo` | Planned |

@@ -50,8 +50,8 @@ architecture.
 
 - **linux/amd64 container.** Matches the second reference environment's
   architecture, but runs only under emulation on the Mac, and emulation may
-  hide CPU features that select libm variants. Open question for the owner
-  in `docs/status.md`.
+  hide CPU features that select libm variants. The owner chose linux/arm64
+  (`docs/status.md`, "Owner decisions").
 - **GCC instead of clang.** Equally valid C, but the host compiler is clang,
   so a clang container keeps one compiler family and isolates OS and libm as
   the variables.
