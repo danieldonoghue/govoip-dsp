@@ -96,6 +96,11 @@
 //     compiled in the fixed-point build is out of range (docs/testing.md).
 //   - Word2IntFloat32 and Word2IntFloat64 map NaN to 0 (requirements §3).
 //
+// The masked variants VShr32Masked, FloatExtract16Masked,
+// FloatExtract32Masked and FloatDiv32FloatMasked take shift counts modulo
+// 32, as the scalar instructions the reference build compiles those shifts
+// in mdf.c to do, so they match it for every exponent (masked.go).
+//
 // Signed overflow wraps in both, since the harness builds with -fwrapv, and
 // left shifts of negative values are two's-complement shifts in both.
 //
