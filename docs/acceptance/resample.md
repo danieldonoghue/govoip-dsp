@@ -379,4 +379,9 @@ Targets:
       strong upsampling (for example 1:1000 with 3·10^6 input frames) the
       true need is larger, and a call then cannot consume all its input.
       Upstream has the same limit on one call.
+14. **Rename (owner decision, 2026-10-26).** `MaxOut` is renamed `OutLen`,
+    "the output length to offer one call", because for `inFrames` > 0 a
+    call writes at most one frame less than the value. The criteria of
+    changes 9 to 13 apply to `OutLen` unchanged; their text keeps the old
+    name as history. The tests are `TestOutLen*` and `FuzzOutLen`.
 

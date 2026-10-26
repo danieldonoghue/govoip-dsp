@@ -71,7 +71,7 @@ if err != nil {
 	log.Fatal(err)
 }
 in := make([]int16, inRate*frameMs/1000) // one 20 ms frame
-out := make([]int16, r.MaxOut(len(in)))  // always large enough for one call
+out := make([]int16, r.OutLen(len(in)))  // always large enough for one call
 read, written, err := r.Process(in, out)
 ```
 

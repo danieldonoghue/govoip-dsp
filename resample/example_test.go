@@ -7,7 +7,7 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/resample"
 )
 
-// Converts one 20 ms frame of 8 kHz telephony audio to 16 kHz. MaxOut sizes
+// Converts one 20 ms frame of 8 kHz telephony audio to 16 kHz. OutLen sizes
 // the output so that one call always consumes the whole frame.
 func ExampleResampler_Process() {
 	const inRate, outRate, frameMs = 8000, 16000, 20
@@ -19,7 +19,7 @@ func ExampleResampler_Process() {
 		log.Fatal(err)
 	}
 	in := make([]int16, inRate*frameMs/1000) // one 20 ms frame
-	out := make([]int16, r.MaxOut(len(in)))  // always large enough for one call
+	out := make([]int16, r.OutLen(len(in)))  // always large enough for one call
 	read, written, err := r.Process(in, out)
 	if err != nil {
 		log.Fatal(err)
@@ -30,8 +30,8 @@ func ExampleResampler_Process() {
 }
 
 // Converts interleaved stereo from 48 kHz to 16 kHz in 10 ms frames.
-// MaxOut counts frames per channel, so the interleaved buffer holds
-// MaxOut(frames) * channels samples.
+// OutLen counts frames per channel, so the interleaved buffer holds
+// OutLen(frames) * channels samples.
 func ExampleResampler_Process_stereo() {
 	const inRate, outRate, channels, frameMs = 48000, 16000, 2, 10
 
@@ -43,15 +43,15 @@ func ExampleResampler_Process_stereo() {
 	}
 	frames := inRate * frameMs / 1000    // 480 frames per channel
 	in := make([]int16, frames*channels) // 960 interleaved samples
-	maxOut := r.MaxOut(frames)           // frames per channel
-	out := make([]int16, maxOut*channels)
+	outLen := r.OutLen(frames)           // frames per channel
+	out := make([]int16, outLen*channels)
 	read, written, err := r.Process(in, out)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("MaxOut(%d) = %d frames per channel, buffer of %d samples\n", frames, maxOut, len(out))
+	fmt.Printf("OutLen(%d) = %d frames per channel, buffer of %d samples\n", frames, outLen, len(out))
 	fmt.Printf("read %d frames, wrote %d frames per channel\n", read, written)
 	// Output:
-	// MaxOut(480) = 161 frames per channel, buffer of 322 samples
+	// OutLen(480) = 161 frames per channel, buffer of 322 samples
 	// read 480 frames, wrote 160 frames per channel
 }

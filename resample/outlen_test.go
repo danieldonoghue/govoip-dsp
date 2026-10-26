@@ -8,8 +8,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
 
-// maxOutSignal is the input every MaxOut test draws from.
-var maxOutSignal = testutil.WhiteNoise(256*1024, 32767, testutil.Seed("maxout"))
+// outLenSignal is the input every OutLen test draws from.
+var outLenSignal = testutil.WhiteNoise(256*1024, 32767, testutil.Seed("maxout"))
 
 // channelsInSync reports whether every channel has the same position state,
 // so that the interleaved count of the last channel is every channel's.
@@ -23,27 +23,27 @@ func channelsInSync(r *Resampler) bool {
 	return true
 }
 
-// maxOutChecker runs process calls sized by MaxOut and checks the
+// outLenChecker runs process calls sized by OutLen and checks the
 // properties of docs/acceptance/resample.md, change 9.
-type maxOutChecker struct {
+type outLenChecker struct {
 	t         testing.TB
 	r         *Resampler
 	pos       int
-	slack     int // worst MaxOut minus frames written, where tightness applies
+	slack     int // worst OutLen minus frames written, where tightness applies
 	zeroSlack int // worst slack in the zero-output state
 }
 
 // call offers n frames per channel through method via (see processWith)
-// with an output of exactly MaxOut(n) frames per channel.
-func (c *maxOutChecker) call(n, via int) {
+// with an output of exactly OutLen(n) frames per channel.
+func (c *outLenChecker) call(n, via int) {
 	t, r := c.t, c.r
 	t.Helper()
 	nch := r.Channels()
-	if (c.pos+n)*nch > len(maxOutSignal) {
+	if (c.pos+n)*nch > len(outLenSignal) {
 		c.pos = 0
 	}
-	in := maxOutSignal[c.pos*nch : (c.pos+n)*nch]
-	m := r.MaxOut(n)
+	in := outLenSignal[c.pos*nch : (c.pos+n)*nch]
+	m := r.OutLen(n)
 	tight := (nch == 1 || channelsInSync(r)) && r.kernel != kernelZero
 	zero := r.kernel == kernelZero
 	var read, wrote int
@@ -76,10 +76,10 @@ func (c *maxOutChecker) call(n, via int) {
 		}
 	}
 	if read != n {
-		t.Fatalf("method %d: offered %d frames and MaxOut %d output frames, consumed %d", via, n, m, read)
+		t.Fatalf("method %d: offered %d frames and OutLen %d output frames, consumed %d", via, n, m, read)
 	}
 	if wrote > m {
-		t.Fatalf("method %d: wrote %d frames, MaxOut %d", via, wrote, m)
+		t.Fatalf("method %d: wrote %d frames, OutLen %d", via, wrote, m)
 	}
 	want := 0
 	if n > 0 {
@@ -91,7 +91,7 @@ func (c *maxOutChecker) call(n, via int) {
 		tight = false
 	}
 	if tight && m-wrote != want {
-		t.Fatalf("method %d: offered %d frames, MaxOut %d, wrote %d: slack %d, want %d", via, n, m, wrote, m-wrote, want)
+		t.Fatalf("method %d: offered %d frames, OutLen %d, wrote %d: slack %d, want %d", via, n, m, wrote, m-wrote, want)
 	}
 	if tight {
 		c.slack = max(c.slack, m-wrote)
@@ -101,11 +101,11 @@ func (c *maxOutChecker) call(n, via int) {
 	c.pos += n
 }
 
-var maxOutSizes = []int{0, 1, 2, 3, 7, 80, 160, 161, 331, 441, 480, 960, 1160}
+var outLenSizes = []int{0, 1, 2, 3, 7, 80, 160, 161, 331, 441, 480, 960, 1160}
 
-// TestMaxOutMatrix checks soundness and tightness over every quality and
+// TestOutLenMatrix checks soundness and tightness over every quality and
 // rate pair of the fixture matrix, the fractional ratios, and stereo.
-func TestMaxOutMatrix(t *testing.T) {
+func TestOutLenMatrix(t *testing.T) {
 	rates := []int{8000, 16000, 24000, 32000, 44100, 48000, 96000}
 	var cfgs []Config
 	for q := 0; q <= 10; q++ {
@@ -126,19 +126,19 @@ func TestMaxOutMatrix(t *testing.T) {
 	}
 	worst := 0
 	for i, cfg := range cfgs {
-		c := &maxOutChecker{t: t, r: mustNew(t, cfg)}
+		c := &outLenChecker{t: t, r: mustNew(t, cfg)}
 		rng := testutil.SplitMix64{State: uint64(i)}
 		for k := range 40 {
-			c.call(maxOutSizes[rng.Intn(len(maxOutSizes))], k%viaCount)
+			c.call(outLenSizes[rng.Intn(len(outLenSizes))], k%viaCount)
 		}
 		worst = max(worst, c.slack)
 	}
 	t.Logf("%d configurations, worst slack %d", len(cfgs), worst)
 }
 
-// TestMaxOutEvents covers magic samples after filter changes, Reset,
+// TestOutLenEvents covers magic samples after filter changes, Reset,
 // SkipZeros and the zero-output state after rejected changes.
-func TestMaxOutEvents(t *testing.T) {
+func TestOutLenEvents(t *testing.T) {
 	type event struct {
 		name string
 		f    func(r *Resampler)
@@ -162,13 +162,13 @@ func TestMaxOutEvents(t *testing.T) {
 		for seed := range 30 {
 			rng := testutil.SplitMix64{State: uint64(seed*10 + ch)}
 			r := mustNew(t, Config{Channels: ch, InRate: 48000, OutRate: 16000, Quality: 10})
-			c := &maxOutChecker{t: t, r: r}
+			c := &outLenChecker{t: t, r: r}
 			for range 60 {
 				if rng.Intn(4) == 0 {
 					e := events[rng.Intn(len(events))]
 					e.f(r)
 				}
-				c.call(maxOutSizes[rng.Intn(len(maxOutSizes))], rng.Intn(viaCount))
+				c.call(outLenSizes[rng.Intn(len(outLenSizes))], rng.Intn(viaCount))
 			}
 			worstSlack = max(worstSlack, c.slack)
 			worstZero = max(worstZero, c.zeroSlack)
@@ -177,59 +177,59 @@ func TestMaxOutEvents(t *testing.T) {
 	t.Logf("worst slack %d; in the zero-output state %d", worstSlack, worstZero)
 }
 
-// TestMaxOutMagicPending checks a case where pending magic samples alone
-// produce output: with no input offered, MaxOut is still positive.
-func TestMaxOutMagicPending(t *testing.T) {
+// TestOutLenMagicPending checks a case where pending magic samples alone
+// produce output: with no input offered, OutLen is still positive.
+func TestOutLenMagicPending(t *testing.T) {
 	r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 48000, Quality: 10})
-	c := &maxOutChecker{t: t, r: r}
+	c := &outLenChecker{t: t, r: r}
 	c.call(800, viaProcess)
 	r.SetQuality(0)
 	if r.magicSamples[0] == 0 {
 		t.Fatal("no magic samples pending")
 	}
-	if m := r.MaxOut(0); m == 0 {
-		t.Fatalf("MaxOut(0) = 0 with %d magic samples pending", r.magicSamples[0])
+	if m := r.OutLen(0); m == 0 {
+		t.Fatalf("OutLen(0) = 0 with %d magic samples pending", r.magicSamples[0])
 	}
 	c.call(0, viaProcess)
 	c.call(160, viaProcessFloat)
 }
 
-func TestMaxOutEdges(t *testing.T) {
+func TestOutLenEdges(t *testing.T) {
 	r := mustNew(t, Config{Channels: 2, InRate: 8000, OutRate: 16000, Quality: 3})
 	for _, n := range []int{-1, -1000, math.MinInt} {
-		if m := r.MaxOut(n); m != 0 {
-			t.Errorf("MaxOut(%d) = %d, want 0", n, m)
+		if m := r.OutLen(n); m != 0 {
+			t.Errorf("OutLen(%d) = %d, want 0", n, m)
 		}
 	}
-	if m := r.MaxOut(0); m != 0 {
-		t.Errorf("MaxOut(0) = %d, want 0", m)
+	if m := r.OutLen(0); m != 0 {
+		t.Errorf("OutLen(0) = %d, want 0", m)
 	}
-	if m := r.MaxOut(math.MaxInt); m != maxFrames {
-		t.Errorf("MaxOut(MaxInt) = %d, want %d (clamped)", m, maxFrames)
+	if m := r.OutLen(math.MaxInt); m != maxFrames {
+		t.Errorf("OutLen(MaxInt) = %d, want %d (clamped)", m, maxFrames)
 	}
 	if math.MaxInt > math.MaxUint32 {
 		big := asInt(4294967294)
 		w := mustNew(t, Config{Channels: 1, RatioNum: big, RatioDen: big + 1, Quality: 0})
-		if m := w.MaxOut(1); m != maxFrames {
-			t.Errorf("wrapping ratio: MaxOut(1) = %d, want %d", m, maxFrames)
+		if m := w.OutLen(1); m != maxFrames {
+			t.Errorf("wrapping ratio: OutLen(1) = %d, want %d", m, maxFrames)
 		}
 	}
 	before := fmt.Sprint(r.lastSample, r.sampFracNum, r.magicSamples)
-	r.MaxOut(500)
+	r.OutLen(500)
 	if after := fmt.Sprint(r.lastSample, r.sampFracNum, r.magicSamples); after != before {
-		t.Errorf("MaxOut changed the state: %s -> %s", before, after)
+		t.Errorf("OutLen changed the state: %s -> %s", before, after)
 	}
 }
 
-func TestNoAllocsMaxOut(t *testing.T) {
+func TestNoAllocsOutLen(t *testing.T) {
 	r := mustNew(t, Config{Channels: 3, InRate: 44100, OutRate: 48000, Quality: 10})
-	testutil.AssertNoAllocs(t, 100, func() { _ = r.MaxOut(441) })
+	testutil.AssertNoAllocs(t, 100, func() { _ = r.OutLen(441) })
 }
 
-// FuzzMaxOut draws configurations, events and chunk sequences and checks
+// FuzzOutLen draws configurations, events and chunk sequences and checks
 // soundness on every call, and tightness for mono streams outside the
 // zero-output state.
-func FuzzMaxOut(f *testing.F) {
+func FuzzOutLen(f *testing.F) {
 	f.Add([]byte{0, 5, 10, 200, 3, 1, 4, 9, 9, 0, 255})
 	f.Add([]byte{2, 1, 3, 7, 7, 7, 100, 2, 50, 1})
 	f.Add([]byte{1, 9, 0, 0, 0, 13, 13, 13, 6, 6})
@@ -245,7 +245,7 @@ func FuzzMaxOut(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c := &maxOutChecker{t: t, r: r}
+		c := &outLenChecker{t: t, r: r}
 		for !rd.done() {
 			switch op := rd.byte(); op % 8 {
 			case 0:
@@ -266,8 +266,8 @@ func FuzzMaxOut(f *testing.F) {
 	})
 }
 
-// TestMaxOutReadme runs the README example.
-func TestMaxOutReadme(t *testing.T) {
+// TestOutLenReadme runs the README example.
+func TestOutLenReadme(t *testing.T) {
 	const inRate, outRate, frameMs = 8000, 16000, 20
 
 	r, err := New(Config{
@@ -277,17 +277,17 @@ func TestMaxOutReadme(t *testing.T) {
 		t.Fatal(err)
 	}
 	in := make([]int16, inRate*frameMs/1000) // one 20 ms frame
-	out := make([]int16, r.MaxOut(len(in)))  // always large enough for one call
+	out := make([]int16, r.OutLen(len(in)))  // always large enough for one call
 	read, written, err := r.Process(in, out)
 	if err != nil || read != len(in) || written != len(out)-1 {
 		t.Errorf("read %d of %d, wrote %d into %d, %v", read, len(in), written, len(out), err)
 	}
 }
 
-// TestMaxOutDivergedChannels checks the bound when the channels' states
-// differ, after per-channel calls of different lengths: MaxOut must cover
+// TestOutLenDivergedChannels checks the bound when the channels' states
+// differ, after per-channel calls of different lengths: OutLen must cover
 // the channel that can write most.
-func TestMaxOutDivergedChannels(t *testing.T) {
+func TestOutLenDivergedChannels(t *testing.T) {
 	for _, cfg := range []Config{
 		{Channels: 2, InRate: 48000, OutRate: 44100, Quality: 5},
 		{Channels: 3, InRate: 44100, OutRate: 48000, Quality: 10},
@@ -298,14 +298,14 @@ func TestMaxOutDivergedChannels(t *testing.T) {
 					r := mustNew(t, cfg)
 					// Leave magic samples pending on every channel, then
 					// let one channel process its own and k more frames.
-					in := maxOutSignal[:800*cfg.Channels]
-					r.Process(in, make([]int16, r.MaxOut(800)*cfg.Channels))
+					in := outLenSignal[:800*cfg.Channels]
+					r.Process(in, make([]int16, r.OutLen(800)*cfg.Channels))
 					r.SetQuality(0)
-					r.ProcessChannel(ahead, maxOutSignal[:k], 1, make([]int16, 1000), 1)
+					r.ProcessChannel(ahead, outLenSignal[:k], 1, make([]int16, 1000), 1)
 					if channelsInSync(r) {
 						t.Fatal("channels still in sync")
 					}
-					c := &maxOutChecker{t: t, r: r}
+					c := &outLenChecker{t: t, r: r}
 					for _, n := range []int{1, 2, 7, 160, 441} {
 						c.call(n, via)
 					}
@@ -315,21 +315,21 @@ func TestMaxOutDivergedChannels(t *testing.T) {
 	}
 }
 
-// TestMaxOutWrapBoundary checks the wrap condition at its edge: with
+// TestOutLenWrapBoundary checks the wrap condition at its edge: with
 // den = 2^31+1, num = 2^31-1 gives den - 1 + num = 2^32 - 1, which cannot
 // wrap, and num = 2^31 gives 2^32, which can.
-func TestMaxOutWrapBoundary(t *testing.T) {
+func TestOutLenWrapBoundary(t *testing.T) {
 	if math.MaxInt == math.MaxInt32 {
 		t.Skip("needs ratios above 2^31-1")
 	}
 	den := asInt(1<<31 + 1)
 	r := mustNew(t, Config{Channels: 1, RatioNum: asInt(1<<31 - 1), RatioDen: den, Quality: 0})
-	if m := r.MaxOut(1); m == maxFrames || m > 3 {
-		t.Errorf("(2^31-1):(2^31+1) cannot wrap, but MaxOut(1) = %d", m)
+	if m := r.OutLen(1); m == maxFrames || m > 3 {
+		t.Errorf("(2^31-1):(2^31+1) cannot wrap, but OutLen(1) = %d", m)
 	}
 	w := mustNew(t, Config{Channels: 1, RatioNum: asInt(1 << 31), RatioDen: den, Quality: 0})
-	if m := w.MaxOut(1); m != maxFrames {
-		t.Errorf("2^31:(2^31+1) can wrap, MaxOut(1) = %d, want %d", m, maxFrames)
+	if m := w.OutLen(1); m != maxFrames {
+		t.Errorf("2^31:(2^31+1) can wrap, OutLen(1) = %d, want %d", m, maxFrames)
 	}
 }
 
@@ -337,19 +337,19 @@ func TestMaxOutWrapBoundary(t *testing.T) {
 // wide; callers skip there.
 func asInt(v uint64) int { return int(v) }
 
-// TestMaxOutNoStateChange checks MaxOut with magic samples pending.
-func TestMaxOutNoStateChange(t *testing.T) {
+// TestOutLenNoStateChange checks OutLen with magic samples pending.
+func TestOutLenNoStateChange(t *testing.T) {
 	r := mustNew(t, Config{Channels: 2, InRate: 44100, OutRate: 48000, Quality: 10})
-	r.Process(maxOutSignal[:2*500], make([]int16, 2*r.MaxOut(500)))
+	r.Process(outLenSignal[:2*500], make([]int16, 2*r.OutLen(500)))
 	r.SetQuality(0)
 	if r.magicSamples[0] == 0 {
 		t.Fatal("no magic samples pending")
 	}
 	before := fmt.Sprint(r.lastSample, r.sampFracNum, r.magicSamples, r.filtLen, len(r.mem))
 	for _, n := range []int{0, 1, 441, math.MaxInt} {
-		r.MaxOut(n)
+		r.OutLen(n)
 	}
 	if after := fmt.Sprint(r.lastSample, r.sampFracNum, r.magicSamples, r.filtLen, len(r.mem)); after != before {
-		t.Errorf("MaxOut changed the state: %s -> %s", before, after)
+		t.Errorf("OutLen changed the state: %s -> %s", before, after)
 	}
 }

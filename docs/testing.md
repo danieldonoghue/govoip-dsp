@@ -426,14 +426,14 @@ restored after each.
 | cap comparison `>` → `>=` | caught (`TestCapBoundary`) |
 | filter length wrapping to 0 accepted (the code before review) | caught (`TestFilterLengthWrap`, panic) |
 | resource cap removed (`maxEntries` set to `math.MaxInt64`) | caught (`TestResourceCap`: each of the six rejection cases allocates 34 MB to 4.1 GB against a bound of 1 MiB; two `New` cases then succeed, and the other four fail through C's limits only after allocating, so only the allocation and time bounds catch those; `New` at 4000000:1, quality 10, takes about 15 to 19 s) |
-| `MaxOut` without the +1 | caught (`TestMaxOutMatrix`, slack 0) |
-| `MaxOut` with +2 | caught (`TestMaxOutMatrix`, slack 2) |
-| `MaxOut` count with floor instead of ceil | caught (`TestMaxOutMatrix`) |
-| `MaxOut` count one higher | caught (`TestMaxOutMatrix`, slack 2) |
-| `MaxOut` ignoring pending magic samples | caught (`TestMaxOutEvents`: input left unconsumed) |
-| `MaxOut` without the wrap check | caught (`TestMaxOutEdges`) |
-| `MaxOut` wrap check `>` → `>=` | caught (`TestMaxOutWrapBoundary`) |
-| `MaxOut` from the first channel only, or the last only | caught (`TestMaxOutDivergedChannels`, after a first version that did not make the channels differ enough was not caught) |
+| `OutLen` without the +1 | caught (`TestOutLenMatrix`, slack 0) |
+| `OutLen` with +2 | caught (`TestOutLenMatrix`, slack 2) |
+| `OutLen` count with floor instead of ceil | caught (`TestOutLenMatrix`) |
+| `OutLen` count one higher | caught (`TestOutLenMatrix`, slack 2) |
+| `OutLen` ignoring pending magic samples | caught (`TestOutLenEvents`: input left unconsumed) |
+| `OutLen` without the wrap check | caught (`TestOutLenEdges`) |
+| `OutLen` wrap check `>` → `>=` | caught (`TestOutLenWrapBoundary`) |
+| `OutLen` from the first channel only, or the last only | caught (`TestOutLenDivergedChannels`, after a first version that did not make the channels differ enough was not caught) |
 | history not shifted when a call produces nothing | caught (`TestChunkInvarianceProcess`; also `FuzzChunksResampler` from its committed seed) |
 | direct table `i/den` in `float64` then `float32` | not caught: equivalent on every tested table (double rounding rarely differs) |
 | `compute_func` cube in `float64` then `float32` | not caught: equivalent, the product of two `float32` is exact in `float64` |
@@ -598,11 +598,11 @@ checks that nothing fails or panics and that the VAD reports speech while
 off. Run on 2026-10-26 (`go test ./preprocess -run '^$' -fuzz FuzzRun
 -fuzztime 120s`): 1.48 million executions, no failure. No corpus is
 committed.
-- `FuzzMaxOut`: channel counts 1 to 3, ratios with denominators up to 200
+- `FuzzOutLen`: channel counts 1 to 3, ratios with denominators up to 200
   (downsampling by up to 8), qualities, events (quality and rate changes,
   a rejected change, `Reset`, `SkipZeros`) and calls of 0 to 1275 frames
   through all four process methods, each with an output of exactly
-  `MaxOut`; checks that all input is consumed, that nothing more than
-  `MaxOut` is written, and the slack of 1. Fuzzed for 3 minutes on the
+  `OutLen`; checks that all input is consumed, that nothing more than
+  `OutLen` is written, and the slack of 1. Fuzzed for 3 minutes on the
   Mac (337474 executions), no failure.
 

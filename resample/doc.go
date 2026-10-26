@@ -15,7 +15,7 @@
 //	r, err := resample.New(resample.Config{Channels: 1, InRate: 48000, OutRate: 16000, Quality: resample.QualityVoIP})
 //	...
 //	in := make([]int16, 480)               // 10 ms at 48 kHz
-//	out := make([]int16, r.MaxOut(len(in))) // large enough for one call
+//	out := make([]int16, r.OutLen(len(in))) // large enough for one call
 //	nIn, nOut, err := r.Process(in, out)
 //
 // # Rates, ratios and frames
@@ -48,13 +48,13 @@
 // in*OutRate/InRate frames; the first OutputLatency output frames
 // correspond to the filter delay (see SkipZeros).
 //
-// MaxOut(n), an extension with no SpeexDSP equivalent, gives the output
+// OutLen(n), an extension with no SpeexDSP equivalent, gives the output
 // frames per channel to offer a call of n input frames per channel so
 // that it consumes all of them: the frames the call can write, from the
 // current position and any magic samples pending after a filter change,
-// plus 1 when n > 0. For Process and ProcessFloat the buffer is MaxOut(n)
+// plus 1 when n > 0. For Process and ProcessFloat the buffer is OutLen(n)
 // times Channels() samples. The result is clamped to 2^31-1, where the
-// guarantee no longer holds (see MaxOut).
+// guarantee no longer holds (see OutLen).
 //
 // Interleaved calls (Process, ProcessFloat) process every channel with the
 // same offered lengths and report the counts of the last channel, as the
