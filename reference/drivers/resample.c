@@ -207,11 +207,14 @@ static void run_interleaved(const rcase *c, SpeexResamplerState *st, hz_stream *
 		int ret;
 		for (; ev < c->nev && c->ev[ev].call == (int)calls; ev++) {
 			ret = apply_event(st, &c->ev[ev]);
-			put_state_rec(tr, c->ev[ev].op, ret, st);
+			/* After an overflow the C state is partly updated (see the
+			 * acceptance criteria); record only the return code and stop. */
 			if (ret == RESAMPLER_ERR_OVERFLOW) {
+				put_rec(tr, c->ev[ev].op, ret, 0, 0, 0, 0);
 				stop = 1;
 				break;
 			}
+			put_state_rec(tr, c->ev[ev].op, ret, st);
 		}
 		if (stop)
 			break;
