@@ -517,6 +517,8 @@ func TestReferenceCoverage(t *testing.T) {
 	events["resetq_"] = []int{eReset, eQuality}
 	events["fail_"] = []int{eRateFrac, eRate}
 	events["overflow_"] = []int{eRateFrac}
+	events["f_qdrop_"] = []int{eQuality}
+	events["f_fail_"] = []int{eRateFrac, eRate}
 	for prefix, ops := range events {
 		n := 0
 		for name, p := range have {

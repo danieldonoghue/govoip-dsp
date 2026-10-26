@@ -20864,6 +20864,46 @@
       ]
     },
     {
+      "name": "f_qdrop_q10_frac_1_100",
+      "params": {"mode": "f", "frac": 1, "q": 10, "ch": 1, "num": 1, "den": 100, "in_rate": 1, "out_rate": 100, "frames": 4800, "max_calls": 0, "events": [[3, 1, 0, 0, 0, 0], [20, 1, 10, 0, 0, 0], [21, 1, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 100, "mem_alloc_size": 415, "table_len": 8200}},
+      "streams": [
+        {
+          "name": "out",
+          "type": "float32",
+          "count": 492400,
+          "chunk": 1048576,
+          "chunks": ["3340ee205d85b0fbc25f362ee565d8a91776f1551ccd4c49a119ca34080bb44c"]
+        },
+        {
+          "name": "trace",
+          "type": "int32",
+          "count": 180,
+          "chunk": 1048576,
+          "chunks": ["41e4f40c041a97857a5daa2582b21817b28706f3be58f1f5eab9b46de5be4bb8"]
+        }
+      ]
+    },
+    {
+      "name": "f_fail_q10_44100_48000",
+      "params": {"mode": "f", "frac": 0, "q": 10, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[20, 3, 600000000, 1, 44100, 48000], [30, 2, 44100, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
+      "streams": [
+        {
+          "name": "out",
+          "type": "float32",
+          "count": 4205,
+          "chunk": 1048576,
+          "chunks": ["9b5ea0aa24f63e0479562d33609bea3cff178c041231c6d3003f84e53c2aa09b"]
+        },
+        {
+          "name": "trace",
+          "type": "int32",
+          "count": 1290,
+          "chunk": 1048576,
+          "chunks": ["8781fc3cd0bb5046ab79f44c1733f166efc11b3e401c677856ebd6f7758ca73b"]
+        }
+      ]
+    },
+    {
       "name": "overflow_q5_frac_1ch",
       "params": {"mode": "i", "frac": 1, "q": 5, "ch": 1, "num": 1000003, "den": 999983, "in_rate": 48000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[25, 3, 999983, 1000003, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 1, "frac_advance": 20, "cutoff_bits": 1064044284, "num_rate": 1000003, "den_rate": 999983, "mem_alloc_size": 239, "table_len": 1288}},
       "streams": [

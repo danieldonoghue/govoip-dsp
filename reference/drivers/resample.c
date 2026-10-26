@@ -594,6 +594,13 @@ static void build_cases(void)
 		ev(c, 20, E_RATE_FRAC, 600000000u, 1, 44100, 48000);
 		ev(c, 30, E_RATE, 44100, 48000, 0, 0);
 	}
+	c = add('f', 1, 10, 1, 1, 100, 1, 100, 4800, "f_qdrop_q10_frac_1_100");
+	ev(c, 3, E_QUALITY, 0, 0, 0, 0);
+	ev(c, 20, E_QUALITY, 10, 0, 0, 0);
+	ev(c, 21, E_QUALITY, 0, 0, 0, 0);
+	c = pair('f', 10, 1, 44100, 48000, EV_FRAMES, "f_fail_q10_44100_48000");
+	ev(c, 20, E_RATE_FRAC, 600000000u, 1, 44100, 48000);
+	ev(c, 30, E_RATE, 44100, 48000, 0, 0);
 	for (ch = 1; ch <= 2; ch++) {
 		c = add('i', 1, 5, ch, 1000003, 999983, 48000, 48000, EV_FRAMES, "overflow_q5_frac_%uch", ch);
 		ev(c, 25, E_RATE_FRAC, 999983, 1000003, 48000, 48000);
