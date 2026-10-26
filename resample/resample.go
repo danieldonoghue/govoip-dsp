@@ -31,10 +31,11 @@ var (
 	// ErrConfig reports an invalid argument (RESAMPLER_ERR_INVALID_ARG).
 	ErrConfig = errors.New("resample: invalid argument")
 	// ErrAllocFailed reports that the filter for the requested
-	// configuration exceeds the reference's size limits
-	// (RESAMPLER_ERR_ALLOC_FAILED). After a rate or quality change returns
-	// it, the resampler outputs zeros, and every process call returns it,
-	// until a later change succeeds.
+	// configuration exceeds the size limits (RESAMPLER_ERR_ALLOC_FAILED).
+	// Above the Go-only cap (see the package doc) nothing changes. Where
+	// the reference's own limits reject a rate or quality change, the
+	// resampler outputs zeros, and every process call returns it, until a
+	// later change succeeds.
 	ErrAllocFailed = errors.New("resample: filter exceeds the size limits")
 	// ErrOverflow reports that a ratio change would overflow the fractional
 	// position (RESAMPLER_ERR_OVERFLOW). The resampler is left unchanged.
@@ -127,11 +128,18 @@ func New(cfg Config) (*Resampler, error) {
 	case num < 1 || den < 1 || !checkU32(num) || !checkU32(den):
 		return nil, fmt.Errorf("%w: ratio %d:%d", ErrConfig, num, den)
 	}
+	if cfg.Channels > maxChannels {
+		return nil, fmt.Errorf("%w: %d channels, more than %d", ErrAllocFailed, cfg.Channels, maxChannels)
+	}
 	r := &Resampler{
 		quality:    cfg.Quality,
 		nbChannels: uint32(cfg.Channels),
 		cutoff:     1,
 		bufferSize: 160,
+	}
+	if f := gcd(uint32(num), uint32(den)); r.checkCap(cfg.Quality, uint32(num)/f, uint32(den)/f) != nil {
+		return nil, fmt.Errorf("%w: ratio %d:%d at quality %d needs more than %d filter entries",
+			ErrAllocFailed, num, den, cfg.Quality, maxEntries)
 	}
 	r.setRateFrac(uint32(num), uint32(den), uint32(cfg.InRate), uint32(cfg.OutRate))
 	// update_filter runs before the per-channel arrays exist, which it does
@@ -192,11 +200,15 @@ func (r *Resampler) SetRateFrac(num, den, inRate, outRate int) error {
 	if r.inRate == in && r.outRate == out && r.numRate == n && r.denRate == d {
 		return nil
 	}
-	newDen := d / gcd(n, d)
+	f := gcd(n, d)
+	newDen := d / f
 	for _, s := range r.sampFracNum {
 		if _, ok := multiplyFrac(s, newDen, r.denRate); !ok {
 			return ErrOverflow
 		}
+	}
+	if err := r.checkCap(r.quality, n/f, newDen); err != nil {
+		return err
 	}
 	r.setRateFrac(n, d, in, out)
 	return r.updateFilter()
@@ -216,6 +228,9 @@ func (r *Resampler) SetQuality(quality int) error {
 	}
 	if r.quality == quality {
 		return nil
+	}
+	if err := r.checkCap(quality, r.numRate, r.denRate); err != nil {
+		return err
 	}
 	r.quality = quality
 	return r.updateFilter()

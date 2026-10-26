@@ -263,9 +263,9 @@ rounded up to a multiple of 8.
   2^32/`base_length`, because `multiply_frac` scales the base length by
   `num` exactly: 20000001:20000000 fails at quality 10 and works at
   quality 0. Downsampling by more than about 2·10^6 to 4·10^6 fails at
-  quality 10 (table size). Below those limits the filter can be very
-  large: 4000000:1 at quality 10 builds a table of about 10^9 entries
-  (2 GB), as C does.
+  quality 10 (table size). Below those limits C can build very large
+  filters: 4000000:1 at quality 10 needs a table of about 10^9 entries
+  (2 GB). The Go port rejects those with its own cap (below).
 
 **Numerical notes.**
 
@@ -280,13 +280,21 @@ rounded up to a multiple of 8.
   a tone of amplitude 2048 at 12 to 20 kHz through 48k→16k at quality 10
   gives all-zero output.
 
-**Deviations.** `SetRateFrac` checks for overflow before changing state
-(C changes part of it); offered lengths are clamped to 2^31-1 frames;
-after a rejected rate change the input position saturates at 2^31-1
-where C's overflows (with a ratio of 2^31 or more, the count of the zeros
-produced can then differ from the `-fwrapv` reference); NaN `float32` input becomes 0; there is no
-`NULL`-input form. See the package
-doc and `docs/acceptance/resample.md`.
+**Deviations.** See the package doc and `docs/acceptance/resample.md`.
+
+- `SetRateFrac` checks for overflow before changing state; C changes part
+  of it.
+- Offered lengths are clamped to 2^31-1 frames.
+- After a rejected rate change the input position saturates at 2^31-1
+  where C's overflows. With a ratio of 2^31 or more, the count of the
+  zeros produced can then differ from the `-fwrapv` reference.
+- Resource cap: a configuration whose sinc table plus all channels'
+  history needs more than 16 × 1024 × 1024 entries, or more than 256
+  channels, returns `ErrAllocFailed` with no state change. The largest
+  supported need (96k→8k, quality 10, 32 channels) is 106464 entries, so
+  the cap is about 158 times that. C accepts filters up to about 10^9
+  entries.
+- NaN `float32` input becomes 0; there is no `NULL`-input form.
 
 **Measurements.** From the Go implementation, which is bit-exact with the
 reference, so these are the reference's figures. Mac, 2026-10-26:

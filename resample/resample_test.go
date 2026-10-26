@@ -849,3 +849,68 @@ func TestHugeStrides(t *testing.T) {
 		t.Fatal("calls with huge strides did not return")
 	}
 }
+
+// TestResourceCap checks the Go-only cap of maxEntries table and history
+// entries and maxChannels channels (docs/acceptance/resample.md, change 5).
+func TestResourceCap(t *testing.T) {
+	// 256 channels at quality 10 with d:1 need 256d + 256*(256d+159)
+	// entries: d = 254 fits, d = 255 does not.
+	if _, err := New(Config{Channels: 256, RatioNum: 254, RatioDen: 1, InRate: 1, OutRate: 1, Quality: 10}); err != nil {
+		t.Errorf("just under the cap: %v", err)
+	}
+	if _, err := New(Config{Channels: 256, RatioNum: 255, RatioDen: 1, InRate: 1, OutRate: 1, Quality: 10}); !errors.Is(err, ErrAllocFailed) {
+		t.Errorf("just over the cap: %v, want ErrAllocFailed", err)
+	}
+	if _, err := New(Config{Channels: 257, InRate: 48000, OutRate: 48000}); !errors.Is(err, ErrAllocFailed) {
+		t.Errorf("257 channels: %v, want ErrAllocFailed", err)
+	}
+	for _, c := range []Config{
+		{Channels: 1, RatioNum: 4000000, RatioDen: 1, Quality: 10},
+		{Channels: 1, RatioNum: 6000001, RatioDen: 3, Quality: 10},
+		{Channels: 256, RatioNum: 100000, RatioDen: 1, Quality: 10},
+	} {
+		start := time.Now()
+		_, err := New(c)
+		if el := time.Since(start); el > 10*time.Millisecond {
+			t.Errorf("%+v: rejected after %v, want under 10 ms", c, el)
+		}
+		if !errors.Is(err, ErrAllocFailed) {
+			t.Errorf("%+v: %v, want ErrAllocFailed", c, err)
+		}
+	}
+}
+
+// TestResourceCapLeavesStateUnchanged checks that a rate or quality change
+// over the cap changes nothing.
+func TestResourceCapLeavesStateUnchanged(t *testing.T) {
+	cfg := Config{Channels: 256, RatioNum: 255, RatioDen: 1, InRate: 1, OutRate: 1, Quality: 9}
+	a, b := mustNew(t, cfg), mustNew(t, cfg)
+	in := testutil.WhiteNoise(256*600, 30000, 6)
+	processAll(t, a, in, []int{97}, []int{50})
+	processAll(t, b, in, []int{97}, []int{50})
+	if err := a.SetQuality(10); err != ErrAllocFailed {
+		t.Fatalf("SetQuality(10): %v, want ErrAllocFailed", err)
+	}
+	if err := a.SetRateFrac(400, 1, 2, 3); err != ErrAllocFailed {
+		t.Fatalf("SetRateFrac(400, 1): %v, want ErrAllocFailed", err)
+	}
+	if err := a.SetRate(4000000, 1); err != ErrAllocFailed {
+		t.Fatalf("SetRate(4000000, 1): %v, want ErrAllocFailed", err)
+	}
+	if q := a.Quality(); q != 9 {
+		t.Errorf("quality %d, want 9", q)
+	}
+	if n, d := a.Ratio(); n != 255 || d != 1 {
+		t.Errorf("ratio %d:%d, want 255:1", n, d)
+	}
+	if in, out := a.Rate(); in != 1 || out != 1 {
+		t.Errorf("rates %d:%d, want 1:1", in, out)
+	}
+	more := testutil.WhiteNoise(256*1200, 30000, 7)
+	got := processAll(t, a, more, []int{301}, []int{64})
+	want := processAll(t, b, more, []int{301}, []int{64})
+	testutil.Compare(t, "after rejected changes", want, got)
+	if _, _, err := a.Process(more[:256], make([]int16, 256)); err != nil {
+		t.Errorf("Process after rejected changes: %v, want nil", err)
+	}
+}

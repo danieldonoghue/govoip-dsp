@@ -158,63 +158,103 @@ func multiplyFrac(value, num, den uint32) (uint32, bool) {
 	return remain*num/den + major*num, true
 }
 
+// filterPlan is the filter that update_filter builds for a quality and a
+// reduced ratio.
+type filterPlan struct {
+	filtLen, oversample, tableLen uint32
+	cutoff                        float32
+	direct                        bool
+}
+
+// planFilter is the sizing part of update_filter (resample.c:613-658). It
+// returns false where C takes its fail label; the plan then holds the
+// cutoff and oversampling that C has set by that point.
+func planFilter(quality int, num, den uint32) (filterPlan, bool) {
+	qm := &qualityMap[quality]
+	p := filterPlan{filtLen: qm.baseLength, oversample: qm.oversample, cutoff: qm.upsampleBandwidth}
+	if num > den {
+		p.cutoff = float32(float32(qm.downsampleBandwidth*float32(den)) / float32(num))
+		fl, ok := multiplyFrac(p.filtLen, num, den)
+		if !ok {
+			return p, false
+		}
+		p.filtLen = ((fl - 1) &^ 7) + 8
+		// The products wrap in uint32 as in C.
+		if 2*den < num {
+			p.oversample >>= 1
+		}
+		if 4*den < num {
+			p.oversample >>= 1
+		}
+		if 8*den < num {
+			p.oversample >>= 1
+		}
+		if 16*den < num {
+			p.oversample >>= 1
+		}
+		if p.oversample < 1 {
+			p.oversample = 1
+		}
+	}
+	p.direct = p.filtLen*den <= p.filtLen*p.oversample+8 &&
+		uint64(intMaxHalf)/uint64(den) >= uint64(p.filtLen)
+	if p.direct {
+		p.tableLen = p.filtLen * den
+	} else {
+		if (uint64(intMaxHalf)-8)/uint64(p.oversample) < uint64(p.filtLen) {
+			return p, false
+		}
+		p.tableLen = p.filtLen*p.oversample + 8
+	}
+	return p, true
+}
+
+// maxEntries and maxChannels are the Go-only resource cap
+// (docs/acceptance/resample.md, change 5).
+const (
+	maxEntries  = 16 * 1024 * 1024
+	maxChannels = 256
+)
+
+// checkCap returns ErrAllocFailed if the filter for quality and the reduced
+// ratio num/den needs more than maxEntries table and history entries. It
+// returns nil where C rejects the filter itself, so that C's failure path
+// runs.
+func (r *Resampler) checkCap(quality int, num, den uint32) error {
+	p, ok := planFilter(quality, num, den)
+	if !ok {
+		return nil
+	}
+	need := uint64(p.tableLen) + uint64(r.nbChannels)*uint64(p.filtLen-1+r.bufferSize)
+	if need > maxEntries {
+		return ErrAllocFailed
+	}
+	return nil
+}
+
 // updateFilter is update_filter (resample.c:605). It allocates when the
 // sinc table or the memory must grow.
 func (r *Resampler) updateFilter() error {
 	oldLength := r.filtLen
 	oldAllocSize := r.memAllocSize
-	qm := &qualityMap[r.quality]
 
 	r.intAdvance = int32(r.numRate / r.denRate)
 	r.fracAdvance = int32(r.numRate % r.denRate)
-	r.oversample = qm.oversample
-	r.filtLen = qm.baseLength
-
-	if r.numRate > r.denRate {
-		r.cutoff = float32(float32(qm.downsampleBandwidth*float32(r.denRate)) / float32(r.numRate))
-		fl, ok := multiplyFrac(r.filtLen, r.numRate, r.denRate)
-		if !ok {
-			return r.filterFailed(oldLength)
-		}
-		r.filtLen = ((fl - 1) &^ 7) + 8
-		// The products wrap in uint32 as in C.
-		if 2*r.denRate < r.numRate {
-			r.oversample >>= 1
-		}
-		if 4*r.denRate < r.numRate {
-			r.oversample >>= 1
-		}
-		if 8*r.denRate < r.numRate {
-			r.oversample >>= 1
-		}
-		if 16*r.denRate < r.numRate {
-			r.oversample >>= 1
-		}
-		if r.oversample < 1 {
-			r.oversample = 1
-		}
-	} else {
-		r.cutoff = qm.upsampleBandwidth
+	p, ok := planFilter(r.quality, r.numRate, r.denRate)
+	r.oversample, r.cutoff = p.oversample, p.cutoff
+	if !ok {
+		return r.filterFailed(oldLength)
 	}
-
-	useDirect := r.filtLen*r.denRate <= r.filtLen*r.oversample+8 &&
-		uint64(intMaxHalf)/uint64(r.denRate) >= uint64(r.filtLen)
-	var minSincTableLength uint32
-	if useDirect {
-		minSincTableLength = r.filtLen * r.denRate
-	} else {
-		if (uint64(intMaxHalf)-8)/uint64(r.oversample) < uint64(r.filtLen) {
-			return r.filterFailed(oldLength)
-		}
-		minSincTableLength = r.filtLen*r.oversample + 8
-	}
+	r.filtLen = p.filtLen
+	useDirect := p.direct
+	minSincTableLength := p.tableLen
 	if uint32(len(r.sincTable)) < minSincTableLength {
 		t := make([]int16, minSincTableLength)
 		copy(t, r.sincTable)
 		r.sincTable = t
 	}
+	w := qualityMap[r.quality].windowFunc
 	n := int32(r.filtLen)
-	w := qm.windowFunc
 	if useDirect {
 		for i := uint32(0); i < r.denRate; i++ {
 			fi := float32(float32(i) / float32(r.denRate))

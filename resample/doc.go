@@ -22,11 +22,16 @@
 //
 // Any ratio num/den with 1 <= num, den <= 2^32-1 is accepted where the
 // reference accepts it (where int is 32 bits wide, values are limited to
-// 2^31-1); New and SetRateFrac return ErrAllocFailed where the
-// filter would exceed the reference's size limits (about 2^30 table or
-// memory entries). Large ratios make large filters: a filter is roughly
-// 8 to 256 taps times the downsampling factor, so extreme downsampling
-// allocates and computes a large table. Frames may be any length; a call
+// 2^31-1), within a Go-only resource cap: the sinc table plus the history
+// of all channels may hold at most 16 * 1024 * 1024 entries (32 MiB), and
+// there may be at most 256 channels. That is about 158 times the largest
+// need of any pairing of 8 to 96 kHz at any quality with 32 channels.
+// Above the cap, New, SetRate, SetRateFrac and SetQuality return
+// ErrAllocFailed and change nothing. They also return it where the
+// reference's own limits reject the filter; that case follows C (see
+// ErrAllocFailed). A filter is roughly 8 to 256
+// taps times the downsampling factor, so the cap allows downsampling by up
+// to about 30000 (mono, quality 10). Frames may be any length; a call
 // may consume and produce nothing.
 //
 // # Chunking and output exhaustion

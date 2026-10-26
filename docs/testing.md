@@ -344,6 +344,7 @@ restored after each.
 | strided kernel writing next to its element | caught (`TestStridesLeaveOtherElements`) |
 | zero kernel position without saturation (the code before review) | caught (`TestHugeRatioAfterFailedChange`, panic; and `FuzzConfigResampler`) |
 | `frames` as `(n+stride-1)/stride` (the code before review) | caught (`TestHugeStrides`, hang) |
+| resource cap removed (`maxEntries` set to `math.MaxInt64`) | caught (`TestResourceCap`: the over-cap case succeeds, and 4000000:1 at quality 10 takes 13.7 s) |
 | history not shifted when a call produces nothing | caught (`TestChunkInvarianceProcess`; also `FuzzChunksResampler` from its committed seed) |
 | direct table `i/den` in `float64` then `float32` | not caught: equivalent on every tested table (double rounding rarely differs) |
 | `compute_func` cube in `float64` then `float32` | not caught: equivalent, the product of two `float32` is exact in `float64` |
