@@ -342,6 +342,8 @@ restored after each.
 | an allocation in `Process` | caught (`TestNoAllocsProcess`) |
 | `Reset` not clearing `last_sample` | caught (`TestResetMonoEqualsNew`) |
 | strided kernel writing next to its element | caught (`TestStridesLeaveOtherElements`) |
+| zero kernel position without saturation (the code before review) | caught (`TestHugeRatioAfterFailedChange`, panic; and `FuzzConfigResampler`) |
+| `frames` as `(n+stride-1)/stride` (the code before review) | caught (`TestHugeStrides`, hang) |
 | history not shifted when a call produces nothing | caught (`TestChunkInvarianceProcess`; also `FuzzChunksResampler` from its committed seed) |
 | direct table `i/den` in `float64` then `float32` | not caught: equivalent on every tested table (double rounding rarely differs) |
 | `compute_func` cube in `float64` then `float32` | not caught: equivalent, the product of two `float32` is exact in `float64` |
@@ -412,14 +414,20 @@ final code, with `go test -run '^$' -fuzz '^<target>$' -fuzztime <t>
 
 ### `resample` (WP1)
 
-- `FuzzChunksResampler`: a configuration from a fixed list and a plan of
-  chunk sizes and output capacities; checks that the output equals the
-  one-call output and that nothing panics. Fuzzed for 5 minutes on the Mac
-  (471887 executions), no failure after the harness fix for plans that
-  never offer input and output together; that plan is kept as a seed.
+- `FuzzChunksResampler`: a configuration from a fixed list, one of the
+  four process methods, and a plan of chunk sizes and output capacities;
+  checks that the output equals the one-call `Process` output and that
+  nothing panics. Fuzzed for 5 minutes on the Mac (290374 executions), no
+  failure. Two seeds come from harness bugs that fuzzing found (plans that
+  never offer input and output together, and long runs of empty calls).
 - `FuzzConfigResampler`: arbitrary channel counts, ratios (downsampling by
-  at most 64, so filters stay small), qualities, and sequences of process,
-  rate, quality, reset and skip-zeros calls; checks that nothing panics
-  and that invalid arguments are rejected. Fuzzed for 5 minutes on the
-  Mac (1599489 executions), no failure.
-
+  at most 64, so filters stay small, or by more than 6e8, which the size
+  limits reject before allocating), qualities, strides over the full
+  positive range, and sequences of process, rate, quality, reset and
+  skip-zeros calls; checks that nothing panics and that invalid arguments
+  are rejected. Fuzzed for 5 minutes on the Mac (5144408 executions), no
+  failure. The independent review found a panic (ratios of 2^31 and more
+  after a rejected change) and a hang (strides near `math.MaxInt`) outside
+  the first version of this domain; against the code before their fix,
+  the widened target finds the panic within 2 minutes, and that input is
+  kept as a seed.

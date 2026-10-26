@@ -47,6 +47,9 @@
 //
 // Offered lengths above 2^31-1 frames are clamped to 2^31-1. C would stop
 // making progress there. C feeds zeros for a NULL input; here, pass zeros.
+// After a rejected rate change, the input position saturates at 2^31-1
+// where C's int position would overflow and C would then read out of
+// bounds.
 //
 // # Buffers, aliasing and retention
 //

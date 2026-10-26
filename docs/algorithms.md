@@ -281,8 +281,10 @@ rounded up to a multiple of 8.
   gives all-zero output.
 
 **Deviations.** `SetRateFrac` checks for overflow before changing state
-(C changes part of it); offered lengths are clamped to 2^31-1 frames; NaN
-`float32` input becomes 0; there is no `NULL`-input form. See the package
+(C changes part of it); offered lengths are clamped to 2^31-1 frames;
+after a rejected rate change the input position saturates at 2^31-1
+where C's overflows; NaN `float32` input becomes 0; there is no
+`NULL`-input form. See the package
 doc and `docs/acceptance/resample.md`.
 
 **Measurements.** From the Go implementation, which is bit-exact with the

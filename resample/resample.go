@@ -56,9 +56,9 @@ type Config struct {
 	// RatioDen are set, they also give the ratio and must be at least 1.
 	InRate, OutRate int
 	// RatioNum and RatioDen, when both are non-zero, set the resampling
-	// ratio InRate/OutRate exactly (speex_resampler_init_frac); InRate and
-	// OutRate are then only reported back by Rate. Leave both zero to use
-	// InRate/OutRate.
+	// ratio exactly (speex_resampler_init_frac); InRate and OutRate are
+	// then only reported back by Rate. Leave both zero to use
+	// InRate/OutRate; setting only one is an error.
 	RatioNum, RatioDen int
 	// Quality is 0 (fastest) to 10 (best). The zero value is quality 0.
 	Quality int
