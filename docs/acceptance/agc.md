@@ -392,9 +392,9 @@ white noise together with the registered criteria: C4 and C5 require
 white noise at −44 and −34 dBFS, passed with `speech = true`, to be raised
 to the target (P2 only bounds the spread of the gain). No criterion
 requires pink noise to be raised; for it, 0 dB is ruled out by the
-level-based design, not by a criterion. A
-level-based AGC cannot tell that signal from background noise. The bound
-above is what design v2 meets: measured before registration, noise below
+level-based design, not by a criterion. A level-based AGC cannot tell
+either noise from a wanted stationary signal. The bound above is what
+design v2 meets: measured before registration, noise below
 the gate keeps 0 dB, and noise above it is driven to −23.98 to
 −28.22 dBFS (the target is −24 dBFS) with gains up to +23.86 dB.
 
