@@ -2,7 +2,9 @@ package resample
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -869,14 +871,43 @@ func TestResourceCap(t *testing.T) {
 		{Channels: 1, RatioNum: 6000001, RatioDen: 3, Quality: 10},
 		{Channels: 256, RatioNum: 100000, RatioDen: 1, Quality: 10},
 	} {
-		start := time.Now()
-		_, err := New(c)
-		if el := time.Since(start); el > 10*time.Millisecond {
-			t.Errorf("%+v: rejected after %v, want under 10 ms", c, el)
-		}
+		var err error
+		checkRejectionCost(t, fmt.Sprintf("New(%+v)", c), func() { _, err = New(c) })
 		if !errors.Is(err, ErrAllocFailed) {
 			t.Errorf("%+v: %v, want ErrAllocFailed", c, err)
 		}
+	}
+	// 256 channels, 255:1 at quality 9 fits; quality 10 or larger ratios do not.
+	r := mustNew(t, Config{Channels: 256, RatioNum: 255, RatioDen: 1, InRate: 1, OutRate: 1, Quality: 9})
+	for name, f := range map[string]func() error{
+		"SetRate(4000000, 1)":           func() error { return r.SetRate(4000000, 1) },
+		"SetRateFrac(6000001, 3, 1, 1)": func() error { return r.SetRateFrac(6000001, 3, 1, 1) },
+		"SetQuality(10)":                func() error { return r.SetQuality(10) },
+	} {
+		var err error
+		checkRejectionCost(t, name, func() { err = f() })
+		if err != ErrAllocFailed {
+			t.Errorf("%s: %v, want ErrAllocFailed", name, err)
+		}
+	}
+}
+
+// checkRejectionCost runs f once and fails if it allocates 1 MiB or more,
+// or takes 1 s or more. A filter at the rejected sizes needs more than
+// 32 MiB; the time bound is only a loose backstop for shared CI runners.
+func checkRejectionCost(t *testing.T, name string, f func()) {
+	t.Helper()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	start := time.Now()
+	f()
+	el := time.Since(start)
+	runtime.ReadMemStats(&after)
+	if b := after.TotalAlloc - before.TotalAlloc; b >= 1<<20 {
+		t.Errorf("%s: rejection allocated %d bytes, want under 1 MiB", name, b)
+	}
+	if el >= time.Second {
+		t.Errorf("%s: rejection took %v, want under 1 s", name, el)
 	}
 }
 
