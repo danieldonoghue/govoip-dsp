@@ -387,9 +387,12 @@ protect the AGC against steady background noise.
 |---|---|---|
 | N5 | White and pink noise at −60, −52, −45, −35 and −24 dBFS, 120 s each, `speech = true` throughout, fresh instance | if every 10 ms frame is below the gate: applied gain never above **0 dB**; otherwise: output RMS over the last 10 s at most **TargetLevel + 0.5 dB**, and applied gain never above MaxGain |
 
-**Reasoning.** "Gain near 0 dB on stationary noise" cannot be met together
-with the registered criteria: P2, C4 and C5 require white noise at −44 and
-−34 dBFS, passed with `speech = true`, to be raised to the target. A
+**Reasoning.** "Gain near 0 dB on stationary noise" cannot be met for
+white noise together with the registered criteria: C4 and C5 require
+white noise at −44 and −34 dBFS, passed with `speech = true`, to be raised
+to the target (P2 only bounds the spread of the gain). No criterion
+requires pink noise to be raised; for it, 0 dB is ruled out by the
+level-based design, not by a criterion. A
 level-based AGC cannot tell that signal from background noise. The bound
 above is what design v2 meets: measured before registration, noise below
 the gate keeps 0 dB, and noise above it is driven to −23.98 to
@@ -481,18 +484,19 @@ the gate keeps 0 dB, and noise above it is driven to −23.98 to
    - **First frame clamped.** The first active frame is clamped to twice
      the initial level (the target), like every later frame, so a click as
      the first frame raises the level by at most 6 dB.
-7. **Noise-floor safeguard trial: failed, reverted** (2026-10-26). The
-   rule registered under "Noise-floor safeguard (NF), trial" was
-   implemented exactly as written and measured against every criterion.
-   It failed C2 (all rates and `fast`), C3 down, C4 down, C5 at −44 and
-   −34 dBFS (sine and white noise), C6 at −49 dBFS and both
-   `TestConfigEdgeAccuracy` cases: a stationary signal is at its own
-   floor, so the gain could not rise. N4 also failed, at +23.16 dB,
-   unchanged: all 193 frames of the pink noise that reach the gate were
-   more than 10 dB above its 1.5 s floor, because the noise wanders over
-   seconds. As registered, the safeguard was reverted and is not part of
-   design v2. The limit stands as documented in `agc/doc.go` and
-   `docs/algorithms.md`; N4 is kept as a reported measurement.
+7. **Noise-floor safeguard trial: failed, reverted** (2026-10-26). The rule
+   registered under "Noise-floor safeguard (NF), trial" was implemented exactly
+   as written and measured against every criterion. It failed C2 (all rates and
+   `fast`), C3 down, C4 down, C5 at −44 and −34 dBFS (sine and white noise), C6
+   at −49 dBFS and both `TestConfigEdgeAccuracy` cases: a stationary signal is
+   at its own floor, so the gain could not rise. N4 also failed, at +23.16 dB,
+   unchanged: all 193 frames of the pink noise that reach the gate (by the AGC's
+   fixed-point gate; change 3 counted 192 by a float dBFS measure) were more
+   than 10 dB above its 1.5 s floor, because the frame RMS of this noise spreads
+   by 10 to 16 dB within every 1.5 s window, so its loud frames always stand
+   more than 10 dB above the raw minimum. As registered, the safeguard was
+   reverted and is not part of design v2. The limit stands as documented in
+   `agc/doc.go` and `docs/algorithms.md`; N4 is kept as a reported measurement.
 
 ## Results
 
@@ -530,7 +534,10 @@ exact gain limits in more acceptance tests" (LibriSpeech present).
 Measured on the Mac, 2026-10-26, with `go test -count=1 -v ./agc` at the
 commit "agc: apply the design v2 corrections" (LibriSpeech present).
 Thresholds are the registered numbers, with changes 2 and 3; the design is
-as corrected by change 6.
+as corrected by change 6. The G, N4 and N5 rows come from the later test
+commits "agc: check the P4 regression guards" and "agc: test N5,
+stationary noise with the speech flag set"; `agc.go` is unchanged since
+the corrections.
 
 | ID | Threshold | v1 | v2 | v2 result |
 |---|---|---|---|---|

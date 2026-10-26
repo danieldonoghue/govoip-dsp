@@ -687,33 +687,39 @@ first `2K` output samples of a stream are zero.
 
 **Known limitations.**
 
-- **Noise protection is the level gate only.** The `speech` flag helps
-  only if the caller's VAD rejects noise, and the VAD of the SpeexDSP
-  1.2.1 fixed-point preprocessor reported speech on every frame of a
-  stationary pink-noise test signal (found by WP5). Stationary noise whose
-  10 ms frames reach the gate is therefore driven to the target: with
-  `speech = true`, white or pink noise at −45 to −24 dBFS ends at −23.98
-  to −25.18 dBFS, with gains up to +21 dB, and pink noise at −52 dBFS gets
-  +23.86 dB (N5). Pink noise at −55 dBFS long-term, whose loudest frames
-  just cross the −50 dBFS gate, reaches +23.16 dB (N4, reported; design v1
-  reached +9.99 dB because it rose more slowly). Noise whose frames all
-  stay below the gate keeps 0 dB. Raising `GateLevel` above the noise is
-  the only protection.
+- **Noise protection is the level gate only.** The `speech` flag helps only if
+  the caller's VAD rejects noise, and the VAD of the SpeexDSP 1.2.1 fixed-point
+  preprocessor reports speech on every frame of stationary white and pink noise
+  (section "Preprocessor" above). Stationary noise whose 10 ms frames reach the
+  gate is therefore driven to the target: with `speech = true`, white or pink
+  noise at −45 to −24 dBFS ends at −23.98 to −25.18 dBFS, with gains up to +21
+  dB, and pink noise at −52 dBFS gets +23.86 dB (N5). Pink noise at −55 dBFS
+  long-term, whose loudest frames just cross the −50 dBFS gate, reaches +23.16
+  dB (N4, reported; design v1 reached +9.99 dB because it rose more slowly).
+  Noise whose frames all stay below the gate keeps 0 dB. Raising `GateLevel`
+  above the noise is the only protection.
 - **A noise-floor safeguard was tried and rejected.** Allowing a rise only
   on frames more than 10 dB above a 1.5 s minimum-statistics floor failed
   C2 to C6, because a steady sine or white noise sits at its own floor,
-  and did not help N4 at all (still +23.16 dB), because that pink noise
-  wanders over seconds (`docs/acceptance/agc.md`, change 7). A gain near
-  0 dB on stationary noise also contradicts P2, C4 and C5, which require
-  white noise passed with `speech = true` to be raised to the target.
+  and did not help N4 at all (still +23.16 dB): the frame RMS of that pink
+  noise spreads by 10 to 16 dB within every 1.5 s window, so its loud
+  frames are always more than 10 dB above the raw minimum
+  (`docs/acceptance/agc.md`, change 7). For white noise, a gain near 0 dB
+  also contradicts C4 and C5, which require white noise passed with
+  `speech = true` to be raised to the target. No criterion requires pink
+  noise to be raised; there, 0 dB is ruled out by the level-based design,
+  not by a criterion.
 - In pauses the gain cannot rise, but it may finish falling, so the noise
   in a pause gets at most the gain of the speech before it.
 - **Steps just below the cut threshold.** A step up of +14 dB or more
-  cuts at once (0.03 s to within 2 dB). Steps of +10 to +13 dB do not, and
-  fall at 40 dB/s: within 2 dB of the target after 1.71, 1.83, 1.90 and
-  2.00 s, and more than 6 dB above it for 0.38, 0.48, 0.57 and 0.67 s
-  (measured on a sine from −44 dBFS). That is longer than C1 and T3 allow
-  for the registered +20 dB step. It is the cost of the +13 dB threshold,
+  cuts at once (0.03 s to within 2 dB). Steps of +10 to +13 dB do not; the
+  gain then follows the order-4 level estimate, about 10 dB in the first
+  second (+13 dB step: 20.00, 18.95, 14.73 and 10.97 dB at 0, 0.1, 0.5 and
+  1 s), not the 40 dB/s fall limit. They are within 2 dB of the target
+  after 1.71, 1.83, 1.90 and 2.00 s, and more than 6 dB above it for 0.38,
+  0.48, 0.57 and 0.67 s (measured on a sine from −44 dBFS). All four
+  exceed the 1.0 s that C1 allows for the registered +20 dB step, and +11
+  to +13 dB exceed T3's 0.45 s. It is the cost of the +13 dB threshold,
   which keeps ordinary speech from triggering cuts.
 - **Small steps down.** A downward step smaller than 6 dB does not trigger
   the reset, so only the slow order-4 mean follows it. Measured on a sine:
@@ -721,12 +727,16 @@ first `2K` output samples of a stream are zero.
   come within 1 dB, against 1.62 s and 1.70 s for −10 dB.
 - **A click as the first frame.** The level is clamped to twice the target,
   but one loud frame still dominates the order-4 warm-up mean until the
-  drop reset clears it. On `SpeechLike` at −44 dBFS the gain 1, 2, 3 and
-  4 s after a start click is +0.69, +3.15, +8.37 and +13.17 dB, against
-  +4.56, +9.96, +16.81 and +19.41 dB without it.
-- **A loud start cuts.** Because the first frame is clamped to twice the
-  target, a stream that starts more than 13 dB above it begins with a cut
-  within 3 or 4 frames; the gain only falls from 0 dB to its target.
+  drop reset clears it. On 5 s of `SpeechLike` at an active RMS of
+  −44 dBFS (seed `agc-lim`) after a 160-sample full-scale white-noise
+  click (seed 71), the gain 1, 2, 3 and 4 s into the speech is +0.69,
+  +3.15, +8.37 and +13.17 dB, against +4.56, +9.96, +16.81 and +19.41 dB
+  without the click.
+- **A loud start does not cut.** The warm-up mean rises by up to 6 dB per
+  frame, so the third frame of a loud start is no longer 13 dB above the
+  level. The gain falls from 0 dB at the fall limit instead: a sine
+  starting at −12, −6 or −3 dBFS never cuts, and the gain is −4 dB after
+  0.1 s and within 0.1 dB of −12 dB (MinGain) after 0.3 s.
 - **Rates are those of the internal gain.** R1 and R2 check the Q22 gain;
   the applied Q15 gain moves in whole units, so at −40 dB a single frame
   can change it by 0.027 dB (2.6 dB/s for that frame at a 1 dB/s limit),
