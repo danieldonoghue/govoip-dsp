@@ -1,0 +1,6 @@
+# Keep LF everywhere, so gofmt and the fixture hashes agree on every OS.
+* text=auto eol=lf
+# Raw fixtures are binary; manifests are hashed by content of the raw files
+# only, but keep them byte-identical too.
+*.raw binary
+testdata/** -text
