@@ -32,7 +32,7 @@ No public package is usable yet. See the table below and
 | Fixed-point arithmetic | `internal/fixed` | Validated (bit-exact with the harness) |
 | Test support | `internal/testutil` | Implemented |
 | Resampler | `resample` | Planned |
-| Ring buffer | `buffer` | Planned |
+| Ring buffer | `buffer` | Validated (own design; lock-free SPSC variant) |
 | FFT | `internal/fft` | Validated (bit-exact with the harness) |
 | AGC | `agc` | Planned |
 | Noise suppression and VAD | `preprocess` | Planned |
