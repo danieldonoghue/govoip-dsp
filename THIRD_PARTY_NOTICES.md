@@ -29,6 +29,8 @@ test harness only.
 | `internal/fixed/divzero.go` | `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `preprocess/preprocess.go`, `preprocess/run.go`, `preprocess/ctl.go` | `libspeexdsp/preprocess.c` (Copyright (C) 2003 Epic Games (written by Jean-Marc Valin); Copyright (C) 2004-2006 Epic Games) | SpeexDSP BSD-3-Clause |
 | `preprocess/filterbank.go` | `libspeexdsp/filterbank.c` (Copyright (C) 2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `internal/fixed/masked.go` | `libspeexdsp/pseudofloat.h` (Copyright (C) 2005 Jean-Marc Valin), `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `echo/mdf.go`, `echo/echo.go` | `libspeexdsp/mdf.c` (Copyright (C) 2003-2008 Jean-Marc Valin), `include/speex/speex_echo.h` (Copyright (C) Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 
 The reference harness (`reference/`) contains no upstream code; it includes
 upstream headers and sources from the fetched tree at build time.

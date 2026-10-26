@@ -41,10 +41,13 @@
 //
 // The buffered mode follows speex_echo_capture and speex_echo_playback.
 // Call Playback with each frame as it is handed to the sound card, and
-// Capture with each microphone frame. Capture cancels against the frame
-// given to Playback two frames earlier (PLAYBACK_DELAY in mdf.c), so the
-// modelled echo delay is from 2 frames to 2 frames plus about
-// FilterLength() after the Playback call. In detail:
+// Capture with each microphone frame. The queue starts with two frames of
+// silence (PLAYBACK_DELAY in mdf.c) and each Capture cancels against the
+// oldest queued frame. With the calls alternating, that is the frame of the
+// second-most-recent Playback call: about one frame period before the
+// Capture if Playback comes first in each period, about two if it comes
+// after. The filter models echo delays from there to about FilterLength()
+// later; echo that arrives sooner is not cancelled. In detail:
 //
 //   - Playback calls before the first Capture are discarded.
 //   - Up to three frames are queued; a Playback with three queued frames

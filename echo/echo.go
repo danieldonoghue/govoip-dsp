@@ -2,7 +2,8 @@
 // 1b28a0f61bc31162979e1f26f3981fc3637095c8): libspeexdsp/mdf.c and
 // include/speex/speex_echo.h.
 //
-// Copyright (C) 2003-2008 Jean-Marc Valin
+// Copyright (C) 2003-2008 Jean-Marc Valin (mdf.c)
+// Copyright (C) Jean-Marc Valin (speex_echo.h)
 //
 // Use of this source is governed by the BSD-3-Clause licence in
 // LICENSES/SpeexDSP-COPYING. Changes: the speex_echo_* functions and ctl
@@ -123,7 +124,7 @@ func (c *Canceller) Cancel(mic, far, out []int16) error {
 }
 
 // Capture is speex_echo_capture: Cancel with the far end taken from the
-// frames given to Playback, two frames late (see the package doc). With no
+// frames given to Playback, through a queue (see the package doc). With no
 // buffered playback frame it copies mic to out. Slice rules are those of
 // Cancel.
 func (c *Canceller) Capture(mic, out []int16) error {

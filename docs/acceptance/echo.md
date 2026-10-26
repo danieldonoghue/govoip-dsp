@@ -75,6 +75,7 @@ microphone unless stated.
 | `reset` | `farend`, with `speex_echo_state_reset` called after 8 s |
 | `capture` | Buffered mode: `speex_echo_playback` and `speex_echo_capture` driven by a seeded call sequence that starts with playbacks before the first capture and includes captures with no playback frame (underrun) and repeated playbacks (overrun and auto-fill) |
 | `rate_switch` | `farend` at the configured rate, with `SET_SAMPLING_RATE` changed to the next listed rate (48 kHz wraps to 8 kHz) after 8 s |
+| `edges` | Boundary inputs, added after the first implementation commit (see "Changes"): a far frame whose energy sits exactly on the adaptation threshold, microphone samples of exactly ±32000 and ±31999, microphone samples whose pre-emphasis output is exactly ±32767, then `SET_SAMPLING_RATE` to 12000, 11999, 24000, 23999, 32768, 32767 and back; 16 s |
 
 **Long runs**, compared through SHA-256 chunk hashes of the full streams:
 
@@ -200,4 +201,16 @@ go into `docs/performance.md`, with the environment.
 
 ## Changes
 
-(none yet)
+### Scenario `edges` added (after the first implementation commit)
+
+Mutation checks on the implementation found five changes that no input
+caught, because no input reached the boundary they move: the microphone
+pre-emphasis clamp at ±32767 (`mdf.c:728-739`), the microphone saturation
+test at ±32000 (`mdf.c:973`), the far-end energy threshold of the
+temporary adaptation rate (`mdf.c:1153`), and the notch-radius rate steps
+at 12000 and 24000 Hz (`mdf.c:1241-1246`). The `edges` scenario builds
+inputs that sit exactly on each boundary (the generator searches the
+sample values with the port's own pre-emphasis, which depends only on the
+microphone samples), and `TestEdgesHitBoundaries` checks that they do. It
+runs in all 24 configurations like the other scenarios. This widens the
+tested domain and relaxes nothing.
