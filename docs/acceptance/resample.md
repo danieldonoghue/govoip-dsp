@@ -247,4 +247,21 @@ Targets:
      each; more than 256 channels returns `ErrAllocFailed`. Every
      committed fixture case still passes; `initfail_q0_48000_48000_7000000ch`
      now fails on the channel bound, with the same error code as C.
+6. **Corrections to change 5, after the review of the cap.** Justification:
+   the review found a panic and three inaccuracies.
+   - At quality 0, ratios such as 1073741823:2 make `multiply_frac` return
+     at least 2^32-7, and rounding up to a multiple of 8 wraps `filt_len`
+     to 0 (C is undefined there; Go panicked in `Process`). Such a filter
+     is now rejected with `ErrAllocFailed` and no state change, like the
+     cap. `TestFilterLengthWrap` failed before the fix.
+   - "Configurations that C itself rejects keep C's failure path" holds
+     for C's ratio and table limits only. C's memory limit
+     (`INT_MAX/2/channels`) is always above the cap with at most 256
+     channels, so there Go changes nothing where C outputs zeros.
+   - The downsampling reach is about 21000 (non-integer ratios) to 32000
+     (integer ratios), mono, quality 10, not "about 30000".
+   - The cap bounds each configuration. Buffers only grow, so a sequence
+     of accepted changes can hold more: measured 1.14 times the cap.
+   - Added `TestCapBoundary`, which pins that a need of exactly the cap
+     fits.
 
