@@ -62,6 +62,7 @@ example will appear here with the first public package.
 ## Tests and benchmarks
 
 ```sh
+make help    # list every target
 make check   # gofmt, vet, tests (also with -tags purego), dependency guard, staticcheck
 make race    # race detector
 make bench   # short benchmarks
