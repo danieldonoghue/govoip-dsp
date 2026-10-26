@@ -291,7 +291,7 @@ per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
 ## Results
 
 Measured on the Mac (`docs/performance.md`), 2026-10-26, with
-`go test -count=1 -v ./agc` at commit `f59701d` (LibriSpeech present).
+`go test -count=1 -v ./agc` at commit `e12d763` (LibriSpeech present).
 
 | ID | Threshold | Measured | Result |
 |---|---|---|---|

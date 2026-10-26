@@ -645,5 +645,5 @@ first `2K` output samples of a stream are zero.
   (5 % to 95 %), above the 3 dB that was pre-registered. A slower attack and
   release reduces it, but also slows convergence: 1 s attack and 2 s
   release give 2.86 dB, 2 s and 2 s give 2.32 dB (measured before the fixes
-  in commit `2a0ee3f`, which leave P4 unchanged at 3.641 dB). The choice is
+  in commit `f47c93b`, which leave P4 unchanged at 3.641 dB). The choice is
   an open question in `docs/status.md`.

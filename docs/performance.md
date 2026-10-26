@@ -209,7 +209,7 @@ Cost follows the frame size, not the rate. No Linux VM numbers yet.
 
 ## Automatic gain control (`agc`, WP4)
 
-Mac, 2026-10-26, commit `f59701d`:
+Mac, 2026-10-26, commit `e12d763`:
 
 ```sh
 CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./agc
