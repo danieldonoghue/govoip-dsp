@@ -219,4 +219,32 @@ Targets:
    least one measured case (8000:8000 quality 0, then `set_rate(4000000000,
    1)`, then 100 input and 100 output frames), produces 8 zeros where Go
    produces 1; the output is zeros either way.
+5. **Go-only resource cap** (owner decision, 2026-10-26, after review;
+   pre-registered here before its implementation). Justification: the
+   reference limits allow filters of about 10^9 table entries and 2 GB
+   allocations, and in Go a failed allocation is fatal, not an error.
+   - **Derivation.** Over the supported configurations (every pairing of
+     8, 16, 24, 32, 44.1, 48 and 96 kHz, every quality, up to 32
+     channels), the largest need is 96k→8k at quality 10 with 32
+     channels: a 3072-entry sinc table plus 32 × 3231 history entries,
+     106464 `int16` entries (208 KB), measured from the Go port.
+   - **Cap.** A configuration whose sinc table plus all channels' history
+     needs more than 16 × 1024 × 1024 entries (32 MiB) is rejected. That
+     is about 158 times the largest supported need, so drift ratios,
+     odd rates and downsampling by up to about 30000 (mono, quality 10)
+     still work, while the construction cost stays below about 1.7 · 10^7
+     sine evaluations. The channel count is bounded at 256, 8 times the
+     largest supported count.
+   - **Behaviour.** `New`, `SetRate`, `SetRateFrac` and `SetQuality`
+     return `ErrAllocFailed` and change no state when the new
+     configuration exceeds the cap or the channel bound. Configurations
+     that C itself rejects keep C's failure path (the zero kernel), so
+     the fixture cases with rejected changes are unchanged.
+   - **Tests.** A configuration just under the cap succeeds; one just over
+     returns `ErrAllocFailed` with the state unchanged (rates, ratio,
+     quality, and later output equal to an untouched copy); 4000000:1 at
+     quality 10 and 6000001:3 at quality 10 are rejected in under 10 ms
+     each; more than 256 channels returns `ErrAllocFailed`. Every
+     committed fixture case still passes; `initfail_q0_48000_48000_7000000ch`
+     now fails on the channel bound, with the same error code as C.
 
