@@ -278,7 +278,8 @@ func (r *Resampler) adjustMemory(oldLength, oldAllocSize uint32) {
 				for ; j < filtLen-1; j++ {
 					mem[base+int(filtLen-2-j)] = 0
 				}
-				r.lastSample[i] += int32((filtLen - olen) / 2)
+				// Saturates where C would overflow, only after a failed change.
+				r.lastSample[i] = int32(min(int64(r.lastSample[i])+int64((filtLen-olen)/2), math.MaxInt32))
 			} else {
 				m := (olen - filtLen) / 2
 				r.magicSamples[i] = m

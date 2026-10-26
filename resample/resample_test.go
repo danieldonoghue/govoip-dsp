@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
@@ -642,4 +643,67 @@ func TestNoAllocsMagicAndErrors(t *testing.T) {
 	})
 	r.SetRateFrac(600000000, 1, 1, 1)
 	testutil.AssertNoAllocs(t, 100, func() { r.Process(in, out) })
+}
+
+// TestHugeRatioAfterFailedChange covers ratios of 2^31 and more, where the
+// zero kernel's position would overflow int32 (C is undefined there).
+func TestHugeRatioAfterFailedChange(t *testing.T) {
+	in := testutil.WhiteNoise(200, 30000, 3)
+	fin := testutil.ToFloat32(in)
+	t.Run("int16", func(t *testing.T) {
+		r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 8000})
+		if err := r.SetRate(4000000000, 1); err != ErrAllocFailed {
+			t.Fatalf("SetRate: %v", err)
+		}
+		for range 5 {
+			r.Process(in[:100], make([]int16, 3))
+		}
+	})
+	t.Run("float32", func(t *testing.T) {
+		r := mustNew(t, Config{Channels: 2, InRate: 8000, OutRate: 8000})
+		if err := r.SetRateFrac(3000000000, 1, 8000, 8000); err != ErrAllocFailed {
+			t.Fatalf("SetRateFrac: %v", err)
+		}
+		for range 5 {
+			r.ProcessFloat(fin, make([]float32, 2))
+		}
+	})
+	t.Run("filter growth", func(t *testing.T) {
+		r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 8000})
+		r.SetRate(2147483647, 1)
+		r.Process(in[:1], make([]int16, 4))
+		if err := r.SetRate(8000, 8000); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.SetQuality(10); err != nil {
+			t.Fatal(err)
+		}
+		for range 5 {
+			r.Process(in, make([]int16, 300))
+		}
+	})
+}
+
+// TestHugeStrides checks that strides near math.MaxInt give the right frame
+// counts, and that calls with them neither panic nor hang.
+func TestHugeStrides(t *testing.T) {
+	for _, s := range []int{math.MaxInt, math.MaxInt - 10, math.MaxInt / 2} {
+		if got := frames(10, s); got != 1 {
+			t.Errorf("frames(10, %d) = %d, want 1", s, got)
+		}
+	}
+	r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 16000, Quality: 3})
+	in := testutil.WhiteNoise(1000, 30000, 2)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		r.ProcessChannel(0, in, 1, make([]int16, 20), math.MaxInt-10)
+		r.ProcessChannel(0, in[:20], math.MaxInt-10, make([]int16, 1000), 1)
+		r.ProcessChannelFloat(0, testutil.ToFloat32(in), math.MaxInt, make([]float32, 9), math.MaxInt)
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("calls with huge strides did not return")
+	}
 }

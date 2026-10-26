@@ -10,7 +10,11 @@
 
 package resample
 
-import "github.com/danieldonoghue/govoip-dsp/internal/fixed"
+import (
+	"math"
+
+	"github.com/danieldonoghue/govoip-dsp/internal/fixed"
+)
 
 // runKernel is the call through resampler_ptr: it reads in[:inLen] of one
 // channel's memory and writes up to outLen samples to out[off+k*stride].
@@ -94,13 +98,14 @@ func (r *Resampler) interpolate(ch int, in []int16, inLen uint32, out []int16, o
 }
 
 // zero is resampler_basic_zero (resample.c:565), used after a failed filter
-// update.
+// update. Its ratio may reach 2^32-1, so the position is computed in int64
+// and saturates at MaxInt32 where C would overflow (undefined there).
 func (r *Resampler) zero(ch int, inLen uint32, out []int16, off, stride int, outLen uint32) uint32 {
 	outSample := int32(0)
-	lastSample := r.lastSample[ch]
+	lastSample := int64(r.lastSample[ch])
 	samp := r.sampFracNum[ch]
-	intAdvance, fracAdvance, den := r.intAdvance, uint32(r.fracAdvance), r.denRate
-	for !(lastSample >= int32(inLen) || outSample >= int32(outLen)) {
+	intAdvance, fracAdvance, den := int64(r.numRate/r.denRate), uint32(r.fracAdvance), r.denRate
+	for !(lastSample >= int64(inLen) || outSample >= int32(outLen)) {
 		out[off+stride*int(outSample)] = 0
 		outSample++
 		lastSample += intAdvance
@@ -109,8 +114,9 @@ func (r *Resampler) zero(ch int, inLen uint32, out []int16, off, stride int, out
 			samp -= den
 			lastSample++
 		}
+		lastSample = min(lastSample, math.MaxInt32)
 	}
-	r.lastSample[ch] = lastSample
+	r.lastSample[ch] = int32(lastSample)
 	r.sampFracNum[ch] = samp
 	return uint32(outSample)
 }
@@ -230,7 +236,10 @@ func (r *Resampler) processFloat(ch int, in []float32, istride int, inLen *uint3
 // frames returns how many strided elements a slice of length n holds,
 // clamped to maxFrames.
 func frames(n, stride int) uint32 {
-	return uint32(min((n+stride-1)/stride, maxFrames))
+	if n == 0 {
+		return 0
+	}
+	return uint32(min(1+(n-1)/stride, maxFrames))
 }
 
 // from returns s[i:], or nil when s is too short, so that a call offering
