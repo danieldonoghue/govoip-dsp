@@ -384,3 +384,57 @@ the C pointer, but couples the packages and stops WP5 testing without WP6),
 or an interface with a `Residual` method (needs owner approval, and adds
 nothing the slice does not give). The owner may still choose either; see
 `docs/status.md`.
+
+## 13. Internal FFT (WP3)
+
+`internal/fft` replaces `spx_fft_init`, `spx_fft` and `spx_ifft` for
+`echo` (WP6) and `preprocess` (WP5). It is bit-exact with them, including
+what `spx_fft` leaves in its input buffer.
+
+```go
+// package fft
+const MaxSize = 4096
+
+var (
+	ErrConfig     = errors.New("fft: invalid configuration")
+	ErrBufferSize = errors.New("fft: buffer length differs from the transform size")
+)
+
+type Config struct {
+	Size int // real samples per transform; see Supported
+}
+
+// Supported reports whether New accepts size: even, 2 to MaxSize, and
+// size/2 without a prime factor above 17.
+func Supported(size int) bool
+
+// New is spx_fft_init. It returns an error wrapping ErrConfig otherwise.
+func New(cfg Config) (*FFT, error)
+
+func (f *FFT) Size() int
+
+// Forward is spx_fft(table, in, out). It rewrites in as spx_fft does.
+func (f *FFT) Forward(in, out []int16) error
+
+// Inverse is spx_ifft(table, in, out). It does not modify in.
+func (f *FFT) Inverse(in, out []int16) error
+```
+
+Rules for callers:
+
+1. Create one `FFT` per stream at construction, with `Size` =
+   `2*frame_size`, as `mdf.c:438` and `preprocess.c:522` do. Validate the
+   frame size with `Supported` (or the error from `New`) so the component's
+   own `New` fails, not a later call.
+2. `in` and `out` must both have length `Size`; otherwise the call returns
+   `ErrBufferSize` and touches nothing. With slices sized at construction
+   this error cannot occur on the audio path.
+3. `in` and `out` must not overlap. No upstream call site overlaps them.
+4. Where the C code reuses the buffer it passed to `spx_fft` (for example
+   `mdf.c` passes `st->x`, `st->e` and `st->y`), pass the same Go buffer, so
+   the rewrite reaches the later code exactly as in C.
+5. The layout is half-complex (`docs/algorithms.md`), the same `int16`
+   array that `spx_word16_t *out` holds in C, so per-bin code ports
+   index for index.
+6. An `FFT` is not safe for concurrent use. Its methods do not allocate,
+   block or panic.

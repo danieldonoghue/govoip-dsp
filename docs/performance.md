@@ -40,3 +40,25 @@ Each iteration includes a table load and a store to a package-level sink, so
 the numbers are upper bounds on the operation itself. All macro ports, and
 `FloatLT`, `FloatMult`, `FloatAMult`, `FloatShl`, `FloatExtract16`,
 `FloatExtract32` and `FloatMul32`, inline (`TestInlining`).
+
+## Fixed-point FFT (`internal/fft`, WP3)
+
+Mac, 2026-10-26:
+
+```sh
+CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./internal/fft
+```
+
+| Size | `Forward` ns/op | `Inverse` ns/op | allocs/op |
+|---|---|---|---|
+| 160 | 1774 | 1039 | 0 |
+| 320 | 3762 | 2385 | 0 |
+| 640 | 7669 | 4752 | 0 |
+| 960 | 13272 | 8106 | 0 |
+| 1280 | 16508 | 10716 | 0 |
+| 1920 | 26688 | 16452 | 0 |
+
+`Forward` includes copying the input into the buffer it rewrites. The
+benchmark reads each size as one 10 ms hop of `Size/2` samples, so
+`rt-fraction` for size 1920 (48 kHz) is 0.0027 for `Forward` and 0.0016 for
+`Inverse`. One run, not averaged; no Linux VM numbers yet.
