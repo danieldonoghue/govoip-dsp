@@ -1,0 +1,1523 @@
+{
+  "schema": 1,
+  "component": "fixed",
+  "driver": "reference/drivers/fixed.c",
+  "reference": {
+    "repository": "https://github.com/xiph/speexdsp",
+    "tag": "SpeexDSP-1.2.1",
+    "commit": "1b28a0f61bc31162979e1f26f3981fc3637095c8"
+  },
+  "build": {
+    "mode": "container",
+    "image": "debian:trixie-slim@sha256:a66b19aa552f595b4ab276c6b4f9b24fa4546632c5ecd88cccdced4a6866323a + clang-19=1:19.1.7-3+b1 (linux/arm64)",
+    "compiler": "Debian clang version 19.1.7 (3+b1)",
+    "cflags": "-O2 -fwrapv -ffp-contract=off",
+    "os": "Linux",
+    "arch": "aarch64",
+    "config_h_sha256": "233a3ef7452cddf91e8e7f00b21ce0fc734ef9f4b1ff88d1a4023062438d09ee"
+  },
+  "cases": [
+    {
+      "name": "abs16",
+      "params": {"macro": "ABS16", "upstream": "arch.h:74", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0xed99062dc4669018", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "abs16.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["ae7c623fbd0a18f2f1bf2f1b88d42e70c7acb9c2cab9965df73df295fd93d9ac"],
+          "file": {"path": "abs16.out.raw", "count": 4096, "sha256": "8290df7c59c80126643ff9f02da58f1e9d4270ca93760d45162d9dcf78733c4b"}
+        }
+      ]
+    },
+    {
+      "name": "neg16",
+      "params": {"macro": "NEG16", "upstream": "fixed_generic.h:41", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0x602ffe1e91575772", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "neg16.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["3868d28798ec04a323a382f9882a2300ddbbfbac5bbb233c17da1929ea2e29de"],
+          "file": {"path": "neg16.out.raw", "count": 4096, "sha256": "8290df7c59c80126643ff9f02da58f1e9d4270ca93760d45162d9dcf78733c4b"}
+        }
+      ]
+    },
+    {
+      "name": "extend32",
+      "params": {"macro": "EXTEND32", "upstream": "fixed_generic.h:44", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0xb43244a3a1494634", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "extend32.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "extend32.out.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        }
+      ]
+    },
+    {
+      "name": "cos",
+      "params": {"macro": "spx_cos", "upstream": "math_approx.h:188", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0xf604fc190d0176dc", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "cos.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["d13b76dc8bc7ef607d3f073b6f7a3c5923b6ee7bc1834edff872482f99e502e9"],
+          "file": {"path": "cos.out.raw", "count": 4096, "sha256": "dc1a60e6b9500f6ec36ae0fdba97988f2539371e76bb56f6ac194e7105afeee7"}
+        }
+      ]
+    },
+    {
+      "name": "exp",
+      "params": {"macro": "spx_exp", "upstream": "math_approx.h:265", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0xc3120b18f0704408", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "exp.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["cd2ac1e3a844931be2968c68cd0d0bcead3c9adc64b55bdadaf471fda6ff241a"],
+          "file": {"path": "exp.out.raw", "count": 4096, "sha256": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"}
+        }
+      ]
+    },
+    {
+      "name": "exp2",
+      "params": {"macro": "spx_exp2", "upstream": "math_approx.h:250", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0xe7ed15608ec3ee8e", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "exp2.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9e11cbbaccbb4f9c5457e960b0e06b5cd84dda187d2553cff3399a049e68c65d"],
+          "file": {"path": "exp2.out.raw", "count": 4096, "sha256": "bb2bc9ee35cf90164f0213a746dc0b07229ae1ebe826d71f424a4de384223056"}
+        }
+      ]
+    },
+    {
+      "name": "atan01",
+      "params": {"macro": "spx_atan01", "upstream": "math_approx.h:279", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0x40eb4af91f32d8c4", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "atan01.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["ff5b9586e0fa59888984d1e94d60d77eefc31a51865bb6af01342f525cca372e"],
+          "file": {"path": "atan01.out.raw", "count": 4096, "sha256": "75a2e20470cd902037b0c6786bdf2b0394af755d1dc1ef16f28a9bed10972c8a"}
+        }
+      ]
+    },
+    {
+      "name": "cos_pi_2",
+      "params": {"macro": "_spx_cos_pi_2", "upstream": "math_approx.h:208", "mode": "exhaustive", "args": ["int16[-32768,32767]"], "outputs": 1, "tuples": 65536, "edges": 0, "sweep": 0, "random": 0, "seed": "0xcafba17b1931b56b", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["9878eea83a30e332f837b0f71b3945eeb1831214f4b54854988ee4e115e96cec"],
+          "file": {"path": "cos_pi_2.in.raw", "count": 4096, "sha256": "0e11348f64af676098ae76fcfb3804359aabc24b53de7c9d6f80838b370b7899"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 65536,
+          "chunk": 1048576,
+          "chunks": ["3d4da60f6dafe428b5a62d9979cbbdbe9021552ef53e265e789e6c985d9cdd76"],
+          "file": {"path": "cos_pi_2.out.raw", "count": 4096, "sha256": "d402c35ec7c724390e556b3dc340fde9868997bd555b8264d661714fd5308ee4"}
+        }
+      ]
+    },
+    {
+      "name": "abs32",
+      "params": {"macro": "ABS32", "upstream": "arch.h:77", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0xed92822dc461441e", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["7bf641423efe0750ba41a18305b744f3f913979b8c12813534c6580aae47413c", "74d48f1fbf1e12a901c591b0dc1b7fdd18b1f00dc46b8e622c4f711190931ab6", "fc0a6c4af394ae1578f1207b9aec45823391d28d3b1b602d092e2b1695c11f37", "49fa972e87491ecb5e12ed0abc0375e6e7d661ef9027c1d90b51d71518687568", "e8062eb808f2168f7c7c335aea5962ba73cf784426473cc2a4a49a998ae24330", "ab4a57094ac54f7ef41ee07fe6a211c0077cbe7eea89b01545ba76f5e0589871", "c7cfb31fed76308930a2daf7655063afabcaa5d4494e000b58208c00631627dd", "6f4e54ba571a755ddf0e7ee6cb07a1af786b2d27511b0e037bc174062ac1f7e3", "7f4b7ee019dfff654df92b2a870638268a858dbd15941821fa87e6b76097cf04", "87f435b57ef89acda9c144c7597a9920a4cb8b51485c2174a8faeab1d074ff9c"],
+          "file": {"path": "abs32.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["0d08c310015633c87f5ce8fd823976648d543f8d3da5d0c9da7c9ecb9129df36", "4b8d3d03d188a3fa9e530722c334bb26aed920cb901903ed498095c8c5cfcaef", "5ca6ffc96d524471783fd689badc6203153744b3c7cbe45d5e0b38c372f492f1", "109832c0051340026dfbb915d108224a77108bdbeb5e9aa9226cec0b37c61182", "44651e7addfdc42f743802c1e4f7f97c80550ddc3eb6c2fe0cb250ecf0d510de", "ef7235b01c047d5195d635fed82661bce1b6dbd8a5189a91c19bef3a1d7abe4c", "23a801490204987281462495dbd6894e1e8adc5f10a9efa28ab301a38ab5e07e", "f40adc06f15ecb040236ee8522071cc6c3c80116125fd395ccd96dd726a5186d", "b4b047e14de8b8c1184694ae1bef2fe6f6365c2a972442417b104dc557052a23", "6ad1897ba629187f07a1aea44aa77461c7fa2cb6afc808e26d8cd912ba5ea34a"],
+          "file": {"path": "abs32.out.raw", "count": 4096, "sha256": "4123237fef7770258817140791b60a4f2f56ac0d46795981e9a7fe5906305242"}
+        }
+      ]
+    },
+    {
+      "name": "neg32",
+      "params": {"macro": "NEG32", "upstream": "fixed_generic.h:42", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0x6037021e915d7cec", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["ad6668fb77938d61535ad7adce7463bc7d7279e8b2271758a59ad695882b4ad6", "a5c88361c8c8d6c4e1a51a5000d5784ea305c17ea46694d09d8f49cc91bd5dca", "cd3ce08fe49c36da00c107590a7d75183f36a47b9313cdd7f52be53972e12562", "2bbb196f2b2db32352b253403e86a785fcb967df15536542019b262a3ee3c75d", "decf42a981c5aa8215b0ef74f82d27626dace7d704d67c0be18eb21883b6ff57", "49275c1a9960fc455fe0ec7494346ed0af6552af6feeae0b8626343936652977", "1d5819275697b07974058e7b43bfa17b886fb6f79a490eabc93a40b4437c8dcb", "dba8924848879039f578a11e5ae9462ceebffd7adc2f29fa67db4b490a0d9f64", "268e8c7189f189927aabf9ae42818f5ad1be6f040f1973853b769b033a88bddc", "604a0020c5069ee95be3776dba7ae5c5eafdc20512c7d078bc2ec3ae84dbfc7d"],
+          "file": {"path": "neg32.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["d6448436d1585ed7b91b50d77dca36fe3229d06590ee1cb2279d47411f495cb6", "8544c2d8d41f5bd264a752b6c603205952aa9753f983ad86036e2eadf900703d", "7c782eb2118dfe382ba9ba9785203e199c150e60f5b798ebb0a0b0129107a153", "b46c71f10eaa101632646e3f69f76b685aae45aade742cd2e826f7335b842337", "06261285af476b0b0fe5ef2c7e09fbc3f10bfea59b45ebc2d144bf09686c7e6c", "0c14cba3befe458929965fcbae9f71756ce50800a725f0fbee735a00b094e600", "13fa08b476af9905694cb5e157cbed4b833db650d6b31e7cc31da86ab4ef7f73", "787b1ba02eb16e2b7191d4ec825fa7048ecf477fb9d733fad3bc6246e2c0f4a2", "189f6b27e0273bd6129b0caa66b2b51b28882089f3a45b76400788704179afd6", "62ddafb48c4ba44fd1924b41bf7251b87c324450f86f01a01811cbbccbce0b45"],
+          "file": {"path": "neg32.out.raw", "count": 4096, "sha256": "a5302905a714dd16b8967dc4533da7f69a87239ac38b99b628db192363c0297f"}
+        }
+      ]
+    },
+    {
+      "name": "extract16",
+      "params": {"macro": "EXTRACT16", "upstream": "fixed_generic.h:43", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0x6ef2f5c19a81e9b1", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["6baa5eaab28706e0b533158c20416f24ce9520db7502e3700613be63d1beb1dc", "b8630c399a468d8cf2c1d90a2fed58574bf59acefdec171d5abc3cafbd454481", "9fcde3afe0813b16bb3191001f2269925abfbbabab8cec6df55e01ccda40b14e", "33373df32b4bf560cbd2bf4b69f0af256b92ac6bc798a5a50810a7fcbb44a584", "f4c2010437cdd48d0dde0647897b2a9b0c2e04793c9a5ae0f1dcbe2e8eeba243", "638e1dcf52e87d791cc10b0e804d457d4000e908e70809bfce6a74360017690c", "992da7d07ee0573f5862f415ee574f334607266b4a238c376fd74d2843903556", "22de93bc8fb4cdfcc112f12b9750a540bb724c28ed1fade70de8e25e9ab3e007", "1b66bd72355c3e01fb03837fc592b04825c7659255042c6e5cdb700455d273a7", "0c13fb96c9a517b635da5749ade1e55b9f3fe20a40fb96b4ee6e9857f9f9c9e0"],
+          "file": {"path": "extract16.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["7d3832c052a9ea1696eef3554d667d87f78a046fe050f792ec1f2526232fbbf7", "86e072571f8071208227623e86985c2f52cc86d3c35e7f7e79dadd3dc307272f", "8157110f69a6a703989d2ff3f7e289b7e37d1fa3ce28d021215a165e125de2ef", "4dc85cd192d5e49a126e1425d8a6348bca124e07d74453bf1a368511a4242f07", "8c91b1b44e25cf361cf50e495ca6a8b8f2196313e4511f5e6a2920cba06f79b9", "96e8ea9ae707e4c1821ead74145fc74a497d48e370daaa81410d35bfa24c73e6", "9c3f975300f9f4e847e46257e0de907f3c6c27724af325566bbc38693c6f2995", "59154860345561beead81f3e09b7650468560ef4a89a4e91c85a3dc5af7aac2a", "e204f8d922219b78d315a583a957ec604499a9dd8dda82956ed5ec4e1957e7c9", "8a5d1fb7534fe84ea38829e9e2b47871c1ff5111ca56a99258797d95fa0d83cb"],
+          "file": {"path": "extract16.out.raw", "count": 4096, "sha256": "ee9ad98e1ff9577fb2341006ac7891d63d496ce4f05c17a1cf484f9a35061dd7"}
+        }
+      ]
+    },
+    {
+      "name": "word2int",
+      "params": {"macro": "WORD2INT", "upstream": "arch.h:104", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0x25c709a3731cb986", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["b4c1401a324759ab09989dae029f89b6e71ebf2acfd0346f174dea26371c2563", "545bc0e220c23031b24cc5f8247eafb0555f740392011945fef0a1c1253931cf", "fccbcca860ab1bd2caaae801badbcd1e25033e29ff09e38f41babf927a80dc12", "4e463919c58deec0e2fb26b1743e025b7adf1565eaaf07536c29adc8345bcf72", "56cc2e86807c9260418dbbd1013643164c65760cf2a38560e9b9258d2d9d0f26", "56fd09fda79b39f9d89890f3bcc428dc5d3781a670b4c083bcbfdb4d94e1710a", "35168dd18e13c5a85cec32984d70766009f1545208060df5ff1c1ab2d403fbe5", "dbc1188d98911fae8698cbe63a9b8f98112845f2f16cfcb3aee4e3139aecb2a8", "99446cb2fd1c526a0ce832c93d32bbdd83235f81c51b7a3ef387443805ee4c7f", "13e8a8ebf232a4f1413a8ba943c0d72102128b0dafbcfe3128d9d500bf2e283e"],
+          "file": {"path": "word2int.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["579c266bcfdd0862af9e272f30e8ce42cfb0c2cd3c53218d7c63c5915826da59", "9303c2ac0347afbb37ccd216cef02e6381d597f74d79eed842273f0eec14c824", "5aa82cc48d78cf7a617c3e4a153306bd9697d1646bc5bf2890491c645900aca5", "f20b0965ca370672615d48aff8868818ba16db4ad6ec1d73d109d0b05456569c", "501a6319ac6cce5adebe3762dc37371b84e67b9a9485a758d5f0e9009323de54", "180d5c95a9e18c1a9b604aa33935d0011eb86945e7473effb0174ee1f7883de2", "95c2575cef984a5060170b7f2a7978d7e402cf05f809563038efcffceab0a039", "34ba58d7c32f6a69ac59e057a2db9ebbcf150f3daadd834b6edb2e912b69cd92", "64750760955c045fcac3468f715fc9382ed02a957cb4a2af09a94735f834fadc", "c7109a13970f22c394c2f3f2b1480985d66412b0ffd1a06fa4f7883a0e0dd509"],
+          "file": {"path": "word2int.out.raw", "count": 4096, "sha256": "3dc64b210768b8c2225615c6e43016a0aec9bb7f53b9fe18795ac0346b2039a5"}
+        }
+      ]
+    },
+    {
+      "name": "sqrt",
+      "params": {"macro": "spx_sqrt", "upstream": "math_approx.h:142", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0x9614cf190fc8d7cf", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["0b5cf1c7491e232609e8eff977615cacf7af988788e948e5ea685ea5874da7ea", "d062bfdc90d8f7fb624607d1735221d5e2bb031d288b389226bb0bb6a18e6d31", "ee6e14b6b7802dad7370a22afb4d2ef1aa5fc37ca5ab50ebed495923d1e1332a", "068a2383612085a5ef9eca3585355c893149b97b0aa0cfca10192fc3a110af92", "87e760eade57b59e6b285cb02f30462fafc706f279bbde251c9b09d64405a23f", "9a037e302fd9b1780cf4e1e2e55a010a4096579c185ca01eb119f59c5b1babca", "6a986241c017b5ccfb63be15b10a78f55b53424380499e19d2c80f850cf7f76d", "3c6797128a1c407619adcfb266cc486963c6a6fd0e5d1a19b94478eee0950a1b", "f700fda58535d421cf906cafb56e8a8e5cd6517345092a1f862eb92d70a2b47a", "5a8dddb006b117703d0efd04629354f20ee9bcb6fe34177fee0874e0139d8710"],
+          "file": {"path": "sqrt.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["b2ca1e7dee68a6c55411f9f0bb6d767defc997a6f960bdff18e5d990e4be27af", "dd8bec5d5df8830d682976c283a772729147468b26786ba4b946a9edc3e3c301", "06e19ab1ef7d2c6719d5bee95843bed09568aa42f5ca778708847c33d1a00c92", "54da21bf8d70a747fb2f1796e0825e8e981dbcdac672fcd2c10a38f86d090838", "5dfd6c6efbe32f6404c3f325f843af8a5dd8a3faa669d8e12b3a6f36f08a26ea", "3c7f9fbe07216f489f6b5e0856447c1c9beb8551f65dc8536d32afa30b594ece", "f1e57720b842d0b69711dfa81b5cea20d4310cd4dc29962b13af1238c9d24675", "50b4df56085e115089d4373fd8bbee003d26d6712bc1cf35a3d1ab545879af13", "f1e9a2e36a07c58b27036dbce30431c6b696daf1c1fe5f6ed6cfd417f6cdbb73", "6f3b5dfb703a8497fe125edce8ee3f817b0a12b648065b75f47c17556db5b8d4"],
+          "file": {"path": "sqrt.out.raw", "count": 4096, "sha256": "6d8b8d484c43ba35fd44b5cc9e151ad7e70a9516bf63e3d5ad4107bfca38570d"}
+        }
+      ]
+    },
+    {
+      "name": "atan",
+      "params": {"macro": "spx_atan", "upstream": "math_approx.h:290", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0x52bd2f841f1cccdf", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["62c83dc931cc856a932f48cbf7f921eed2149ed91ad9911dd79b49bb7fd26ce3", "4d9fc23a35eac0b263630c3f7094e9b8d35abc16c2ff07b58fd0022eb3620ef7", "9b5f2a07a838e66ff84895426593dfd2fc8dbacc4309ef616a74d62da0ed55f3", "427935812e7008cefced9ee578c5ac01dfb3be406887de0439bb9e246531a398", "9c6551f05d8be1cdcda051d7fa9553b2a597c62e83c7032cb7b8a9664e3ce460", "994937744b21c6b7280d000543733c8f21148148a696380e0c7a7dbef5b98b40", "d9b23891e6b29d2e239bf1395be3c86a5f7c60643de1a757ed0622a58d49ec65", "ff89360131959b91eb4e1948bfb7b74b1866056c4432edf79fb3a149b7037d2d", "db5230857dfccfe9e58c629c223b9b1b5ad6cb77f4f73d8bfc52ee4ae4527bb6", "639c77efb00f29c3d323d38ddabca4a2d73251c7def55535aa2125f28fa9b26d"],
+          "file": {"path": "atan.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["8c27df75baa6734ae31b9f204c01e1ae18eae40fd6020ed3dac2ecd91c446cca", "6039f56c18f564caf447f8cc0cf07081ce04f2ffd6dc9dc89ec8d21941dff23b", "c0a15bbbcb544876a0482501c50676bcf3fa6141082a8ce8c6dce07ddad1b468", "83cbe3e6c4926d5e9bd9f668bda9218fc1e171ba5cb0771e1432e67d6d2e64ef", "15e37f9a0e192693ca6553ad4d18dc279efc821be5ce62bbc2213fb368e654f5", "cb0d112f853380f96697de7d84fb7c6c80bda906e22ef5e137fb6363c26077da", "ab490ec72658db1166130b35a709be908b2aed2c7170d6d78c30f514968d5633", "a306a53c80386e649da503bcf28c61ff08e3cff9992287a46e83a9715029596f", "2e08181fb5a05b11bb47f5476e6d84bf36c9f632ea1a98520e0625264330dc41", "22072f2bd7958e52fb22ed17c2b6418f2ed112482d4fc38353f0dc7fb15f7105"],
+          "file": {"path": "atan.out.raw", "count": 4096, "sha256": "198592ce2c1a2be6ceda4c7be325f409165962ee6866314ac4b273598c64c1e6"}
+        }
+      ]
+    },
+    {
+      "name": "cos_norm",
+      "params": {"macro": "spx_cos_norm", "upstream": "math_approx.h:216", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0x5835dcf28867071b", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["8ef82859046fbbc107b99038a75af7f36522405b5f215bb241d152b130de81f7", "34f4228be3d64e58c00cb73a858abe269bd0de4004acbe39f63e98c37e388d94", "269cd2dc9ba4840fc8d9216b99657d1186665517eb833402c8929461b5234df9", "db3cbabb6a477f2d647b76d1ecc7eb459390017e46a2223f3b8e5bd11e189a35", "e8dffb57acd4c9b5ecdec86542a7db48082dee456458bf4cb745a875a2cd8d35", "e7bb41130f5455a7359f2a3c127b2cf446de54ff9139ddd5e48021879cbaacfe", "ad13eb4c8a449c827bdbbfaaae6c3d96ab070c8207bcdee271b55fa835281f47", "7d3493dfcef28fe8ee83832c01c94aaa70095d3cda53b0d0586adc24466c47fa", "dd454b2a854c3196ff1bd4407fd065bea480d2be066cace5e647820f9172f147", "b1d798535b2ecafeded3026a1949e5e3e49a51dd34eba3a1562fff93619701e5"],
+          "file": {"path": "cos_norm.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["2418cfbee9d98a689e96f65386e9450388c1f1eaa718b9854fc8fd4693b3227f", "0a5d5093a16998fa9b6c18a06ac3f11240d346265ea393719d7004a6462b5d2c", "6d0a9683b104de5315d7df5c9f4c4d6d1da58d96f13119226a97847a052a202d", "7f0c491dd9b157099e56b100079b47dcbbb5ff1edd873ee192da7a4d5e2941fd", "6427a820b0a3877b607d5ec58f2b3348533bda902ef1456d3a296a3c85b4e302", "daaafe9ac3123b089090c6f55e7f2cc7c67930d59b546316bf875a39404fe6a1", "cf8189e9c2788c3bebcbe750df0cf3a4046c0af90aac28644785d2a75a58e025", "e97bf362a04d137e247808b2036c5ebc5801b8519b4855b7fc909ae0b6b6414e", "b2308b677dd7264a9743b8f818a569552bd5a9a0b9345ff2fce1fd01a77f0b27", "4c308be0d7187eee878ea5d3c82d54cc61f0ba032671247c5ac2ddcd7ebe9e3f"],
+          "file": {"path": "cos_norm.out.raw", "count": 4096, "sha256": "2611a3165953d4e83794d2cbdbfb969579899cff4c9f78cc0d371810e2ab9c62"}
+        }
+      ]
+    },
+    {
+      "name": "pseudofloat",
+      "params": {"macro": "PSEUDOFLOAT", "upstream": "pseudofloat.h:64", "mode": "edges+sweep16+random", "args": ["int32[-2147483648,2147483647]"], "outputs": 2, "tuples": 10065571, "edges": 35, "sweep": 65536, "random": 10000000, "seed": "0xe3c2f5bcd8138323", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065571,
+          "chunk": 1048576,
+          "chunks": ["8864b57f070251510e4a8abdd90d7f505b4b496670ef7086984f9e73ac1e314b", "89be45d54f0e0566f658b868595e079f6f4bfcf14ce6e8c751046c4711ad7d68", "1fa9f1533a6facb1f17a0310ad98d16f801ab876c9430691fe711cc88dc07fae", "2e3a4a1b97bd41680494441c63bc10cf6c8cd05c5b1e17463f996d1efcae1f95", "0cb3b771442649c40332076e7005f336c142c1501faa3d0508a660e035245c42", "6d4dd96b089c402e749a5d90283dbfd08f143759bc503aaa62fb7e4f17d5853f", "8aaf1912ce380fb7717f5c16b18416f2f38a151e1f025dc6624e36dc2ec737ec", "8d4c8efe37790f6c2ca952a4bb64f4f28434895aee875a3d4420d9393adf3957", "e1bf658f5248df0f6880bda121c21178a061ddfc4b57d618b4ab4f8304cfb1a6", "29fc51a424e357e285d0d4714a25c63987c4ebaf3f6f7532eefe82ca77cf4f26"],
+          "file": {"path": "pseudofloat.in.raw", "count": 4096, "sha256": "661616a4c71eb514179febeab34ef1e6bc60be6401ae9637cd2526bf70a5b66b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20131142,
+          "chunk": 1048576,
+          "chunks": ["eccd7baaea6e482e275dfbbe142eabef730fe847ae9d1d76a4a273136d3740cd", "2b80a26e057bd18a47a801835b0e8067aad4fe0b87a47a29bf162d894d232c55", "c87cbcad3f7be03a4252b71fea25ce05008d52aae4432f26c0485c624656ebcc", "17a300269c42bb011bd1ed28822ef8ce5b8aaaeade47f5b50fa0aa07e4b8e294", "eb88076a59230a3cd781ccd838f48b052137e7ade9b89041207b755b318f0473", "690c0bcbc114ff5e934c643a9538169bdd30827f53ab017e81c644e4217dc4ed", "cbad856a39727aa25b921bd15df1a29fca2acffbac19992510a9783188364fb7", "a57f888298a1de82cbb7d8205d091a395d9d982d55837ebdb1242fcbcd0feb45", "93bd751abaa6604fc8332922f9e5dd6651beda6c2203fe92d7c25fdfca827182", "fe2befd0bf33bf0a17e08947a1c99030b18331e3c8410f36ac479e64c4d4d11c", "542faff132b9e8af068782b806bcf8bd9e8928d4dcf68e9feb40a7d52bf28694", "d974910159dd3cf6ac7bb90d750da23b5abdc1ad40dfc92cb2a05589847f2caf", "fc698c58abf166a70b4211a74476e7e7d1c52baea6e1d36e5dfaad35a4e2e8d6", "b0f6364fb951f09f926ca19d73b7e7fb40fe09ec6b3fe32f3bc06b33dcb257c4", "ad99a55afbf428d9cd97a31f39a74a6280c147c824ef323897582aef47551481", "20f8bafbb0a397acb40158c6dd4ef5d5881eadc151d59cdf43d321d25e6f05d1", "51549d9755f503b4750b4020012d6720e8221707a5d60fad9e4053511792d1fe", "4cb65ccb56f9ec821176104b37098b0c1ad85538845d5149da4c58d7c08d7639", "18fb2f02c4e08d595d96b5f1e3c8403681934435b52501f41f6e6cd9ff889d9e", "d124c17b05fd2d186992d6cd5c37ae9f16ee5e50e35097cd80e2bc466402d583"],
+          "file": {"path": "pseudofloat.out.raw", "count": 4096, "sha256": "4662a8eac44d6edc48098b90aa34f551f096ad8c68b67b19954c09c824452907"}
+        }
+      ]
+    },
+    {
+      "name": "ilog2",
+      "params": {"macro": "spx_ilog2", "upstream": "math_approx.h:64", "mode": "edges+sweep16+random", "args": ["uint32[0,4294967295]"], "outputs": 1, "tuples": 10065630, "edges": 94, "sweep": 65536, "random": 10000000, "seed": "0x3377dd7db8ce0dac", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065630,
+          "chunk": 1048576,
+          "chunks": ["bd2924b4ac95d853119b47c57dfefa046a734405309bef747a6b04535255d4bb", "c65daac356cda4d65380a2f24e256706635b3bc171def21b744bf3521e8a68b5", "bcc3db7d26b7da168fabcc86a84388fd56b7c2fdad13bd988d26fe113cf65cbf", "3fbbff08507b9f80eff0dc6072151736042043b48006f350fa5ca86d8531e171", "7cd04b8515f084f10b204c02f6a88f6de635fdc11974a2e29056a3bab2ac09b9", "772e7a431457878d991008f9eda4121e7ec435e900e57ea69925a90ceb57f656", "afac3dab74f2586f159c7f593d83fcb993cd0a15016cd6c43de6b2c181858210", "75b39123fed20de6d9bba16b0cd71f7af82873c274df82e7d9f27e8c3b862a0b", "1f39e14d22d2c7f6f92c65ffdf7842efd195643d3a6973734d684cef40757fb1", "a7d22d4ee575b3682f6efe7ec184eb57708d2a51ac74ffcb50318e6012a5e185"],
+          "file": {"path": "ilog2.in.raw", "count": 4096, "sha256": "6502f650a7ee302b6cd052f2313d7e9f6444e7e02db9265cf2f09df61bb41ac3"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065630,
+          "chunk": 1048576,
+          "chunks": ["66edc591e7352ac40fb63136fff7ac62931346b446c37ec222be1ec7b4bf36ce", "8a6febd5e11ddb1d7b1ebf403d0778981d71ae25dc7bc3fafb188ceb5b3042b5", "597021be679195900d9595cc1f623cbfd66082956bb5dab9275e05187561d7d9", "a09720abef5a810a695a0be8039d6dd0271f86c9e16e8b9238a90464173d9a65", "d832445b956d305fec87d6e46a10f3faf349a01be8e3d1fce55bd973ee91330b", "faf3122adfdce6c3620a099ca0ce54987b599d2c356d9cf981cd20f251a9e9ee", "c112010fbd4fe6b8d54c2cb05c4dfba4bac90fcaada6bfc1d1a335dc57197e9b", "2d9278d1f1288ad2b15f451b3836fa034699ed160aac39d7de4a10a542f82687", "f62289b8e9fd0885e1aa023a67d8f5ad3ea62e4d2d11dd774cd77a0d5d3a5d64", "95fb53f233198f99548c93dab4d89aa8c2beb941c77584f10b00f785eb37c21f"],
+          "file": {"path": "ilog2.out.raw", "count": 4096, "sha256": "bc87c9822faba57ecea7edfccb173f8eaf3b0dad8d7eae67756cef4f229969fe"}
+        }
+      ]
+    },
+    {
+      "name": "ilog4",
+      "params": {"macro": "spx_ilog4", "upstream": "math_approx.h:94", "mode": "edges+sweep16+random", "args": ["uint32[0,4294967295]"], "outputs": 1, "tuples": 10065630, "edges": 94, "sweep": 65536, "random": 10000000, "seed": "0x3377db7db8ce0a46", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 10065630,
+          "chunk": 1048576,
+          "chunks": ["bf9af64484c9038b75b23131b7d81a6eb27b8853d9aefa8fc2695aa3ae47cc5f", "9060552080dd6eeebdc0a5e0de94bc1fbef992986c3df60018f586384b494a3d", "9c131f97eb454a36dbfc210cec77f4bf4b6105aeb44ed43062e737463e68439a", "98335b6e473d7a36cccede29295c14972e6577b0b825848ccd634138200ab361", "e0352cf53889ee728bd3d7891673ff96ea205d5ef823201246b112809e0c3d43", "dbcb3aa09a87526f1498587ea93ffdce542ea5ddd1d3534cfbf3ad44ea6e81c2", "eade69f004905591dceaa7b3e7b2786eddf1c46c87e737ca3dfd9257d2d11a5a", "1c3a2c4841bb82c3fcf00e63711a02240639112742bfb4597ecf9555de19a7f4", "03e94cfed34d6c514462f45006fab8e4ddc8ae7b088aa0c0882c6447b344d308", "baf374abaf4a2f882277fe6bee9f9e8f6ded11abd4f267607c8fe9e4a15ea3db"],
+          "file": {"path": "ilog4.in.raw", "count": 4096, "sha256": "6502f650a7ee302b6cd052f2313d7e9f6444e7e02db9265cf2f09df61bb41ac3"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10065630,
+          "chunk": 1048576,
+          "chunks": ["847068ebd53a8584bf128ba14ff77548eb3370b97a6376db05c37ee713b678db", "960aca67ab3dea0041b2523e42687dd2f7e2b036d2e3204f35dfb5eedc7dc16a", "7a26bb0df38c9e386f0e3dd23b392481496201365ece1efd8154bdf4df3f4850", "031b34f55ad9b03aa9949af0078c6d9761aeb47d74e2e24b0beeebce4df4cbca", "ebb7b6ea3cf01b546992e93da8405036a51c9fd2d5528234ca5fdc99e7c8c95f", "045cb00d0c3bc24fce09519a41435125cefd1cadeb1df59ac8aeacaba397f75e", "616e0d976f5b15f9a87d1be0ac47843d35b0356b9903cd79e2829f1670c390c4", "25154eca16b04d5be27dc98577184501b1fea453d1d3df0266fa3f5331f219bc", "6f2e7bc0bb08af428e54b048865df9ec153c258692ad361fe99261295765776b", "e0a78b2df1cc0ad031a42ed45134c0d999fd10cfd7ff274e3abd229d0034487e"],
+          "file": {"path": "ilog4.out.raw", "count": 4096, "sha256": "66b7179c1b0c6585a7d6ae73e478ee23e0b8fec17ff2aa455bea5a440b0d1dfc"}
+        }
+      ]
+    },
+    {
+      "name": "add16",
+      "params": {"macro": "ADD16", "upstream": "fixed_generic.h:65", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0x240ec0fdfdea862b", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["589912ec119729dcfd410f5e0beb31c59acea4a85a317d5d00c93133ac1a09b9", "1e630fc08ac7e65fa18372d3d5972dc28a72d6cc1866480a5318e8b41f3ceed2", "97761e29614af5d643027632f4c00ee73739ab1686e629f79a7ba0b827dc05af", "57910f781103407cf8e19e4d2a92d587ab6e61e8e2cc28efea7d62eff2bcb18f", "bf864d31e2279a042cda21d4c4272bb640161d922fc0518c04577747c7d54c3a", "d83b364cfcce9109bf0695480b01d8bf40d8a004dd672aae6b44fe3fcd668028", "83da04724683649738d45111482cc34f509f20ae606dd8b44dcfe9bfcbce2682", "547615f51cbdb0f0ce5fae9a68e45c5e53716037cabf5491960c1b5461629de8", "df934300882b34dfbce74ca04985c48462a2336962a2b4a321321584c4dc1ac8", "e816f47aefade7e416d45c921a4183bd86b90695f4b702f5fcacd80bb256e137", "d458bcb859245cb04af88dae8ccf2908b5ef550fcc9560864cb20949abe0e475", "66f0a8a9376d4af04f5471c765faf2206b5d6f2e26f9482dce3e10bafbce903c", "5e7c44940ffaee5983af6de25ab9d47675af670595fd3c72c5c078921d5c1024", "41abb49198f794fde8eff75ee651e0aa09dce3b16fba8f516873afccdbbf3f08", "026d9e3b4ed42f3385eee696b1ad23b9a1ca4c3380b316a851c2159892bc68fe", "21cb9ba9bae48f8605054657788f8980cc32d08e3b1c3583a04d12c816351a87", "7ce8d7641adef7578b655d1c4d7c8159443ad3f581720866b443337f81b1ee4f", "6fe8dd1a8c52b2329dcea75ea786b72cbce8f90d660a7dbd86e43617d64939b7", "a4e277209531fde133afbd98c0e5c1827989b7e8e8a185ac8d60a5af84f21be7", "08fbf93d5c21d67dd80820c15853778a6826dc03207fcec31ff9afd36de7cc1b"],
+          "file": {"path": "add16.in.raw", "count": 4096, "sha256": "236e2077ef841d1d9723180ddba5771402e1ad1fc79ffe7ae70d2ba96cd302e9"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["9eb59c5a43336ece2a80067874db2c5ff929da53d2a95761d254fd7cf74ee0ad", "c1ba57c1dea3f1de7573a60371d16d2cca94be3a06dbc459d065bb3a71824083", "d0fdeff5c1a758b240d052ad048425ec00a539c48ce92a18929aee432a3caa7c", "baac6d9fd29fee88cfb349339ad793e9ffce8422c154f2437d7eacec1286dec0", "aab5ace3399ea5265e4326dc354c37bc8bf5c0c9e9de0f0f9234ed83eeb5a54d", "36cecaad8892afd2831c2b16f96f1b9881fc0cd066fb401482aa0b50a3a4ce1d", "044273abd018cc013e50ce7a314c07b7d00272572363f8f27771410603f142af", "7bb2d318470921faf1aca69a3d1843cc5803701434e275ddfa4e517bfdb4de8a", "de9194494c4f728ca146f7c7d0b5b2074035314a67b3e4ce7dba4038bbb051f4", "5021295b666640de9c25592fc822090669f9ae7245f88b9a7ebbefe1ba3def9a"],
+          "file": {"path": "add16.out.raw", "count": 4096, "sha256": "7e761e56d38949256a7848324259932e110d5734714cc45cbce2ef2df2437c98"}
+        }
+      ]
+    },
+    {
+      "name": "sub16",
+      "params": {"macro": "SUB16", "upstream": "fixed_generic.h:66", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0x6c98a6b466c24b8e", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["18ecb1a2eb52f25a8750a8b448eadbcf0e6c73731b713624595f154ba73c44c6", "3ca8caaa5c281392b15803990acbdf19497686d8fd99f9356339363c3422c129", "777210e7c88c1cfc15629a0fcad8ce5cc4982bfc9b798313f42f5a962a60e630", "cefcb5aa60dc83a58891fe4dbc44c6116c3ec4bea8b35ef0847ea41814609172", "5f5859f113e819e3cba206387480267bca721477246b1adca906b27653acbc78", "2b8ed07aaa4c4d681ae354c8c540782191f7b0ebe53de54d1b308e6ecdda8a6f", "9718ffb701a98360904477ee63e6737ae134625f52233219eaf09eca54180751", "ce4d1d8781e2028e1fb7a9df4acee21dc7b8b1b42891af04302a4f44054bad32", "e7ecbcdc1d06813f23e5a725c52e6f5dc9101a7cf9093f67d509071b1fd2bec9", "56e6099dba9850da53d34be5e7774c16d2f3aac388fd30a1075924c04b7aaaf8", "97902b4af6700e2a6fd748430f929f7b1a9047a1c6887107bf2123c675ac5c99", "08a30eb137a9b5d1fbd5b3ff4f0fd473cb8bd4c7c0abcf80bb8a24685b2afd65", "729bb9a94304671649e6490980d5296bd417554cf7e5b3658348c90bcd4f280c", "1135f8816b45023ab6472cf6a92eb87c3af81df2138fd08fd7ce7105e2bfc271", "ab7990f4b9544de083482ffda24c70924a2cef807d7ce58eee1eed56f9617dfe", "fad071d4a81c02d0d385c6d153176bfcd6a5fd4b55cf0c06314ca656858a7130", "861109026bc1160c860eed6f622613d8ac2225680b0f79ad5c69ee3b5577b7db", "4f7a418a5677ed8413c98882eb34cf600677fa8d509406cb072fb7ae954d667b", "1637d44fe4c213ce2fb0a82ff8c2ad5231dd6376a76dd593f08c073d5a452fc4", "ecd616e81cbbca994ea9b232a347f85658c26c20a0b71143157179155e536f4b"],
+          "file": {"path": "sub16.in.raw", "count": 4096, "sha256": "99830ad83314ab63a0c8ec6d135f4c751322226f4e208c34e9524cb8f30a8991"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["ebae72202e433ee28f28c8b0584bdc45c4b262a1bab3865e12bc655d838e5030", "a1da782a6c8915713a864bf085a7aac657f31eff86ccc1a7942fcc8e1b9a0d9c", "85c6988a7d623a409a2ac123fa8a837347df1173011c282cb169ba1c2cd0bfc4", "cef335a328e91672f452cad3309cf71720535999d365fc5239d6b6b7463bcfb9", "7e3edaf6dba86dde8504656d76fdf7a8903549fb324f184e7f5c23f5a46a162b", "2e99bd9ff0918d443263c3932370d9143415e15ea323378ac7d57a7d571c0b4d", "7d1c9e92a7d3a3c732ad80f90bb1930ffe2815287fa34e7072cc4505c66e614e", "3c21d5f01f427f5ff602789ccd759ebfc1fbb1da2cd24cb19f082d847cd86b9e", "977ac1c015e1ab8234de9c698669ac94e6cf4bae76a67895c656e1c000131179", "9a8ea87f6558dbdbb0f15339c9b0781f53c7732d2fbcd22a9d5efe9019368a7d"],
+          "file": {"path": "sub16.out.raw", "count": 4096, "sha256": "45b2dc8335d458bfb98dab1403e81e3b232d23768924263a812f2d702b8baaae"}
+        }
+      ]
+    },
+    {
+      "name": "add32",
+      "params": {"macro": "ADD32", "upstream": "fixed_generic.h:67", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10001225, "edges": 1225, "sweep": 0, "random": 10000000, "seed": "0x2415b4fdfdf09075", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002450,
+          "chunk": 1048576,
+          "chunks": ["23765e1111a69a4b68a11db579fed2c9a397dcdba84ce2eacebfc7ee888c8caa", "e79c7db3dc6f7ba1a3f5ccdbb34f4da4df623ea1dc0439d60b4e0f77fd8d2f23", "f85cc25aa52344e32b092a5da5986f2a4740be636e41645eb8a46ca5711ebd6e", "e88ac7fd35dd6fc9aa9a64f7e8f100f89457388e71b080afaeced4a89eb0e36d", "df474a4e521b04885d8370d9c36283cdb3f1675c2336ed60c50874455455329b", "30a4438f9bda6916a1fe81c4c784f11771307173ba1c4b046510e13b34574ed6", "7e7445d3d193168f4472b3f3d9a81b0622fb6b9aec149f9679779beafac8725a", "44867bba00bfd48ec34bb3d2835d5a88ec1f6a03f15e3953c73e529a8c86f419", "0d76c10e84243327b02b6eb3e9cf0c4c17c83b117142623e7ceaa255c4329533", "ba78cfacbafd9873972d02cb399f596dd16e3e780d11e99f55d34f1705b4e546", "c374ff18d2132fe98103a639114fac22c34e519d44cd31bfe0489d52c62a71b4", "4ee5cd81b763a02d71e6be7a978f74ae7bd6b1af3636764b63e95591d6d520e4", "2da95542927d3d8d3c93f94587985ae4d8114d9c2d28c61056fabbe6752f3b79", "395584a77ee7986c07ad5a21bb8ace650ba3729f780bd82093c81b8f01b060ce", "997ab3f8adb11728e6aa7a6263d987e298449e6fb8ad0ff1355a86b359a0226f", "1efd54ff4b9b3adea214e73ae4f456e3cfd4dcd603cf3229f4056c8f1bb8f4ea", "b62b7f0bd8c91a694eaf999084992a4f3f89db05488e13f15423dc32dece29dd", "0a6b7b28a6e40049fc67927365eb6be5a9770fcd0ab5fd8bb77da237f74ec57f", "a3d487608aceac0b5dcf22f6fe9a9f24d63a7ddd09fbd65fea2bf1d82f5ae7cb", "6f13930f927a765c76d673250d56d186d452ad3db4982d58c2f2fcf8843bb4be"],
+          "file": {"path": "add32.in.raw", "count": 4096, "sha256": "d919800cfb185f91cdf500ff2fe417250718bded6c954ab10c4a839036fc0512"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001225,
+          "chunk": 1048576,
+          "chunks": ["a827fefa9ebc5b959500185c6defa4eddc985104fc5b2df131ba9375cfd89295", "ba2d97cbd9365b2a8f91204983ef95bc5a8efcc950594bf35adbfc1b00f763e4", "3bf47a2618eecf6ac9f58a318d79af7509d48e3c682ead4181db36825ee51167", "d105805e8905965e0c3716dd7deef8424f97139f7949359e0276391822380da9", "ef9d513e40d28c072a20e2b652628354972d570667f9444992a6ea38f54c0ac2", "4d3851059adfa350825a1d2b512d72e836e0d0dd35e4c6c1bcbbc7eeba925a0e", "3b5c6ce2a5938f222f790d1a52abccf9a923f34237a63a9d6602c7cb7fbb87f0", "2d055cde6b24c02a029f54d80ff43b2c982e8ee045fb5a93ee7828cf5361fea6", "46a7b3fa89aa2d3f0873646c8825f494c383315416a3d59bad78e5453280eead", "e1d2094214e6e92457a839c4b584bd11f7de2c6859ca85de07001bf63f120af4"],
+          "file": {"path": "add32.out.raw", "count": 4096, "sha256": "293e0beda26f1feaa4600998457ef15bf9eff9f1952e13cfcd66c684ae6fe3f8"}
+        }
+      ]
+    },
+    {
+      "name": "sub32",
+      "params": {"macro": "SUB32", "upstream": "fixed_generic.h:68", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10001225, "edges": 1225, "sweep": 0, "random": 10000000, "seed": "0x6c9f12b466c76ec0", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002450,
+          "chunk": 1048576,
+          "chunks": ["c8fbd662f393168cb707b14ac858f9e2163ce871f5d61bd2576661ed20acc30b", "a4e96d9f546bcbd43cb76779767c1b307e696ea8a0522beaa7e88eb0e18b1af7", "d1eec692e5cfe222cbacadb956c6daa2007ee05b249aaf712db007eecfb113e9", "58541cfe0e8da4ca12f9f4dcd74d1fc09e7c07ba307c8867bd27ab728ea3625c", "a1b0fc835bae1fa8b17994d4bafe8c185c88f0bb663f907c66af2eca5d913c81", "132590b163115e7096a1619721e6e1fee8cb86d7335144ec61413752f2b9bdba", "bb035c579cc0c2f43b7bb96311404bbca68519ad138b60718c2831146b8a6e36", "8c6934a16d89d70808b8b61b2880b39d9180a7ccc8d7840a8393049ef2221c00", "61da16a93622103b6f56062cbedc4cabec3e656abf4b9bbad2a37a335bcbcee4", "411cadca20630fb5c1489079f77c149fd98bb5a55613558ad79cb8d8c8121b2e", "ce9027da131908358856decaf173de26a38b7a1052d49bd0d4fa6dcd3fe85986", "f64a9b55bc0e769f5a371e0087a5a4acb594e002fba028796bc46ed33b00e21f", "54b0023195da1bf7b37b787637ae85545e82ce6c16adc6e767a0be26b04328b1", "cff9b9c63d71a0840f25393f4eb57818a31c5e2bc27313562ed0cba0ae848175", "846758c6b4f257076d1bebc309d2a1f48202622719ccf1039caba8715c795cc5", "68431daa8e626bd488652e85b871859643410dd6439ec55fde54dc33b7b24d61", "5d4ae0445707d87f445742de6f8430035a02771343be5e1f8038c23a61e0a956", "80e761125a9be81643ae48532e259e7ff12d2d582272f1b75520acff3ceaf62a", "110ac3ac54e4b5c00a76afc24a985f7cc353a700ed985760b3be399e36e2ebe2", "05deb6681cf41646a9c54650e5cf0be2a0500011e8eaa342c5c011071bf74a4e"],
+          "file": {"path": "sub32.in.raw", "count": 4096, "sha256": "5088c03921eb2473cdf6f66f0f73ed013c9e814d5303877d49bb244208d11e7d"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001225,
+          "chunk": 1048576,
+          "chunks": ["d4fffe463b41bd71806f98bef33f0c7b4270cc6915a45dd8d5f3ad7d70e530f4", "f28e6dad9ce243ac55598752a8ccf97fb149c0aa2426900dbc547bae6566955a", "a44daf7ac8dde6c4d1263319a6d45bda1dc88c678303c6c552bb4fe75e06104b", "aa8634072c6e813d0ad6ae196f62da64577c183808a18743cb084d00b6384347", "f02a00fc34c59d078de5f1bd15af212019bfc19b25b0ab23d5e0ce697edec0a2", "33dfc0f939ae57511b8dcd5697b19ca4899407f658ca121cb5058809516485c2", "4cc8cca6d73f878e4875dbb6282a44b3da95c3a62ce4eeb9d93a48173a6a9c2a", "e1ad77c3e1c95f37995377d2be285341a572a258429edc0b8d731b9cd4710aeb", "34a860e731e16e236fff1889f03bd0ba955da7c0aea51adb0127898c29e2c7cc", "2ca5b4cf5f440b994af9ac9d47fffee00dfcea271a6aedeeb80140bd877cfcfc"],
+          "file": {"path": "sub32.out.raw", "count": 4096, "sha256": "2d38ba3ed388b3c5c3fb37dbd4192a362cde0d9293a7dde03253cd85626cb93e"}
+        }
+      ]
+    },
+    {
+      "name": "min16",
+      "params": {"macro": "MIN16", "upstream": "arch.h:75", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0x823de362b85a0f0c", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["c4b555df058f7be0e41ea2e98f2bbd0f33880c836ed1b6ca1f1c66cec3ed3cbb", "8148da7adbdc2fdcf53e5ed669c8f19ad26e90b1306fbb89a366366b96e2f69b", "36aabbfea5d084b6f817d427b2615b0cbd5102ec82042fad29ef5b43fb3a80f6", "d409d7e327238ba5337042c261ee793a1af65f4f73cc9e3d00ba29881c8cc723", "8a77d25cc7f3959af713708ef945115fa6579d9453f008b4b2546c9c15291b70", "5b873e32cf9cf7efc3b687381fc93a139a8a956b5ea631fe2c07d3975dc67f9f", "a7fe88750eeb8ea7035223fc866be12a529a3014d0521d01cdd43f52158dd1b7", "0e792b233adc7f0195fd2edee9fe8e9f236edebd208c1cf3b86acafb93b00836", "d00eb82ceef9244f79aedaab54bcfefd80cb0e1367a7c762b64aaf094a65804e", "3f90520fa559124885c66b9e012e76280bda886870400c0516c6c8e1e25fd579", "d254fd2b6c32743b16b443d6f7a471323bb081caa6e13855ffde5c555a3c7adf", "26c1c81e3b6d4a33c0b681706d225d90482e9477e3109669f5ac7047af7b5785", "0c29fb104e81e1720e8a2e36961d58258b12157cd7f68fedcbb076f48b947af1", "038a6f4d14f496932de911336e3092fc1c8f82128ed8bd22209d8aa7fa713bd3", "fcfdda0cf0960cf8ec129ef4e318a13c1a83a3b9f9f7066fb50873c8baa5a1e0", "0fed7bd4899bdee659b1e1449f87ee864fe628c5f21a63dda635c66f8dee3194", "54023e37b8f2064cc4c63e2dceb7407a77459011f243201f86d76e5092d046de", "bd23fac80160d9aac10f51e50ef45dfe21a570148a3e4a901ba735e04d7ec04f", "83084d93eda258ab9f04bcffd18bc288305139eb952708566afa56f937e2817a", "7a4e2a8019607bf2c451d5835202259b77b70038c2eea0179b4b60b17d1b7699"],
+          "file": {"path": "min16.in.raw", "count": 4096, "sha256": "ea092e5b1e4161cd4927c93a2d8e7fb6fed4107a688ad1a2af76859c35545f14"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["b34eb495b34593a6f4e282191830be7efc07e16969475c4c54dda9e4d90a4f5b", "750b2c2ff2f7677261671422e35355c3477e8e1ff95fd4a3d55e320f70eb2819", "7ef28d53876e66ca67298c61c00bba2c48c17a60fa1140f6cc970f19b7d15963", "16ccd0d1a318648207edfcb24ff0896392154321248c88cb62dc6ed0572daf98", "607d7a9f093d9b9eb79c2437cc7fc8592c4c43cd7ba694effabad31ebca549b8", "c44119e4f7d88e7dbe9b1a22dddbe930ec69479909739e863262b13b0e6b9779", "b4c30741574eb1153b4910d399dfac89fdbd63a6ab43c98a10b802eef3d976d8", "99219a94e44e87213b0f37d4c2ed28aaa0ac98c2c152086a8ca8c6d5e3c70d5a", "ae3ddb37936347f07d69ea554fbe21d5eaadf03127cb84d2648b83fe4d5d43d1", "b0d43a81001767485ec69c95eabf8df75113ee3de215657e5eea1d63378f1f2c"],
+          "file": {"path": "min16.out.raw", "count": 4096, "sha256": "3a671fcab170d77d1a2168b7ea8b8e829bb4460ab674d1c3727445ab156701a5"}
+        }
+      ]
+    },
+    {
+      "name": "max16",
+      "params": {"macro": "MAX16", "upstream": "arch.h:76", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0x5b9131a4c338946a", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["600d44f3a156566db205bec306097aca3535bb53cdfc4ddee582535881836008", "ac36ff229018da3664419c80c4f21e94b163ab8ce0c8ce301be60be5de82c6a1", "5a19d9f1ec9d3c601cbe0e34ab2e46ca5d6ea978dcda73b74cf9249e7ff5e32e", "6385a84c7195b61815c84ba18e963023831349e5d744ef4c21082ee1da083174", "fa5cfd55dc211ef00e265d4442205f7ea470c3c6a0f21027a29e5c3cffa8ad2e", "f2ac00089149e381042b2d941d9f3150b52889181c517a16e72165f8219d7d7d", "9e334be1986a1fe953338e10e92a91be3190bae653b66b6c7dfbe8e034f5382a", "586c54ef074bf9174c57eef144239fc1603a66e1283e1e5b7432a0600231f7b5", "a321a23994333e3adf7a5b246f314aac96af7677af5e06d9f32c2bf8ed2fce9d", "135779821bff92047550313d1f272e3eec86a59b4d018e031d22c4a9488e95b0", "9be1570e4ef06fd5cd67383041a7f0721ed8fbf598b8a2a60f322d892f41109f", "301053f2d12b25a90bfb73d546c544e2d93ec2b75ba41c68e3ad77e905aca808", "85d58e1ef488db1f6b1ebf18006352a4599fb1572dbf3b79fd4a7c3112a83295", "6e0c955a1a9f5fbc147dfcec82482c6771cd4233fa3214f938170139ceef025f", "8675a715489eee6327cf1ca1aa3a45defe524c26a9592d11b8a1a5718319cbe0", "6868a91aeb362071d776c3d50b1801e79e9f75f59bda60a3e629527203723376", "d6aa830bac076b24b227d2849ee5b7d1aa4cf49fa4ae5679e0309f98152cd776", "6406302f318c84b693978622282fd3cebfea3a13b06f1e5ad44a526807824bd9", "cb52795f3873403eb812ce50fd06ea15a9a46544e776566275351d5c17b3cc41", "b459fe71a6f7d90e4db04f19c44a848bc7f0ad6e6b9dd6eecf77295c7417a31b"],
+          "file": {"path": "max16.in.raw", "count": 4096, "sha256": "b2c311e672f0f2619478b542111c54e522f9a17cc3d8e6cabbe2040bcd0a740c"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["925c7b1e53076d169849e893644f24e2603d25d5a5abf8975bc83aca62149eb9", "fe50287730b936e7c722b2e9499e715431d24ead6b29c7f44522b7b7755e0b47", "c544b69f4b58d0f806e4fa67fb4d4b55b243d669df954fbf3f1681978a901b52", "c813087a4db19a8be9abdbcd7b24e7fafb51c8b7bda2e5238dec4ca8745990ab", "4c5b3f524b1fead0bafb5cf2432a7fb9153a9438e58c747216cbbe5224611fb6", "bf02e4079f8f62207dd11d7c7905366f66d5b243773eb9357fc073ac051c89db", "87bdeae14e7e3c23eff05d05e84edd03f440754857023e4b878cf0d5b6919c86", "d48bb47a7be076b496cb6489fb4b88b29b19ffe7ec0963dc85a48b5726be2d36", "eee71ca67f8eb7d9ddc183c37feeab121b7ef8e35b1c4e9357373dcacd09e0e8", "5d9588d7aba89ca9e4621bdab27babc6024103f3bd7a898938d1d5a0250b28ee"],
+          "file": {"path": "max16.out.raw", "count": 4096, "sha256": "e5a88548e7c2b6db9b98f6ac5b340d310a5816aed6b8ac8a00b378f20b800159"}
+        }
+      ]
+    },
+    {
+      "name": "min32",
+      "params": {"macro": "MIN32", "upstream": "arch.h:78", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10001225, "edges": 1225, "sweep": 0, "random": 10000000, "seed": "0x82377762b854ebda", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002450,
+          "chunk": 1048576,
+          "chunks": ["bef55a5e50c41a70f9922e49ac2f904913ae92004fbfa773144c77c5c8d10086", "05d7bd8124ed31b2fddbc72bf1945e35afa7463c55f275fd25dc62e082d42f5c", "61d8f084680c9440d03be555a1a7767597561bb3dc7d67ae380e0152b0a94eee", "27b4398c08e8685770cc8ffdc663f12bd069bc3b98a4307d07ec4e6727c0a5e3", "521dae1f35bc6f8acb4a33ac8a0ea393e0c6ccb12ee960703de12625eb6c70a7", "f30b003c5177e1367fd32ee17945b5f229aa7f5887c855d56e3087f601dc3ffa", "644b4d6bd8b924a35de09db7d324e5f3309e46003deb8083b794f89e69e4c9f1", "0ba5e88717fcb53a868fb46e5e0974b88e6075ff3d39193756536a79020d7e63", "e40cb5fad57b56fd4ab789dd9a5212f24c5151c45c643a4563383d39a297f648", "934438e68ed898ec3f0544b2f7ccbf898cf60dcc1ecde8003d667aea7747a0e5", "d385bccadbff0ef2c553d4220e11304dce986a41aa5c83993c64f0f52fe465f5", "d49fe2dbb2726837164553f19f0ad41a9011e6fc126569a899dfc84197cf6d55", "fd3a1aa383c3d367c79c0ecfc2fdbcd5e7151dd044eb54af6def756041eb0ac7", "3e2f4c1e14aeb6e875e597f805835f6440a168c1b8300e26a5a696c816e4e0fb", "892be0717f414220ec29670dfda875c6e7a3e733874b8964c90faf4ddee6e6d3", "6e2eb6c62a1c48b5f87cd500cbe7c06028b92bc68c56520b46f75c8a6a4ba934", "b2c6c1943c7adbf26ea3e7bd6e8ab67e6f50ae86958dc11b28adc5736ddf4962", "b375b9217c9fdcb6f0bd82c92df630b210615b28dfa787c4c1c45e4f39cdb3b2", "5d21df6b204f61e841cd86f0967003f1b26b331bbfd5e0f042ca1e9b8a0258da", "914b2f9120e2978fb349060d8ae39267e07de4ac7e36aa57842054d39b770d77"],
+          "file": {"path": "min32.in.raw", "count": 4096, "sha256": "874b8ef02a660a835600cbac921e3ae7ed4bff638bfa5ed2ac912f3bc044135f"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001225,
+          "chunk": 1048576,
+          "chunks": ["33a80b90836aaa109261809f671e9e48a3798cddc4c2458e4f94925ed5ab5093", "cd70497865d0f0afac6dac2fec8bd1d6e53da7f09a9326dbbea066e3f43a9fe3", "62e2fb4a121436bc316b12e231236419b623b9e8ede53000dca5282c37485b46", "a269e02e53b3071345249bc86ed5ada28acc46a311616bb80e0eb400c2387c69", "0ce8bae5ae7d1de560d983f60e49854d6af7ada9a4591a4263d095e4865edf2c", "82f11af8fed74bc367b6b89cff9f0bd1f7a50d846eb9495a19c94adbdbe1a383", "07ddd700b53afd80d650c9dfbc6b2dacf94f471f8980de28b17241153ef5a924", "6f7b746d020f867ebf529cb0dc0d81ae750853716318590443a780ba2d13d2c8", "8b71aba93b8f48845a38421cfb3ff5a8af8413c8daf98e39f62cf0b975cab381", "8a52c057e029ccb4a52d90909ceb891dd2898862fd4199f65f13c0dda41f8ae1"],
+          "file": {"path": "min32.out.raw", "count": 4096, "sha256": "3beaecf9727006cfd8100df7ad4bee11eb0286fdfac27e0c6767558a65866b1a"}
+        }
+      ]
+    },
+    {
+      "name": "max32",
+      "params": {"macro": "MAX32", "upstream": "arch.h:79", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10001225, "edges": 1225, "sweep": 0, "random": 10000000, "seed": "0x5b97b5a4c33de064", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002450,
+          "chunk": 1048576,
+          "chunks": ["4b4b65319c281cbe5d620c2b56abd6edabe275a38aefb4022bcd783a43ec2566", "75b9e206d9bbbd9bfa6329079c315b7b1b4b1810ca9de36ae11e79842d6cae06", "8ce2d664f65cc659157d8d8dc338acec157d6935575336e2d4c086bce282f3d9", "32a0d855bea94a160378c430e0573cf1ed484c41c048ec74126392ad00c6dea6", "816f025db0a278cf40724a27d78b3f93a48ad3092d9ebd668486f38e8820db82", "c944a05f254e97790a4e2bf385924e25786c5accdc23ee83ea2bf9d88aac8af9", "4c0c98192dbcffbaa1cea943e5768522e93487019f7a980f6a33338e003b16b0", "7dd1803dab67f3561f33b0c6e22c7e21eb5c0da77a74ee73c1ac02c68fd56470", "3cb5efdc9047159a4593c20360f92d551a7aa418e76c1e25961e4344754b10d1", "206179e6b625c3db83607e86486002e309d581080e0e1948606a01f9a00122c5", "c27ed88f37804593e7d8b8c4af59cfd4486ceb67d57eef57694f5e938d3428fe", "e1caef7327e414139f1d15026e54534d3dcf875703ee562e0a9dd2f5f037be4f", "b2029cee6c836ece353d6a70fa025b26f2b9ea64c5f1e776bc3c54c13b374821", "e8c7fa3882dc589b91ae76c780476b641096c7397723469ed450af80debf28b2", "c893ffadae74b2308cb00ef6a1d215c857104916883f0e85bf8a9655d0fc4b2d", "933029afb3b79da0361a356d5f98bb4c9a2c145b8bd0dd3f5b549dbe5b5299d7", "48b86aa12c44ac69c313515f2f13e9f6aa9540b8d892a4f366498bdfe92baea6", "da6b8909418243500408a2ff724d4555d0334c99710762f50de4bfff61f6762a", "331a1f46fd9fad7a8cfe5e924ea5ff5f374b0a9a7e5a3f403765408692e2a645", "cc392d8d9be1f1da42de99416a3dd980bcfaaa319e8e351841413666af9caa09"],
+          "file": {"path": "max32.in.raw", "count": 4096, "sha256": "56a34cc07efe7cddde688215cabaff0dff0a5fbed3b7bc3a74de23d1017776c4"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001225,
+          "chunk": 1048576,
+          "chunks": ["ab8c638129bcb9c0fb1ba34da7fd37358421c053ff9a32e5f2cd1643caa3a74e", "e62113560eb5c0263cce63262d7931a6e35ded12b0127c5de3c3b83a93c93039", "1a6392a5e7104b24c40b74959b4a00f9273fb8c5e01ee81cdf9be50e6ad515c3", "745d6f2bb5bcf12a805dc21f953848901fccb521a21e318007a6eb20c102d88a", "5ff2b2d5ea495950e78f7d6c119887a74e376f648a249032c37f8e2fc0d44fad", "2f067cc52ca3d3b40f3442b140cf10f978a504106464203c763cb1d312f90b99", "364b3e64f80842373f372f6bc048227d2aac08c329f959ebd6d4ea75d62747a1", "5694192c047f65ce8cdba045495a390f3ed300513449b6f3773242bdb2cd6682", "587b0decdf46f6c51a5a51acd831cfd8471cecb2b5ae31d0716fb87027750078", "b70a23949c15c66bbc2e9ddc969be3f7486cfab565e6626e89fe5ee286032085"],
+          "file": {"path": "max32.out.raw", "count": 4096, "sha256": "249b812c2c20dcaf7dd22e3c54ef413e92118e691ab95a1efba0e3bab4a411a9"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_16",
+      "params": {"macro": "MULT16_16", "upstream": "fixed_generic.h:77", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0xceb5385c6f192e92", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["4e4144c2ef8acdf7ceefcb76d4ea8cddb77be4438e7156e80410e48e9bf71d9f", "cf46a9467ebb19d85ebde94ac2e4fff1ed30a546d2297b8c577f9fc585b89883", "33b52efcb7a3d1ec56e0d51853dfbbff0bcf6e7dbe846c91e1df4f72f32787b3", "5cc2297bd8360decf21164a711d015ef5e249587e4fa698196853cc38f77f397", "0b894c5aac6914e9809516ecddc4c03c19fc1e974bf55c3a61c6581e4d298512", "17b8b19f08de69726471845825ea7c13c467b134a2051c64f7b664177a097bce", "9f75d14702e2e0ff2923a6eb89285e1622ecf808522f936e45faae41fb855a6d", "229e4e743b20a1e0223d9193c4ef151f33c0bde430c9f986efd6e402be5a7423", "b80d27b84c5b786903a34fafbe87fe571f4c20cf73c4dd124bbd854c0f6fb03d", "3c91d51e9f7e3e2e3833a99113aebc61499c14dccc026c9157a136b8b065c44b", "a086950303d7ab85237d9a49b6bac79fdce42751946b7234a5c999cd2c1e9aa0", "497a9f0c8974bfa810337d644dc026bb906226ae6328153aba39204499cdb50c", "a3db422d93f3f1d968d46003a838646a50c632640af3ca2e9b1ec41637105a78", "f5000e4a672df376773513bfdce26dfd6a8dafa1659be5d100af4bab84ea346c", "1120b9893ef658b5fc1ce04e24a378df97100669656252f47d138d60ecb005a0", "854ca4827d1936e89924dda64b0e1bb5d64875a48c803799980bdc7303bbeaab", "fb4c3178af01365bff6744b38f8de43c7b1741d9546634334b3fe1c174d1024c", "9544626369345d0be73ad7801274f1f486096d314081adb0212f46b77fd0a441", "f9ed3c81b801f48958c6ae1304d6156208208b6eadbabfeb14ce515884beac6f", "31ca91b7b9a9137f77488903d37643bdd9ef8eec4ccf2d79d2dadb10d40d0d88"],
+          "file": {"path": "mult16_16.in.raw", "count": 4096, "sha256": "daeb0722d96ef6016754ebd364564a07beaf69da7b77b9e3121fdfbe5ee298dc"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["04776a6a019d85bc2c0a82166958b4c395c22eceeb76ec0ddff9e01e782f6ef8", "ae86fee868ec0be5801da24c7dfc0ca0932b04e4129bd54a2a1b6ae44ce084cb", "3496680bce36529fcc85ec818a7dccd7b7468e3052edff5e417b86b3e6762dbe", "5ae0c1e880a54081c7c57690c78b65074cfee8d7af24d510dd0c85bb2ceec58f", "220f23b774d96e9d8d5f52d6628d8a26709ef7c1a9c71c7deffe15680f5cb32e", "192a3e66e255f7d819c4afa1010c1af366c320192bf1f61ca44bc00382c200ed", "fe437938da892bfd58e479c67727f325a9324ee11fa6798d94bc2c52b0a7264c", "d26ecb5470933a425638917e66fd748f769eb387e29974dccf8c3398cdb9e126", "e3b5466cc4543da9931e3337af7dacaa21b8fc709f5e896f1cedd58398c62baf", "0f180ce3a9244ee267321e9627b004446cce4f5c41c2e0eeca0afb739adc0859"],
+          "file": {"path": "mult16_16.out.raw", "count": 4096, "sha256": "793edf57f53a5230cae0191090f6507e294aab4b8e1984e5168cbdefa16f81da"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_16_q14",
+      "params": {"macro": "MULT16_16_Q14", "upstream": "fixed_generic.h:92", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0xa5b4854809dc1a57", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["6cd3ddffdf9a6a62a86c625b625048c5f589ddc128a719406fb382aa6b4341bd", "52a72d81efb83785c63a91aec85552c68a9ead307a51fe487e5c8e43a587a0f7", "bb52618f5506e14a1af835ef3b2465b12b3aa8c36033c2247233023d139d873d", "1ac1547134fa8e23d483cad022d0894f18497b3b985d6039c7e71c33ea5cc193", "747dea329874d133d0e1bc0eba20cc7c871fe2c62a053592d9034882785c573a", "c153369448a57b5e4db91f978ecbf60dcd5075284e774a0faa22cfc984098850", "310160142e6b055a074575b3d86192fbcf3d2b17eb2e1b11519fcfadfa133a64", "623bb9a2adfff184a14b409c885f594a690efe2dd905062c4edb2facb45d7d29", "41bae674bb590d7ce3b115bb1a7f5aa4233f284245e2e6249141c0e0309d234f", "a02181b15f7f3b1c3ea2eae4cfce4c2c31a6ddc1e2ff2721e165fada763e6082", "bb99cad063655085e1facd50ac94706df9468e63b33d693a065084976f64a556", "068c50d7722c510642894c76adca8a83bbbb0a054f9a784fa6b349f0f8c3c872", "b1b00dc833860883db0ba9b6217254cb194f92e6876f3cd7f97d32ddde4d73bf", "3f28081cbcf8b5888ff2a226852d755dc8e9ff94d1ce926a1f94b53b90d1bcef", "3c17746962cd99d333122e65a0841652187ea108e458ace33fb51dcff914bf34", "e64d385d0e9512dec0eb5429391b44d692c8821d60f87277ce2bdb593eaaf52e", "ed6ea0bf8fd55f41dca9400933a9733678a29ca28a487fc8bb5cdfefefb647df", "8fd49d8d9a6b2f600a7af1b5eb5d1d6e3c99d0354f5933a587dd95b2bf764cd8", "658ad608da5357b22cc826af27b24229c95ddfc47f5d458e11ab9625f7666e6e", "0aceb384e23d33ff313ad6a18276306db93411b40f1e8e2bd0178e142759e51f"],
+          "file": {"path": "mult16_16_q14.in.raw", "count": 4096, "sha256": "128acd4827c6b2663ed78c3312fdaabcca524ef14ec8bcb955c2517fdbe925a1"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["dc3008c3e4bfc49575504a1a5234b13660badfe740969f27f4a34b383aaba6d2", "cc931f0a73b7197e1677e0e8883a7081f7fd4dbf7ad4c4139168e0097acf65d2", "d203f6fc15184b77c6724f1cfcf39b7d4e812b883748f3802fe0a190a85a2a19", "3650cc92e62ee664ce99d09ff1ef185cc34955ce82e9d886703fecd893196eb8", "c4d960b0881fd4c2749a718b8cbbe0aecee3e2fc74168e7798f231cbb440cd3f", "02b9637bb9cb6c0c95d1f38b4bfca565469a722a07294f2e069b1e33a68b1ee8", "5dffaaf68d2b04606b5f27115b202788db032d4d28a1c7193fbfe89d7a1351f9", "0db22a6ca4a8b788de248435071e3700b01e661f28550d7f6e3f5a8b160fe3b1", "b05b83ed23c24c3b0f48949793fa39dcb5053d2c80ee7e9d049a1cec741a464e", "5749ed7d53a30e9431086cd3aa2f3d72f3e7f7a6a957379a62398e4268aa50a1"],
+          "file": {"path": "mult16_16_q14.out.raw", "count": 4096, "sha256": "d2ab62b8f01753c8ecdd6fe62541f12cb2db419b8d2ca8bb4775b26b11ed4cac"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_16_q15",
+      "params": {"macro": "MULT16_16_Q15", "upstream": "fixed_generic.h:93", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0xa5b4844809dc18a4", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["24f84fe5ce01659ce596a265652a14b5216c0558a74fba87766bebb15162a4b9", "fae970690f20d4e77e58554f80d66e030cd9ae46c1f5cd76f31ae08d0d2c4ec9", "15ea2a03650d6f2493fafd561fecb725104a2e4b36ab2dc0be0bdb77db8098c8", "a8f9f9ecf6cbb05d84f10b46d5542755fd6afe2a5fd796f5d8583823cceca0b0", "734fee83fb035289d47fbe2f6762cd42e610f6a43858429345d6ef67fc7570d3", "cddb854f7ef5fb092ab0b3a96843d3543d4e7efd5e25ef5096c2f9bd5caee790", "61488e2c697523953d6610627847b30841d727196c37f9b24f953ad59288cfa3", "7f4e55275a7631f1f46d941522fd946c913d3b047f4fdf8d86d1bf8ef73440c5", "a6ecf40dae957d2e885cd3ac7ca8e90a81974a4daebc1c1c44200cc33b07ad1a", "915a7f8e764a6a608984d6fd22c1d4e777ff7f1167d379d16945e1268a729e70", "917723da13a5e1bc222affd75bbc407362d111c00e319d0c4413f2d5c6df7112", "daddacdc48fec547eb8135367d24339a283bbe83669baa05e913943576a55043", "135d909a36cb731430660d6c9060bfbe5a7fefee42ff5d4fdc8e470bd8ac0fea", "7ae7cf9a112a0d80b81c409dc0b61f2a2ff9f4ab94071891c311b8578968090b", "ebf11709bbbb1c499ee1ea158202cd20ce0a77cb5b0b769725e1deebbe546a24", "52a74075069c63faf33edb4bcf615794e6ce2ef44738c01ccc24d38478c221b9", "905739fcea75dabba7db8a5f43b091e8fb6dfb70f3899a338d4fa1f64b4575c1", "baf16c215b26b4607bf19966796f3b22e0e729b144ad6edb40b04e622f7c04b9", "fb69d6620aa7249331e2acdb395a556b40aa2f9dc089662a65a53c69f2ffd598", "0811c8a505682a4852b21f66cd2c8a7b898bb2d7de30bcf2366e4a2a02cdaf26"],
+          "file": {"path": "mult16_16_q15.in.raw", "count": 4096, "sha256": "882d342d6b7c8eb32d9dfb1cca1584df79790589f183a3777512c73a7a02364b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["202b563837118c8013677c8d0839b19d40b4b8530900f985209f7c9929678dbe", "acc9abca9ad9cdfe90e099c46000ebc581d7127b68cabbb21ea63f06a81173bb", "4176eaff0b3bc8b1befbf70084f953ec2f85c99a0ea3f5ccf951fd8e9ad06f3b", "fe706516c969909dca51ae29ca98ec4735123756978e39d83f6e24a896327012", "e69b319cf756705df56709753847b494079999d297dfdf5d0614439aaba53128", "6c25772129d012c2aa854aa0c72c265dae304526db38d91fa0717d701c98c12c", "3c7bb796001d269d58e0fa7bcc29649f9c3ffc32ecb2e10d1a10ad247b93026f", "44dde58ff9af7d2b55bc94eea64250d7cda9c2d44548dd2b7ee4e4a3c8a8ba00", "3603643613028cef5660e2f4e7375a0820ee1792ba5e70eda4cf71c916d0da87", "3e96df643a50c1f697f1b7f25e72d0e77eb097a8321b0644333888bd70c95d7d"],
+          "file": {"path": "mult16_16_q15.out.raw", "count": 4096, "sha256": "8fe05292aa9eb1b686f4194f3700f1392db3bd4eb93a29e6f9c78c31b6bf19fd"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_16_p13",
+      "params": {"macro": "MULT16_16_P13", "upstream": "fixed_generic.h:95", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0xaec433480f1b22dd", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["dcb05bcc4ada4949c281f725606c548ddd805e78a977805b26589dd25cb2d7c9", "2005b4d34f0ad696a682ccf19415d4408c18eb94fd436289f1a6a4a0d0bbf1ea", "1b769920c63bed85003edf48e1aac7e78a8e25d076705f64eea9acfdbc235160", "7ad449b8d59d123fdb39a373dff813fdbe09d2abd8c5ab750248abf42ce8b85e", "f8ab48c6ffced35da7e02eb414e63040837336bdf8dd5344703f173909ff056e", "cfcf3672ecabe6b6c1d3417593280eb7755ae6a92de8705bcd2ed5402381dae2", "d6ea4e572a780679f596ce76708dc5f245c6b2652811d1aa9b272cac967b3364", "cce82a15b8bc85a62f876c5ee6001fab94663ebedc3acdc97bfb137156c94072", "a428c89ba05839f6ce24f696a2c30debfb76f79cf2caedd97f208f6659e9e424", "3ee01d4a5fa04d386cfbcac9e95d21191bce0e88dd9e29a042c44ae818bd5b7e", "6836e9c2642fb352f91904f1284d66ba5bbebc182fc6bdcdfd31b03ae7f87254", "3ea2e00b6bed00d813c8d7878a26bb301cba3f50864b7257ce34a27748b868f7", "cff5895969a24b73ec7a2fe441768055cf21e7d7d6bf6548b36de036dfec15b9", "3a6744177a619979f3421406a578d7ef97212d4b287421984adb426ce455bb04", "330580031943b9c72475f36f919482987f90b9d755d820f7609868d2566215a0", "82f518429e916b1b13f508271f0697ad534ea7ebcf5fa65d9bcb33d42bc474c1", "eb3a311d29ded1150251918aadeb817976f8f53aa27853956b04ab95ab52bd50", "227fbfd672394481ffdeab6f63e122edd5345d9025eea590c5de55b6cd0d5db9", "cbf4a964ebd0610cb02c5bdee741ffc79bee7ba208da826fff96e4051ab65a9d", "e05733cb6867a3f94a2f5fd20517df8da89f9054b61783921279b5c68beabf66"],
+          "file": {"path": "mult16_16_p13.in.raw", "count": 4096, "sha256": "f71cfdf0a6e25278542143c1295fede5cb12f9c9ddff15f374edd53c9676bc2d"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["5cc47691c502eca3dafe74c4ced1750730a4b3b8b29f00913081f456cba83210", "5c9fe0effeac124f192dc9b60ed12b0b8b94fb2e3986fa53bdef3da0d7a0ad0a", "ded9249cd7ad54b092608ffc80a010af8dc462995f7a274ae2a513ee4bd5491d", "a85a82382edafd10f7599b92fd465d7271f614a35f2ea4942d1072887599113a", "1e5dbcd34ccc979c79e62af1c4f7fdf9162a5b49dbef590daeee51acfa077327", "c92cb2b5d4f2303d6e806406925bf71858623a66423d7cab303ac037aa78a5d9", "e0237cff1a96d2152f9d6a978adb3fa68e918d28968a9e4c8e4bb5c642b9296a", "6adb3e1556b0c907a641020d3e1b4e348e415e69e5b5a116da0fa545022e525a", "90042c425c85b4ad0733097c001f419afd67954169e6f8ec39ead1d43c657f0c", "4367ef664cc658e66308f1f9f936a8d48d7a7f76454a90c6074cdb95046621fa"],
+          "file": {"path": "mult16_16_p13.out.raw", "count": 4096, "sha256": "0c2156fa6a0566962b8583383dbecc71c97184d95561bb9d06b7e8b8f843bccf"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_16_p14",
+      "params": {"macro": "MULT16_16_P14", "upstream": "fixed_generic.h:96", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0xaec42c480f1b16f8", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["03b05cde0477e880afb4d84eaa59f8fcebf7a8b66c0580153c3d840af40764fc", "b905e8befe35dd698e01894a986845c7da51c04b8c413e795d7826b3520203e2", "5ee83692d9c331048641a84ca2ee4f85dbcbe54dfbeb802c823b035147ad7337", "933d61ada6d55899b401ba63957336ec8d21dc4e29f0ee20283cd3a5c103c3dc", "3ceed116358139d47dee68ba150abea79a9b97e9f2967aa3a9f359787c478964", "fa0138f1e0876071e43ba03ea662f2c3faf37205d85cce43da5b89526b7adc2d", "b6d748386ce7e8e5ac0565ae979813fc293ae2879e6d3da89480e98e5f1a0f88", "5af56f4703450072d9330a77295e3b26539da43b967f99544a572ad5020a9f4b", "33f2ebb071743e54ec7b72cd4f9e66314c6805e2b43c0541101ac729590c297c", "32842bb828f7d1e45a54e03f08ed7231d678a7d752fd644ca8eb9da9194c12ae", "adb8c513e9835fc7eade96df101105b1d6c86137b8a8679cd06515ee14578195", "8f9e44754b50b3a87801255090925baac20f36513b5c1fb269d5dedc95490039", "99bb209c3acaf5ca0a78cf4521fea27ff3cbcd2ad519e43d8c93d956c2ca53dd", "748907edda7e3ddbb32bf6ab9f6e59bbaffda3f531d0f81da49350b8ef722972", "a78d7ec55dda3f588d04251b5c4a1a8d1e9e53d0e635bc157d410d16a4ac1f65", "8e2332f221561e44215c928d48eefad9f3b760488bbbc657ef211b713cb6390e", "bde96be485e24c6146b5b91a32bd9b29bd0e26c0ce0adbc75b0145868d5b955e", "06f2bb1903fb230d8d21ff1adce7faf285d7b98d958afe3aa8638406be652c20", "bad92c317280a90cf17c7490046b8fa568f7a9e260d9c43d86e53be1dd8ffe05", "6f9d868f73ac2b8d773cf93f5ccd22a2e83e77bd83991fa687a4c7cc60d95f16"],
+          "file": {"path": "mult16_16_p14.in.raw", "count": 4096, "sha256": "92579f2c53e826e3bd0b4b24d53ef1f575d0b298a89485ad313f237c8f46b0ba"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["2f830ed878e332cfaeb808f425964a7b6074fb2e2590bb3e4519f962fdd479d2", "1460fd693bf4b7fa356005cdba4c1b93cc3fc6038c2ec756e27259e136f40d80", "3320287b4126b112e12197617bbbe784ef3bec591bd18b947d2952149f50e5d5", "521c27f5370b40a40e5ac9278aa391873ffcec32ae575e7f4d4f9d37d2838879", "63001c2b13b09a2f4c64fc2fe851ab06392a4323c32f5f32e3a0b4b1a3dceaa5", "69dddc8de239b68412c9c46faf568849249c80d00734d2d602cf7157b246b1f0", "19936933f7fa97179bdd8a46d3f1d96a1063ac47827885f0f97ebfb273a53cf1", "eebdcc07c7bebcbe4bae455f6f8175796e774d97e44903c4c2ed11339bebce8e", "6ee192b6282c50ac99f25e3b98945a4cc7559c8c83aaf4da6a66251090c01368", "b1436ca4c5d07872e470496f235a45c9eba1d0f9a48709ad91c053a861a6fdb0"],
+          "file": {"path": "mult16_16_p14.out.raw", "count": 4096, "sha256": "656e48e86d85c5b95e299438bdf20a5ceff0819224e192717e47260c7f2e595f"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_16_p15",
+      "params": {"macro": "MULT16_16_P15", "upstream": "fixed_generic.h:97", "mode": "edges+random", "args": ["int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000324, "edges": 324, "sweep": 0, "random": 10000000, "seed": "0xaec42d480f1b18ab", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000648,
+          "chunk": 1048576,
+          "chunks": ["05378d86cb0b83436046635e34a3765f8ae5cdb405691eaf413195f87f43e249", "6aa79181cc0e22b217087892c49960e894221366bff81c9d9db428dcef9d39b8", "da0a388046369dbe2fefd681afce045bf44fdfca9373bd7356cb2a73c9fa1e1f", "325a469090995f04ac35c4e5a3ea0e22dea284007422f70adc5a3d97a6d19325", "779fa785355e41d2e729b054b5f4c3503d235e28131904a4e328449f4bc07ff4", "2f8721ef3114292a838d8068328336f26628f909dc8e42e6de4cabb18967563f", "cf5c31d24e0d7acc9c1e4e3048160da5f3a770978addfda4c687f53a3bcfa50b", "52ce742a7c31d5a2499bcb0a8e9f7c6d361cba09e4e6d96b227cf49e59a4d22a", "c6d9256d3fddda6707f360c7cecf8b2b68f22497463be956d9bae0ba574f7017", "9400f2af79c3f251172120c8ed63477243f2f05400d7cff2a5e0b8427cb90fb4", "014112fadf59baf6bd9d890d6bc63ba95923de03b04fbb32989b65d61dccc0d5", "5d370996b6ebdea8c348ed3dc12d3ded647513193dd39c8520a6f1468b337905", "bb3919d010d951e18aed9f2286e8f9f4c4a23a2d3b034297cb5fe2523cf174e7", "92d74c14c1c27bdbf0acabdd1b0306ec5ac6b46a058a6007d92cf84cdf8033de", "2f2e385cd980df90aa957040e8cf8bd53fb16073e0b7584b5a7467b92ad87382", "a8a3d9151c3066c4c7410a5a04d4b9c540049dd86e415891301da446d82b9006", "143311ecb1761b64dbe62dcad7c7d7314575a4549a561937c9e133b6a68ae8d1", "774342c6debd1ff81d4e1021038b256221600faac1fa1a18efa7e7eff4b6e3e6", "685f7ef37038ab4cb5a6ae67c897d00c0035aec322f7b501429311dcde8843d3", "41ba542b0749921a406621f355dc9bed43a2855521492b11d6167c60edbbcf81"],
+          "file": {"path": "mult16_16_p15.in.raw", "count": 4096, "sha256": "f7b34e9ba1a4cc3b6d8a7a85e96b67c8373abc9d614fb8bc5290c9ce0e1a49c7"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000324,
+          "chunk": 1048576,
+          "chunks": ["221d41871b8a610606a18b7c5a0486bc2341d1a350d6dcb31ca8c2b18838235e", "26e9017720785d1dcb9c6bc9ae4199f4638391afbf2b945fccb76c1b1c9beeca", "311db32f5d7de4a04e77d9a215e858444a19d31a057bb1d56200604206d32e12", "f133d16f6b1f9b901bae7d1c03671b177f0c8fa666785e40688322edb23d4045", "6a53ac7f7e9c00d53fa385f9e9ee33d2e4fda49a3763d8165ae9f40c99dba9da", "e099ea4a5bf1d02854f4b27caf072780b40f33611d4b23c9dbef9b7d0fb3d9c6", "e0635f29ec1f7aeed1af8a9be16b35a61c713640ad5c053c60b1d824d32af4dd", "0440467e153266c5922481c26bba6d783b152e53b011d9e461bf1a9ab220f757", "df79a2e34121fe1b5356d40fb0a816e5452f090016219530d0a7a2979b28379f", "47ae1c5660a86e8a28b8472e870ef2f3ceeb6dd84ac1d69372ea8f69a02f0991"],
+          "file": {"path": "mult16_16_p15.out.raw", "count": 4096, "sha256": "3bb05cdcefbeacaf51d76de4698facdbd08a5599dbed25a45c76866b83042772"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_32_q15",
+      "params": {"macro": "MULT16_32_Q15", "upstream": "fixed_generic.h:82", "mode": "edges+random", "args": ["int16[-32768,32767]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10000630, "edges": 630, "sweep": 0, "random": 10000000, "seed": "0xb6f19921c29155ca", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20001260,
+          "chunk": 1048576,
+          "chunks": ["002f437bacee958a50011659f4eea0ad1b95845f80dc8dd0abb5cbdfecb43d96", "452e113347910cc83c4c31372ea75cd82962fc4c091ecebda33134b210618ae5", "e4cec723c97b31db7866f80f45cfea4723a77109d07d739d96919e85874dacd6", "95349640eda1fff4bfd3de3ac27361bd3f47ed7634fcabf75d26f8a9cb112331", "09f5b58cad164fd8d7e08e5b4141b07502c0251af7d0fda941814f7a8e73aa9b", "686f07570d8c0720b1bdcdb66811699b323b3ac2830ea2cfc05a1d343dc67db5", "bf83d8c0ddb75bf7f7a2b497a29f1be92ef0ef4ddb4206a41c1c7258dd81ded8", "f114f36fe3f7224475e50b7d44eb596a786c9bf08740c5b6e106a984f1d5560f", "1b8c009183a7df92cbaba879f1f870c4cea10e62bb2ed553ddb37c03b0f32fdf", "50101cb77ac7ad6f5d61bb051cf785505b40d71e7f66e70d6af65364b1d245f8", "c1f776c7a1ea0e4b405e3c6862cf88e5ea8db6434f5e7f74da681ae5cfb8f6b9", "3a17595d08d263beb8b539e2224b8cbd22c8972620c35dc46ef05053335ab04e", "6ff7b55639a3db93ee0522dbb742336de4fde72a5573f442db6c62893dc1c0e0", "8127166eeb00d29b2ed591c373adc413f71e4359b6fa267252a735643d0dbfee", "b90edcdd776f41a83850c0b4e6ec06901b780218661223c560757f3a8f4aea33", "3faf3fa7ef36fd0422a51e07eac27a761d61142fffb26e2587a3e0618fc41738", "c89c47ea27b7539021c7cb0708decd439da01e3a2901cd5683aefc4545630e86", "0cef7537bf43c79bb961b6f7d3e9b03d38f1564b0dda184c13adcb1954a867cd", "f5c0aad130e351feec6ad66ab6dadf612ece084f68b4e8cd56c3be8b3f702fd8", "5521521a613b56f311e2a0df48e589597ac36d394ba057345ab3bacca80e569d"],
+          "file": {"path": "mult16_32_q15.in.raw", "count": 4096, "sha256": "0f28add9655aeeb402b60bc4dff96866bd4318738b303807806ba6a06e143b43"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000630,
+          "chunk": 1048576,
+          "chunks": ["08d352ae6377578209824141256e2356308130666dde571a7d366209acbfe4ea", "70e5f02dda745cd70cb974b82b9ba2704e41f7f1d9b360b1cfebe8f974b1a1e8", "6fcc47f39042e17e13c49d9ab5f1032c5ed31f57c37833beb42b9ecd644a7228", "aca48cdf34f4577ec41e90a3f021b2dc61f2527858f0afe95566b5b23c525f6d", "b0b2ece3c9ed5138be22a55cc84e3da9cbc200af7a45f5778f2367ba96a4c120", "f0bc293b772671ff5ef05c1a8d1035a30d4dd702762fc42f89d398777e1136d1", "98d905f1dc4fdf767e96a5b8165b15b6513d40e3fb697ec8dbc6e03d9fc23212", "beccc2091ad57fa9b9e6f977bd034abd77c98664848a908478667a444cc2c4ec", "752a086e27e9dd2b9d288d41a8b696d2d0965f42e5cfe00b417b9fbcdc7c0cf8", "e061343cded565f5a27f0cc49ca1d256ec8209549cdd63a72108405903488883"],
+          "file": {"path": "mult16_32_q15.out.raw", "count": 4096, "sha256": "f1e508732fe3aab67cd0bbc1aa26ccd1ef8081fa9c60b4e9f56bb49628703573"}
+        }
+      ]
+    },
+    {
+      "name": "mult16_32_p15",
+      "params": {"macro": "MULT16_32_P15", "upstream": "fixed_generic.h:81", "mode": "edges+random", "args": ["int16[-32768,32767]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10000630, "edges": 630, "sweep": 0, "random": 10000000, "seed": "0xc0014221c7d055d1", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20001260,
+          "chunk": 1048576,
+          "chunks": ["e4d9cd5b2e3bd33aea92804c4b1bc3fc416ec2e039689f21e6cf45f32e9188ec", "7974f5ab69ad46846cb3567d0eac7c5e6d4bc35da71e2b859928a4c56cd9e263", "744a5aee382cd7b8f49800e0cce817a2a101489c4fe728f7b775f6fa6f51f09c", "97da7a4538392b0e0ee8c7e7c1f70c00af71fccb49887734db3e3ad4f27d7479", "7ae385bc760696105904921478ceb07cec8316a945ee706c7990e158cc41ff1f", "fbd8c511b5bd127569a8a739e1c89def41ac6ee81ce8d739228d45bbadbeb30d", "af9ece39ec5a716eeb39b1558e84608db2cae2da551de092b3d5f07a3a0dcac0", "2000abcbb7c33bc0c8e83e3f77b156e88dcde55588ebcfb1fa2c5820b1b2c129", "7e24c44134092a6f8af2c0e3c38c72bca0b4115f46844024b49be51377d0bbe3", "2152aaea18e0c117e0e7842624f427aead08b030b7fa287abb1b2b9e40e4ae91", "a2fb47b285675594b33ec7f471f03cf8c12c52c09169678be46d5ae53dba806d", "68afab5c8c41bfe24f447c2445daaba9059d7ac43c5a626d079dc79b4b5ed9d3", "0c328c2a187747f1b46debccf9bda89c3009da65284b52acd3d0ccbd88065545", "b2daa6aa45a08ad43b339bbd814dc19cd895270e3c47ac54f54653477d830b8a", "f15e9a57cb879a5f11b51f9029946d4a08fbd1571271ba75c2bc65c24b715fc1", "de7fbe3778716226da183518d8a971a4954f511967f260aa9238258776ba46a2", "f95954fc76e7b982a8b1a1e45a6cc360730bf442a12c42fd1dd399c478204e75", "3cde7487e4fe04a334ab47204401938ee9b36a6e097810b19534ea1ecc3465dd", "c91e9568bdc4076cf28caa62b02780ba63bcf0ba6dbcb7482b0dcc26ddf8e18f", "327a7bb0b2fd14be4cc89e624c5f828323b338eabbc3dfbadfec822b3e6a74b8"],
+          "file": {"path": "mult16_32_p15.in.raw", "count": 4096, "sha256": "1ce1c3c48eaeb9b1e203b13fca06e5db2935661d4d66ca7a3cd6c0282f389b06"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000630,
+          "chunk": 1048576,
+          "chunks": ["dacef499e5f85040fd45f8b7ef8420ee3630ebafe643d84ba93a876702b3ee1b", "482e31ba31a798ab4ee8480faa796856f73038cc7187c701df5d08d66901cd46", "b0f2e8be6001d8bc239f900555103777927585828ae2d95979a029702b30fd75", "55411237b07ff5405e054f6260a9f78c3c0e1e7a7db88add0244c901fad9a538", "cb41edd8144fb8a804176369ee6b9d5b42266af2b872a3a07f4c22baf592feec", "d27847a5aa92fa33468e6c486632ada9165d8de80eb05c4dbd01d98d5692a1e0", "cc23c12d3ef235fa6437587125b7b944339ac31935991015f0a430b6928121d7", "1bd290660886dbc282b65127bef182b216d7f8ce46de96fa661d1dfc0fcfa581", "8e54dc0643d295feb0376ff2459a35912fb7c9f165a2646f571939395b4ef54b", "03a7eac851a383dab6eb56e45ee53dc92f8b1dc5a61264f36ca182088be3408b"],
+          "file": {"path": "mult16_32_p15.out.raw", "count": 4096, "sha256": "6258c5eea46465d3d61a3543327e5079336dd0496a70a18ce774e27c0d0fbff0"}
+        }
+      ]
+    },
+    {
+      "name": "mac16_16",
+      "params": {"macro": "MAC16_16", "upstream": "fixed_generic.h:79", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[-32768,32767]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10011340, "edges": 11340, "sweep": 0, "random": 10000000, "seed": "0xae270fb9dd670347", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 30034020,
+          "chunk": 1048576,
+          "chunks": ["011e8b9faed23937f6706e239af20c913a7ffbce59c0ea5b0b54826318f3178b", "00e3f108ce321f8968774c287544f937e37679e0055f606f07a3b500bd6e704a", "c548e8e9826d8519b3d5d429fd340867330380493e49b918f0ea73e5671ccd8d", "f13d16c8b53786d2182af7e2d5db03337b98869c89eadda0bad752d2e35ba6a0", "43727aac936fedfe88c70c22bdc1146cb71933fd9365938b78cf7ba4ffc8c208", "5f4167622de9763af2a9ad286b8a8347cdae52427d224f455d695db94b288ad8", "a5fe57c6fb2f59f709b104153805d40d4914efac6238f400373aeef56ac6a46c", "889c16c8f8faf432dee679c8d97e47c528434b86c799aa17bd4545753fc4a725", "e8ed60ae30919f33f83a7c9ed622b4c37d675f777c6ecc243d47b1eba1483594", "f74661d14c3906cf9ac910a02269f74e70882cda7f4f74c92f70ac35c32044e5", "f17f62d35cb6da974d20fa917fe61911e0ed75d2e0123c098a9bc61a458929aa", "29376a85475d639d253d9b6b482c2c4260de576a44bc94f8fef6adbd59b8be67", "8c35962074dbfea46f63f40e909caea4994ea4248379a13d8f22b909bfeae8d6", "e0a1ceb8f50a08cb5fda754f2f0eee357cf2119fedb0e9b7f02ee76b31119411", "1b549f74dcaac5e3eabadce991e9e289d8b4d54ddd18b4e2c1a5345872ad0c48", "8e6eb67fc0387c2566752504d2cdb0ee6a9bed3c7aeb96b0689c439e82d1d966", "02095785eeed826f3abd75a67a5f792080becd0d2a9e2dbf0c4a057ef14788ec", "4dd01ebfb87de787ed9094ae7f6be2a49322e8cf4e040191cc0e3326441dc15d", "b20b6cc6ce33da5b5ea4656291f00c3e2176851c9fe8dec5268a67903d7211cf", "8027b1755cfaf9faad185c959545c7fd27e7fd7dc2e4ffa05829eeb580e04516", "f7118d1a20a3d05695c60200b4593d439eb57cab4c5fb2a63d67350cb79cac1f", "ca52e50b071345bfdbeba70f7d81766d5e32c5b80f292c0bd1ba77c2fde92376", "44f3e7fdbf4af27faf583378f5de69d4d7bc39068d3c4495a1e1faa3e32ee02f", "79fe1ae21a49510523fba81c6cb0e8f3906327d58638f23fc613be45604dc326", "88b95886ba6a2ee9b99651d1923f570a7c575df4b0b22424991679767fdf3055", "793ee9d4bafc405f4811b6c129830323baba3ed282e333ab7d4ab5ce6ddfef82", "7f6d8d40168fffacc3a84dec9e8d67b5d7e603aba20cf6bf2f90ae7f2396aa62", "371fdbf96dfcd1470a4d1c1c058d48d167c129c410ccfba93674d971ead69d31", "d68d11156263ed3e580445cff09d4d12dc4d767b64dead3175a4a44bbaea9a3c"],
+          "file": {"path": "mac16_16.in.raw", "count": 4096, "sha256": "a3b79ee6d7deed6a71785164502b1aaad8d0dcbad7e6c21c6354634322814f3f"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10011340,
+          "chunk": 1048576,
+          "chunks": ["781a47d427fb98f4cf33ba44c661c11165a706cb95bffb67e8becc96084f2813", "dcaf0c7c3a773a7174f2345b2bee2bb23871ec853d8b22a2297ed0532feb82e4", "1c7b045061ec5d818d8782640da70efa90f84d3fb02f9358d47d738ae16a7698", "a482249d223c64dbf268d7e47fa7bde5536b4daa13479c7bc70e6467004a79ac", "aa24c0b8bcfd5eefec77c73bea4cf4ec93f129f37b8912614650548a6d192a53", "6958f4f4bd20dffadcc560841b3f734272c59af95438e000ee507c647699a910", "baa590a6c8bdf3bb09c9160399ee4432bf8361790e0f23e31e7dc60d0ad6954c", "36f0aaea31a1c9cc85d06d08e97f28443aee1889ca9bead767ab1edd5b33dcae", "353f18f9ec6815ed44c819403336160f032dbe53954ef0b9c1e257d64535450c", "6c2dc9c6b762db76621867c1c8cffddce54e60e5e6d30ad90e4956b281167f47"],
+          "file": {"path": "mac16_16.out.raw", "count": 4096, "sha256": "b4cf09bb1faceb4788a78d8ea165011982300568c2d3223a76a9f8f1b363d291"}
+        }
+      ]
+    },
+    {
+      "name": "mac16_32_q15",
+      "params": {"macro": "MAC16_32_Q15", "upstream": "fixed_generic.h:83", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[-32768,32767]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10022050, "edges": 22050, "sweep": 0, "random": 10000000, "seed": "0xa1068786b4b2f1f7", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 30066150,
+          "chunk": 1048576,
+          "chunks": ["15fe6f4b000df682f787bfe0dbf7c2b85d55446910800db7f1e6bf2d5ac0669b", "f5d614751ccd4b7e93d777f3a92ba7595f7cf775951e37af3b78c7f45d01c1f2", "37ddbac1125b08f05586e36d55566d5b44c479ef1d87007538f9251e5329bda4", "7754f106c975f897205912be274b76720717b35fd3200c8d142339a8241fa94e", "eace2d0d46803208f9895c19dfb0ab9ace81318b6832e7278b5f5c37e3240fa7", "5cfee074e98a837f2da7cb26c2715ea50bbabc94c08dba3f610a9d8df4962232", "3a00ee537f803a3bee33ae009603e00cbb012b9f6ab4a0d599ff0536134c16f2", "448a021cdc58c486c921d502db0ff9574c4979b63e89fcd587539e86115385f7", "abd3427ae477dad738eb72e54c9964d497d29e60c3409c5e753bbb1ff3a53c26", "6efc69d4176120b0943d4cb593ab33c7e9ab2c042971f52854d30fcc17236786", "dbf2d91cb2a1611ecf62d4c398d7498ade4d78dea555f92578b7dc52a2716c15", "98aa075eb0619e72573429315e16a4c7efda11c3427a799f5e88b93c4a89ef25", "b33b78b6c0be525ef4554062c459d8ebbf6449d9f900be26649f3315d521aa82", "7cc265ee0ec097bf771cfbb48a204ef940547192d96851d874b3475cb364cffd", "9f6fb2faf2159077ca6ca9056326d6da30e8d29fe0293c12e8848d5e1077ae85", "75174581c12d921e25f03027c39ad8b4d14434f2c145d848f3b533b709eed963", "cb7907fc2afdd028f56a7f445beecd134ec5b14fbdb0090fe759ced2aad423e1", "5ce6058c7b88774aa279b443b8a7996b7ca57be55d5731902eb8e3d227714334", "7c2efaad6bbcc279d2d0ad02e2fd3eb663d544bfb210eb7a265627f4ae5c7fee", "ef11ca8933a501a612ba7148a61d9e135bfe016f951391055da6696029d06e1e", "197acb58946b13f8bf569f43e2e431e366fc21bfc64cc2b8377b5f8245b60d2f", "f9f7d7b63218b130069c5e2067f9631ecde54eaf6545bf876bff7303dae4e87a", "a7595dec9700ffbd024f5a7efa02cdaf18a3ab6c2b287af97e8f573b4dd2f240", "b31eeb01ea943375f1681541591eb0b3a0439e02426117a2fd38a64d45f7443d", "821a86c867b8a2ca01d8bac3cbf4068d49fcbfb870950f01b4aa0f335bef9760", "ffa09f974ca04b7aca52dcd1c1cc778f3e9d3bedfb418f6ae110925684dc36e3", "365d0cbd0ac7a73a98c31beec90bb99db94e9c26557ead429668e5e888dc2d58", "674a529e857d3b18b94e19fd516418d1b3c9bb74910c76b55b5de055c28cf46f", "81f77a69f41fb4ccdad941e1c3795379ca98cb621f401222be4b85df718064ea"],
+          "file": {"path": "mac16_32_q15.in.raw", "count": 4096, "sha256": "8d8d838e6255bd220529bb42c3ebc17d6d09b5502b78a4c052b5095a9b53257e"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10022050,
+          "chunk": 1048576,
+          "chunks": ["7e66ed2380d09dc64f0c3f2ee8a6c2bbe1bd6b8312eaf8223487ca3b1609bb60", "3d0681c490baeabe0e26accf57dfcba0833f27b96fec74700d8f73fcd229ba53", "fd343fcc3acb5072e493004782e1102ffd043da4abf8de37a7fdfd9b5ecff79a", "5844c11bd7e470f54648dbcdad45084c26fa3249a0cec4895f29ad9561d83297", "7bfcf84effe7c73007d01ec8c77a5340144d84996bf7d20c8d7c77b0b4c7cfe7", "1a8ca74dc03bf07dd6ada545276b2650ada0951ad39f820a33b392db0ba29c3c", "90c319dbcec56cd494407f982d55ca7a6a12707b513bd3e3408a52f312652f47", "ebcf018ca631cc71965d758c5cafd143114dd1dc760c27b11bed12f81e71a23d", "3bb0a45868261f14b66e3745d73c9d311e516624331ebd0682d1d1d8b46c591f", "2667d33f6319cac3217390400d246d52c5ef89d0cbce391250872485c028a8cd"],
+          "file": {"path": "mac16_32_q15.out.raw", "count": 4096, "sha256": "24494a7ac7aae27bad08db69424684637da5da738fd26346f9d2244f68d867a2"}
+        }
+      ]
+    },
+    {
+      "name": "shr16",
+      "params": {"macro": "SHR16", "upstream": "fixed_generic.h:45", "mode": "exhaustive", "args": ["int16[-32768,32767]", "int16[0,15]"], "outputs": 1, "tuples": 1048576, "edges": 0, "sweep": 0, "random": 0, "seed": "0xca725648de49357b", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 2097152,
+          "chunk": 1048576,
+          "chunks": ["4cd387a4ff9ea4380216778371119e3995145e57e5c03c44f9ef0c08b637fe38", "1eb2f6e67fc3dea3d17675d50aa8cc0c43ff485809808eed0c9377a7efaea8cb"],
+          "file": {"path": "shr16.in.raw", "count": 4096, "sha256": "4a7e35de0c24c2aacd435c78ef71f1e3da070c489e82406c7ea643ed279214ae"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 1048576,
+          "chunk": 1048576,
+          "chunks": ["cd70621d2d67bb05a508675f4c43d803714a0f06d38bc5250ca66b44ca86f634"],
+          "file": {"path": "shr16.out.raw", "count": 4096, "sha256": "bf3f24c7dc2a8a62ef65d18b65bc1edd770209230105af5a9dc2c305ad4fd686"}
+        }
+      ]
+    },
+    {
+      "name": "shl16",
+      "params": {"macro": "SHL16", "upstream": "fixed_generic.h:46", "mode": "exhaustive", "args": ["int16[-32768,32767]", "int16[0,15]"], "outputs": 1, "tuples": 1048576, "edges": 0, "sweep": 0, "random": 0, "seed": "0xfed83c48fc160629", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 2097152,
+          "chunk": 1048576,
+          "chunks": ["4cd387a4ff9ea4380216778371119e3995145e57e5c03c44f9ef0c08b637fe38", "1eb2f6e67fc3dea3d17675d50aa8cc0c43ff485809808eed0c9377a7efaea8cb"],
+          "file": {"path": "shl16.in.raw", "count": 4096, "sha256": "4a7e35de0c24c2aacd435c78ef71f1e3da070c489e82406c7ea643ed279214ae"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 1048576,
+          "chunk": 1048576,
+          "chunks": ["ead7edb066b3bc23745e91533d2b16f2f3e2cbbf1413e04098df78191f125f8d"],
+          "file": {"path": "shl16.out.raw", "count": 4096, "sha256": "41279479d8cbcce3996b06a6153a118ac1d79c23eb0851d8d95de783761ea3fb"}
+        }
+      ]
+    },
+    {
+      "name": "pshr16",
+      "params": {"macro": "PSHR16", "upstream": "fixed_generic.h:49", "mode": "exhaustive", "args": ["int16[-32768,32767]", "int16[0,15]"], "outputs": 1, "tuples": 1048576, "edges": 0, "sweep": 0, "random": 0, "seed": "0xb085052383d0119d", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 2097152,
+          "chunk": 1048576,
+          "chunks": ["4cd387a4ff9ea4380216778371119e3995145e57e5c03c44f9ef0c08b637fe38", "1eb2f6e67fc3dea3d17675d50aa8cc0c43ff485809808eed0c9377a7efaea8cb"],
+          "file": {"path": "pshr16.in.raw", "count": 4096, "sha256": "4a7e35de0c24c2aacd435c78ef71f1e3da070c489e82406c7ea643ed279214ae"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 1048576,
+          "chunk": 1048576,
+          "chunks": ["1a241bb9d140f1213334b69a03b2ed31c2ace6a7fcd6d25602c72b00990ec925"],
+          "file": {"path": "pshr16.out.raw", "count": 4096, "sha256": "e4559fbe33451a48fcecafce50cc18c36fad1c808970efb806c18df84568d209"}
+        }
+      ]
+    },
+    {
+      "name": "shr32",
+      "params": {"macro": "SHR32", "upstream": "fixed_generic.h:47", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[0,31]"], "outputs": 1, "tuples": 10001120, "edges": 1120, "sweep": 0, "random": 10000000, "seed": "0xca794a48de4f3fc5", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002240,
+          "chunk": 1048576,
+          "chunks": ["0b0b31ada083d01c5632540efe5b5c115331b5905a7d8647921bc2a568299e12", "8b0a432970361dde74b63648151521e4dfadfa39ff122c47ef1ccd77c59fee27", "31f017db3d64e510f89a472b48c8d270a1a9d153bca68f92695cb20cacf01d6c", "1ef2b6c7259aadc6755aad1c4d8c9c3158f38d790f34ec311ff64e3a76ad38f3", "b3e0ae95802293a97167cb888e8dc8c9aee1c7f0052e52bcfb14ab4f11045797", "08ff768ef2099e502142ea73a9a6ca6dcebd0bc6d419ee1af5f60ebd584da0d6", "e88e747dc131db5c3d0981c004b69e0e3553cb6e568e46a2a157dcd83a3ac162", "ff7b8c3d692a319a03b385edd6f60c96315231b4a83f2fa546809cead2591955", "4afcb1348623b1c83930b909f9b0b6eadddf365ca5c5f96254e02f5d8d137bdf", "7a6ea1ca999984d6b69ce6e11555d55ee593b97b6e45ae4ca544cd77f03f7ef5", "9e1465974e563d5e755a09ee035663e3fd48a07ebc4d5d54dcaebf4750b125e9", "7ed2923d27b5c42f20d6f88c8cb95a24b9e69b7b5a6d6490df166a591155105f", "769726befd5c618e43709edb78f85bcc8d140fc159ecafa53a74163ba70906de", "121e0bfa997000a2e614914aa10bc570033e6d2b59439ca69051e7213b8f85f5", "d55acf8dc66516163bb2bc393c03bbbd807b0f2669433c2f2f75b0b678d64d73", "bceb792ecfcb30aec5bbebf6079fc3bb4648df8e26e82878d5576db6f754784b", "35cb0c2434c51cd5fc5fc2a5854320b9ca97e26052bf9bd3d6197574e25fbfa9", "af3c9bb41cb4812eed8d9c30c30ac0b509163aa6c0dde15949cc0d14fc5fedfe", "4a722166b2f1e030d862eb855b98b946627ddcf01377f61bb62eb84249573c1c", "0e0b89c88b0fa5921c445698401212f923794d62a30fc171a6885085bd69f4c9"],
+          "file": {"path": "shr32.in.raw", "count": 4096, "sha256": "0b01969cba0ebba55b8fbcd6588f0c4e1262d0a7c6288dc68c8497203bfcc4af"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001120,
+          "chunk": 1048576,
+          "chunks": ["6239a87f509e0b2d773423f782a159849af0cd5a9afe38806817c39bdc12eeef", "4640d508df80b51db433c3d6b78265d71ebbe310a9567f758cb2dbc97e94e261", "a150b9c04c9a7d271efc5c89f228dcedd0482e83ae83f31274e6299f120a5432", "ba4b4064e720a22dad8f96dce1f78ee05afbb909b753f00b3aa9ff6860ddf0c6", "a1681e5675ce455fdfb1bfbf2fc7abcac2395365ab18db1a58dd95fe36cd4691", "e44da5f18589eb4b36fc2ef45aa3301c807215ba17f96927b103d9505658fb7e", "1763e94fd1c39dbfce0f0878e857e0326fcc8090917c60ae23cce35e7ec4333d", "5f8930b1fe34d09299ace67066295253e3183b5e5e983689607646b72ed693dd", "80018b1f492754abe5e00538aa5e5a74c2018a5bf98954df6b30a595b3d8409c", "88bce505f2e11d83bb64b9c062b16c02e3c13e09c955933348dd50ba3b5127b8"],
+          "file": {"path": "shr32.out.raw", "count": 4096, "sha256": "568e3eb7517ff76321bd5efb1459bf893ff3367b95a8e36bceac03909a5a4b05"}
+        }
+      ]
+    },
+    {
+      "name": "shl32",
+      "params": {"macro": "SHL32", "upstream": "fixed_generic.h:48", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[0,31]"], "outputs": 1, "tuples": 10001120, "edges": 1120, "sweep": 0, "random": 10000000, "seed": "0xfed15048fc100977", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002240,
+          "chunk": 1048576,
+          "chunks": ["f280399d0df2fdba99dd4ca7210f1e5503fafba9530834dc5e59875e1bfac95e", "0f3743be07f983eedf56fa5aab674d071b633490f26cc8bddc64de79fe1d5407", "39387f0a512b70772c60ac04bf51620ac6752bc7002a6f3528c57e0cfe073708", "83b2972a9c60ebf5d627ba376159d9418a7165ce22eafaebc25238d49737e324", "17eb91677aec08638fe85c6cea02253e00b7354569d1c6a25bf4bf12f3c33bb0", "7d3e1925a5ec2c253fe023e61a8d2d1ff7883cb4565eac73d1fcf0ada0c16374", "a78f24fd17db70e4e39c7af1b677f8098d778b82d9ca6d5481e1734ba1f895e2", "013067963ede68f828da228811739dfcc4ea3e2f7180cd07be4cf80e29dfc2ed", "3249d1daee174a8331f80cac637a748220b5738c28b96b12a6d5ff4bed17eb09", "c824afd276d877db8d9710e967e9cff0304fcde30ae4072fb46b8e38ed9b77f1", "a61aba8e0a1ebbf9b79fd16a6f3d07ea88c74a9775828fe432c718e551701cea", "362778368c401ab72c2da5ad1a98fbc277b504fceee394508bfe9456c49f907b", "609ba94f735dfd02352cc6d0d970924f51855417315232253fe25c51f4456f36", "784dbdc344dcec2132ab557b76b73fcde322a6606d2b11fc51577e33a89f4591", "dc96ff8b51dd570813f274acded24c52aa69b204a437b78e0b57a17c4df9a40d", "31be8331e60dd6afb1b26def81b9700bd27e4c3e797e3697006db28dcab3de70", "bcdf702682aa0d49a3d88b8acaee993adc62e42eeda7b65513a852894190a205", "b8e83b0403542eab7926eb1ec3b5fd43c9c0aef5bea073457caa649e5e81ef1b", "576bf6e85cdffc426d58f61dea0967dcace5cf08b2a1b1fd0fcdeb0b5e85eddf", "01848f056cb4d5fefd6d29765f10f83fad2133e8455507b4acd53da9f5689032"],
+          "file": {"path": "shl32.in.raw", "count": 4096, "sha256": "1afe9ea11c28d85af48ef905bc2ca4ed553856eec71d63fced8c679848f240c3"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001120,
+          "chunk": 1048576,
+          "chunks": ["0d41d6d06f5a9db03c7eb1533da67a89a52cf54d9e9ef762d533b186150518ca", "945224ab2654fb3bc5a72300b1b2baf4db5d624150fce75d4765ab21bf7841fa", "406911aa39f8f1f721d8de1b7181a3ec6ecb4536b94b7b3ff89d3b4cf28d1df7", "7ff2d4e050d996dd89d99d55ff3420fbaa5170d3281b83b5d49085e435c91f22", "7fb967db46dbca0821f9bb1ded4af0959caecbb567988d2b97866e21856d0c24", "332ffa0e9a7cd4ac13152bf63fdfba2c8ecc7db778791ba50a6fab00b6ef8857", "38ed355f668677e71463dfa95bf0b5ffcdb9acc47968799fea7c86e18826c22e", "e3faee8467211ae606f3e83203ebb10590fb2dd7437808c831c8280c9a8bd9e1", "c39d88177e6a29069e15ff02a48819ba190654e8bf550575248a0bc9d1e533b2", "03418350b3198a8f87a8fc0ef28d3373fc47f995f9df1f11cdeff1edd616faea"],
+          "file": {"path": "shl32.out.raw", "count": 4096, "sha256": "ca3494b217016f9acf9d5e6fa33131676e9f129b6b25a733d0b23a687d39deb4"}
+        }
+      ]
+    },
+    {
+      "name": "pshr32",
+      "params": {"macro": "PSHR32", "upstream": "fixed_generic.h:50", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[0,30]"], "outputs": 1, "tuples": 10001085, "edges": 1085, "sweep": 0, "random": 10000000, "seed": "0xb07df12383c9d0f3", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002170,
+          "chunk": 1048576,
+          "chunks": ["af76aca25fda7f02ef10cccb85af398e604c43731a251ae0115f5f1a91d34368", "d76da3b0d44efae71f384fd1197d8a10d763d2f3c92800710438ecd43ef8416a", "c8b3ffe86b07953af9d3b3cdc39a27bd322863da0db20ebda0f6db0aea5cebef", "4897f5c9c2c55f853e80da7ce782893e567af2a6b19f355cb04c67992fdf4ec7", "be736a2771e243cc9f2efce97c31643fd3cfc8ce9acc384d3de88a281823316c", "6abdd05d7ef5bf95fd8334e8cce67f8bcc8c6081910c800fd5af91a30b6994c5", "26cf998f21d236f45c90a0b83fb3228c38bc37ae6083908f10a2e4b456f2434e", "b45501ac20a976ad78f8cf0cdc63420bd2f4c3fc06ad3a9bdcbb98a0a8e2db7d", "e61075100624dac8cb444668b7529979475373539ecada6a5ec91fabfcf4171e", "4cac25cd6a785940632482c6f533f2ea3718ef95e98c8eccc6f2ed7a957336f4", "fcee4d61905f89ebd12183daa98073bc902be7143be2efafff27bf1110d54e92", "58b8ae401e42e1d7095bf2aee3ff17418169844453088810fae33ba7d05806d3", "bf66a998a2ce9e082b61860298b1fdd5df2b57d8fce300f07b06e99f5b9f9bfd", "b9511d04329d4833062f4d46e73bc29d7cfc219f85bcbd3f9aa81df0aa70286b", "525f5fb37d0de8da4b547233e4a0e8ec391b8d15dccc91a9015e85cf5743b58d", "af6dc1d728b98f1a202348c571029f70e5931fef7730b3e6a4351dc71d913480", "eda7f8da310cdc27eee271b1ca0b8a6e328cebc3db672996b9d883825e18b8c3", "2132b686af5d5c5b2d7f303a9a1fe0a3f13471094fba83fd92d95ad96eddccf9", "00809516251b61b6db5e4a10ac84be35cfa3d4952512d3d53047a03f4de26425", "b73fd7b8dfa653ff399d047fa3644dfd044876f5c6e4d6601a1bce0a13c02811"],
+          "file": {"path": "pshr32.in.raw", "count": 4096, "sha256": "8edb85289636452bc5f6b9a4fd324843e2223a520de8abeb48c73df5fcd81852"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001085,
+          "chunk": 1048576,
+          "chunks": ["354bad6a19e8ef308e7fd7fe2a10dd7aa33e7b0fa73cc340446e4b3e67aea412", "e664bf5c246ba89c520495bd4214edcde9a697c61879cc9c56031b7fbf3d211e", "77b9c334e9d65c4c70496287fc61c0c557a020237bbc6a72432e954999c84706", "348c8c34c476b3917ecae01e362714a51819785dbff44e87091c02a5c6ffefe7", "f6ced4f4be55247905e4b828bed5533bd431451e287447f622fe802be763d200", "4150b11aa183dc776035d36dab44577dbf2513b87adbd599deb5b8c205c0feed", "233aa4383cb6b4a28d6837ab5a74b7b4c5f8599803a44a9a80a56f1ef0cd20f6", "a834e61e5673a7964254343f0debb2949342a8f9198141d59123a42a6c906372", "0700b02b54d66fec96bef2dcba5c7f6ede4e533166f9c0f47c9fa8b1dcd9fd9b", "48f76780ad59425ce550f44f738c18af745980c057c049b3f7042ca688f0c034"],
+          "file": {"path": "pshr32.out.raw", "count": 4096, "sha256": "1727562c6252715d4b41cd0454033ef79b7a67a267d1d7714f0522a305596e26"}
+        }
+      ]
+    },
+    {
+      "name": "vshr32",
+      "params": {"macro": "VSHR32", "upstream": "fixed_generic.h:51", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[-31,31]"], "outputs": 1, "tuples": 10002205, "edges": 2205, "sweep": 0, "random": 10000000, "seed": "0xb869e0964141f281", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20004410,
+          "chunk": 1048576,
+          "chunks": ["31e07e5464317ca8be568de9938cb33e74cf40347be0869e4b33bbf05ed12bfb", "f9157159d9f80f1d87f872098f14c63ab13826947da2fd745bf343035ec0d33c", "63002307ceb9fbccfa151a9eab2f1f9a3100a4d229f6ba94cfa2b485ac17d821", "b30072ba95e5c72d4647b85d8895d3ee814ff20de63c9ba26c045a9d6a51b768", "21573b8c472290ccf010c9bda3e772cfd9738e3d3403d803f7327b159fb8923e", "b5531505fe6a2e3e001507a8c76a9bb3843e825d8c4eeaa105aad0e8a93989cb", "1ec9c15d8388b49f14e839a074425dd5c1e34b2d7e97b207e5c5fb0c3a394488", "aeb0ba211d3cbb4fce5db0d3471dd2ff689b63ae8f9b913e334e8a3eec3d3f0b", "6b68b6e9545e12de1b3fa1e766aff194bae8ab56bd98110b57e0b6b0b64405a8", "e7ab8703adffcdca625f8129095c0de4cedffe1ac8835a87fbea3dac968c10a9", "e71c802cc76d8465d06337393a461d20bead1a8163bead2449347af357af5759", "57412bfe30f77bef5ec7fe6d666b5fded13d3627b31f317b1056fa29ba82d987", "010c03f1810e7647c5d2e588357bef66afbbbe1f2d212651a15ea1bc778d95c1", "971fd47bb5bceab74ef3912f57db336025d33854c40ca36df2fabb1b1eb7ec27", "c215a5fc9a621c2873485cad20e03a4041a9ecd765bff835089b2563b3081008", "7a898937e80e6faaf60949e73af20d1744668a5d0bb4049484347a957fc1b250", "be008079ed7d07b6e2f6e30f4a01533ce52ce217c78fd7c1b2ec3c63504ea897", "86839bbca0fa2f3e7abe65fe0b0c1e0bf0aabfdca9356050d5239943fe2e9543", "21761b31e59d3fd3665791f181ae14f9826f1305eb3a019485548c0e59c27292", "96b7c95c777dd9c809886d74c8e289e1c45da0dc299c5c33301713c5f626aea0"],
+          "file": {"path": "vshr32.in.raw", "count": 4096, "sha256": "8cbfc43d24dda85ba866e333cc43a1fbfc425bab034962e2fef8c62885885214"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10002205,
+          "chunk": 1048576,
+          "chunks": ["3fff30da3c2e2a03bd41cab2a0d0a8b1ec6bfd94b5eaa334f0cdbf078c7f027b", "5833f1cc85b502f7e6f712742b9c070355d68a1aef8a5dfb14a2590b42489486", "03f3f4b48aa311ec9c58db0e794d30a45881b80e7e872291ef37aaa75f2544c5", "cc87767732d153451072bca051ae620b6e153931a2f4e4ad022d4214410b58d0", "50632a1cdc6971056ff22f1f97ecc160d7069248ff7c13343e3a14f915d7cd31", "59ba798a7ea44fee3e8bab43857ecdb82dcf608f5802c1e0a1e004a5a0b78281", "f0e7741156a60110f33602eeea967df1b83c577464a6b4e38f9990bce3fbda23", "e439aa580dd8db7aaf64905bb0281419440e9b8bc6b7ea477406b1930b23e33c", "003f258f50178f50e8d858680476a0d7d6f5d85a54bb60ca02f54977ab168f5e", "1c9c2e035286bf5518ba8e786bc4abf1433ebd0c87d993e26dc06f11cc133b75"],
+          "file": {"path": "vshr32.out.raw", "count": 4096, "sha256": "f4c7c37ee9f1a3a7838a050ecdbd3ac1d6739594788473835b40e2f4f7cac2d2"}
+        }
+      ]
+    },
+    {
+      "name": "saturate32",
+      "params": {"macro": "SATURATE32", "upstream": "fixed_generic.h:53", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[0,2147483647]"], "outputs": 1, "tuples": 10000630, "edges": 630, "sweep": 0, "random": 10000000, "seed": "0xf2ae8e085bcccec5", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20001260,
+          "chunk": 1048576,
+          "chunks": ["9195ee529aeee6bc452d9ccb1d821ad34f92fe4fd234d6711cdc1e7227a5cafc", "e5c1d79dd22ebdef3f2fb58a0c4d7d85fbd696a21d75a9c513840968aefd582b", "ff24eaa161ca186a37d3d794ad00a1f0334831d2c8339eafed73e0905c2b785d", "30b59d1312b9d2bb887fdf4455baf12ab9d7576d4dcf1647a13317a8c867d9c7", "44994fa782e5fc6dd035651b0c58febed5eb381ecd6c5b4e17a659130beb029e", "fedb6cf23366634f109987a5559e8d6bef998a7ee9aed89c1395bb5a6dffae94", "f6704ad32e50567196c00cc63d4a44e3ed504e1a4aea01bc7c64a8c38c3077a1", "7046a22ddf8268f575c2130bcbe28bd8b7f3a67000cd0cf1a16b924e140a5eac", "639a28e2ed412a34221eb3f782ee22e30c3a172e0721378bf7bf4e8adcdb59cb", "0452fc505312f30a99a8983c980c805d0ccc48ed9c0e49d67dce48614f4870d1", "74f9c8c4716cb5a57cb6eb5b1598dae970fd1dc7e9c755388d69cb9b8126fca6", "53ba34265a0ee423f508b24bf205706c9e1587a8a72df3c3559b9f56b8f3fbbc", "d45f01b7005c7b4ff9690fa2ac262364542d069dfec4125064577eab63a3e0f0", "2942dbfa5dac8fd09035eda1566057c9667cc0c0a3732733f717c1dbca769cbf", "034fdaba45262866f474f1a68d6e320fef599fff65d6ed63feb4af7853c4872c", "757d5f7ca8c844978b724def76a538bed103b061dad0819ab48bb77df914da87", "eb1521bd6b1d77cb66da136ef9218f4aec2ac0cbe7ec484c8e77c540a11a47ee", "dca9ee80669937e488517e61aebce3f638798c7ee5f2e08073150cf9c47ac7f7", "08298b18c891b94ddaf3505a4daa43452f55840a5ab7ba0119dc658309e8173f", "96053cb0d3e7dbc7c3698dcc3cab4e5c1620abafcb80ce75068f441158356d4e"],
+          "file": {"path": "saturate32.in.raw", "count": 4096, "sha256": "75ee020ade91c26160582ffd36b00fed77260c18d08a77e17cd42e62f6445b0b"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000630,
+          "chunk": 1048576,
+          "chunks": ["df1467706e6242fa14f1401173a95832e6530552cafa2b9122b642bd1c4a886e", "3c360e1539fd2657bc4971335cc0fdde035b8c74d023878a612c4eb23b980126", "41443508ff3ec02975beffba7c4b225d807e869a60e6ca541928a05e1da48305", "2ea1a9954b0d47c8f1954de51c3a6b602d8244db37ec6bdd8603e4c7155e6a4d", "304ff4d219cddc1b6267dde8f0b2da6254fd5d21f7d219ddb94789ca3d3c9465", "f4ed365569077b32dbd24f1e6694961d4fd1bd859cb3d167c3fae231dd2cb5ab", "29ad9ac87f758535cbb16de194493170885f8db532469f30c0e45b19253464e7", "a4b1d1d64a83a099d0d139bb5435ed1446cb46b491613fe1a62664d408d6ca7a", "ab12463bd80d34d35059f6fab327301daa798c6495275641985ec14a733f504f", "5119a10668f8acbf81d991284249548e84f85f096f4ebc4e04126d4ada5e40ce"],
+          "file": {"path": "saturate32.out.raw", "count": 4096, "sha256": "57df7b354516fd29c10707adadeedb64c3beca39eb69792e95f5254bea99dd8d"}
+        }
+      ]
+    },
+    {
+      "name": "saturate32pshr",
+      "params": {"macro": "SATURATE32PSHR", "upstream": "fixed_generic.h:55", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[0,16]", "int16[0,32767]"], "outputs": 1, "tuples": 10005950, "edges": 5950, "sweep": 0, "random": 10000000, "seed": "0x4d7997a817819f92", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 30017850,
+          "chunk": 1048576,
+          "chunks": ["3c3ead9bcad18682733245ae54e30d1ac7d08c4fc61c78a638e6dfa48472e3e2", "149b22e3231f12a7d8724d1525ba9e12d01dd1a6cfd52254f90ffc5331ed4c4c", "506720947d9c4b19c8b5daaa53ebf5948491bb19a49f538cd2655c5b6b011300", "cab93b5742ac4115097aad0241f6c7938da055c19e6d7a89426a399b99a44359", "28419085575cfaa5dc47a35e35d89bd8b68bd77f1a8a44c56d9e4fb4add5eedb", "694b5fda80331554d970c15f10e8c3fb3bcba09c4de67f4857b54baaad869877", "a99af66dc73fb1585b1baef578e582310fe927f74c9703680b3444752f4ebfb9", "5240e27f667bb99dd8c0cd1aa807ffa4e292c80fc0816320107c9d8816a32d35", "10b8e31371f5a554dba0e9bee0500adc070cfd8a69fb02d2444c86ba8fbbda92", "7f9412d6a30180d50a1a3cd55abc67874984b26d8d9376cc805bcacda6a3f237", "ec77ea91908981529ec93cf220fb4bb5145883b34663cb76449d474ea8c53348", "87c0ee48bf488d508a1542a12f8f7f45bde912485310137c464c8b5b43da0e69", "e6f0040a9a09937c6d3d49cb0138f8d54a3c083c5698fae518b025d1c128038e", "a50834318101187d346730a8dba8845315a4b4bc5baace0ec9e8e7bedf98ad6d", "435efadbec9a1d58173910050d1df82446aa9bc8df022bff7bb2fa9317793566", "113e52174b4d934b8b622ccd3b797c8c3f940fbd0733b9609911b0c4d95bc04b", "4e7bf0dbb1a5e0e157c7ea551d9c38c15bada6c8b230759d352b9c0c30f9249b", "b1539b0d95b537f05e6da0d9e4f6df3b7538a271614e2cf289b1799485542075", "db257116ccc306c35d7b9006bd08779d2f35e3b48219b0c66472b803b93030f3", "ad9974cb0e546ce3d9db84076cc3c8369fcdeb9aa9ea7d74adea75782c2f0ae4", "2653e9b08a6e37055a49bab635d782a03958829795f170eb2e13c9543a51e949", "d87ec40364b0e4c23181ba0bd70facd94268a9a0ef0054de0809a7b9cfd4aedf", "12f759c2c42e7c89714fb2f2788ca4f0957964ed8786b3006e834eddf3c6d335", "62b4cd4365e40452a16e7e9f9730cfb73ac01438b652d3cd27ef31778936e12e", "883f66b2a7a331b650375a55a94a83112ad4d14afbdb0fbe5793bc12167717c6", "d5b7a2fbf954bcf8b46b72530ebca27ca1486a6c62558d5790bb99f84387116c", "d96ae095156d7c0034082a965d2f5bb5d0c2b848bc805a622e603da3db43b672", "ee3d0fd8a4ead04fda499d9556f19f9bec55dc1972c0995ad906c8e81a6cf5b4", "b66a6ebe839a5f81d6c4b984e15c26f641ab1d6b65a90e27495f60e6503d848c"],
+          "file": {"path": "saturate32pshr.in.raw", "count": 4096, "sha256": "2c72b1f5bc48655e97742042e9da085a220d8c8e7f37f81ce9730c47b9a5dbc2"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10005950,
+          "chunk": 1048576,
+          "chunks": ["3b1ad4fbab0b11726d3f1d091c02299dd97942dbd1fc1efcfcbc1fe005979266", "41b369133c9cbf79347b19d6b8768f5bc853f9b5f887f8ca48a98c9df06096d7", "528e75bd8ff353ebeb1458f4d9f8f46c99d4254b3dc5eae1d4b57ee641d11dd8", "36257b47135d0176fac5e3c3a74965fce8ad3978b945ad6e814e5ac2eba93808", "cda43f643d3a9be921a1cbf0a765cb49f70e51d95cc219cc4f39c8fbc55f1e4d", "583e2c0a437d30fb8c3c4ef654c762cfc79631365f5c89b1d1b4c23214b8bbfd", "fc017d283986a31ecfb30fce7792d38960f14e65eb2e400741404c24b918eed2", "55af737dd121da78ab5a0c9f8944e819d0f78bf6e0edeee30ad92537c58ef7db", "346a0711238f0317d85cc41ade73c3d0da339e47dfab5c83b96454d28c669ca1", "3ed5d6d4e4d1cf0d3287ddece2de6ab4b181f357e34ec7d501a9733fc93a2a2b"],
+          "file": {"path": "saturate32pshr.out.raw", "count": 4096, "sha256": "36eb766535a94ccf52dc77ee1036c3a1b6f27141000e2c6b4e2a3eb8751a9c4c"}
+        }
+      ]
+    },
+    {
+      "name": "div32_16",
+      "params": {"macro": "DIV32_16", "upstream": "fixed_generic.h:101", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000594, "edges": 594, "sweep": 0, "random": 10000000, "seed": "0xafe5108ac4f3406d", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20001188,
+          "chunk": 1048576,
+          "chunks": ["c33cda23bb2e9160c054ffe34f2c48f0bbef0632fcc23b47cab5d18938549412", "8e7bbf845cbc693bba5bc5da7cfed65ca8eac084305b59f7f4afa4971a21e699", "0617d6e2a549c77c3d6a7f90cc64606f0aa769a655e8b11a4fe6a8c612dc17c6", "79d8bfb154eb17c3a46b0b0aec5f7f6f67f4698d9051929d101dfc91dd9956bc", "96c2cc2feb8e6fb6048fd35cad48662735480a9ef6e0b67cfb3d8617e0d03a30", "675b72307cca5c73721a7a78931164ce5b6782a4559f8b217851b855bef007ba", "c08ddfeb8d8831378415e566a1c55b3cb95952450dd013db136422ea4f118392", "a98e2a19b24266566207a5048933720735f2bca036a71cf9a59d02441f616ea5", "4003fededb72770a3f93e8cf969c5b8cfaff40fd386ca3b7533871095a2df70c", "f5de549108c2c7e45371b266809834ba1f52f430a0b1be3230adb29aa7924157", "27d0f0b33576a1067188dde9cfaa73ee03a6a40abe1c53863e357bc22846bba1", "01ae2d9d60b728a9049a55b2dfb7a617eaab96e941aae4e03d4f70bc0ba905ea", "44c7c77f3d1aa54d2928351e4143acd54d309ce6ceaeb0f64d1f0f1cd03b94f1", "3270b0f1e59ecddbb9767b3375e3be381b3ef0747a2ebb80ba8e0dc37578d272", "602ed4e3d28816f8b2e86a591088fa48c10003274d23fc581eac595be37fbdad", "643b508b8b37fb15140a4fab781e846908cc40b88097d92727f78714575fdbe3", "e5d6f812e1d264cae4e4ce6d30e72f8e85a02a3192a659e0093a218c4669797d", "ab36e6489ceadeb97c6a25e69d23dcaafa4d8418e5b1c7ba61d17e7edbfeab65", "73c9461fe7c9af69985d569177642e8cad0044629f8f3dc44d01b65aff5ba291", "3682b555b0c1e1caf33ccbb661bf78cc85cb16f8be2a43f522ad769868f62c8f"],
+          "file": {"path": "div32_16.in.raw", "count": 4096, "sha256": "0b064478f2824aaddce2452a075122594c1fbe107b6798353181a8e02fa13a8d"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000594,
+          "chunk": 1048576,
+          "chunks": ["c60e2efcf8a641c8831754cf433a662e4c1c6173be3354620ce57fa9dab3f4e4", "9392dc9e012ce04adefb817f0fabf8b2cf3020c40e7c9b45b6ddc1bc78ac3f1e", "48357c4bb37bb0f90a36cf4ad85ab1732d52037150c1dc414a43d245c4642eb8", "0ce0dd1abcf1fad737e6691f82a40aefd78b192ed363447d2f54a972128b933b", "822c76b5585a686921844b763ebc0258f00a11bab296f7e20e6286c73df40036", "3ad795f771410920938523974e87c5b60febaf00345d3012efc43d52534068aa", "4f77a07462bc8eea100372c8685e16a093b801e57c99206a9eb2c2c89e5b6c68", "3836892dcc76b3059d67710e3b2f6d260249ec6c67a637e9becdab9033abf312", "63ce3453a0211579b7a835bc4713cc49079f8c2a16d2afd9b1f918334ff3eb59", "62b305b13b90d4d389ef687ac0c4019df2478355ac9056627c2cffbfe5dca606"],
+          "file": {"path": "div32_16.out.raw", "count": 4096, "sha256": "5c97958c6a43d32431d8fe8453b2b17abfa3d0530a63464e9062dd905f5c5109"}
+        }
+      ]
+    },
+    {
+      "name": "pdiv32_16",
+      "params": {"macro": "PDIV32_16", "upstream": "fixed_generic.h:102", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[-32768,32767]"], "outputs": 1, "tuples": 10000594, "edges": 594, "sweep": 0, "random": 10000000, "seed": "0xb9b55faf7db93b83", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20001188,
+          "chunk": 1048576,
+          "chunks": ["85a772e6edae615b31268dc11d462c7b89baf2f779e5a6ee8b8d38d2f4fc97ea", "d52477d72bc8a25735354e012af3b28ab54f8b4126263e914ccfc94d16a61ead", "8bdb609ba29fa91835a2e391b6366a5226749b6e40c1130ad7c56d75816d6c8d", "f6f5d6691a57a8b20286d1330bf9d0356356c9274d5410df601b71a1a6c1f3e1", "e86bf96f93946d47fc1cb00c8ddbbcae86d7c11c204db3e75f0ccb375646adb9", "b958c6541f7c170afe4ffb1133e5e6b72f5a6cb2be4222d42385ce930cc068da", "9405db6c47e8255d9462512cfa29efe85a907b814368a8bd8c08005ef47b4013", "5ee46fa73a7a70d791c0ca0b287cc3b9a3e2dd24d6481366ab227a313ea6c1b3", "be76cbbfee3d692ecb0e90d97af908ea943e8ae64ef67524bbea2c8e2b978047", "6e72aaff6a0142e7d3e40e036377fec4fa524b741ffa94cedc974097be220792", "5268c75d86456b8fd602da2d914d3a2cdb1d4dffddccd6907182ab412db20967", "145b2ae27e8a57c31b8063670e0755241cfada3afe41d6e18359ec65a3bca595", "cbc7289fda294a66c638a3f8d1f1577fa514e9cc1d6a7afd4586d0bcdb25c964", "19b8a48d0fb6b8e7984503a8c5da136f65b92e3db981faa3a966173a407b8410", "08d2c9e89cb837184fab864117c232d1c709bca8c0ecb317ab97c6e23e4735e2", "c248ea5fb543ce30906c979f1088d85691723399c9719d11593e26549b2dc010", "941ac93046cf0be7bf0ff4a206ce608b4e4992b1e082141ec06686deddaf9530", "6ccf59c884195101a1d4b07577cb9a1fe589045f4166140d1f864767a62e4c32", "6139fcafa768b8cb814cfcb52e7a1c8b3fe74ff26a47c4c9e7f23d0db4f1172d", "04aae22ec37cce626697717cfca40d8f38af4619e05c305ca2a578d786f552c8"],
+          "file": {"path": "pdiv32_16.in.raw", "count": 4096, "sha256": "d0b6c4cb506f02bff9faafdba65e21b3d46d415a1271972cd11efb1085215341"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10000594,
+          "chunk": 1048576,
+          "chunks": ["5132bcc37de6b3a252321fb790ce3a07971b77739bb6ee3e7f611a555666b327", "ac736cf266dc19d9191f9e1c54bb1764baca0891be8a8cbae205c8f5e45da22b", "6795b555fab413aec1624b4513b4aae5c81d5a0294432dfe6186ab0b43b24768", "41c4d3b2547926fb2a2714391cd4eaaff1470bb1b692cc1b2217c13d96a4e295", "e9871ae1fe9189dfbafd88b58b58a594c5889c4c4b26ad422f6effcd1dee398c", "e70fe45615c7a7adfe61e19cc265115e6301c84a6a204f3eba50bb7116d1c30a", "dadcdf017a4fed907a005eeb12358f7624666b52c1813bc2c19cc170efa306b4", "4a695ec5c2314c2f077b456bb3fc5dffb2f93ef74a721152d0e8a82d7c5fd1db", "39d9c447e1df0e2de731e69251e02bd45bc9f629f0531d35e048e1ec2a8fe096", "fd97b33fb45f0306c3e308ed8f48629f0ab01e425fbabb890de614d0a53b5a5d"],
+          "file": {"path": "pdiv32_16.out.raw", "count": 4096, "sha256": "99bd182ba775537256422887cc49a457f4d64c92893ef5144fd2a46d9a080ba0"}
+        }
+      ]
+    },
+    {
+      "name": "div32",
+      "params": {"macro": "DIV32", "upstream": "fixed_generic.h:103", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10001189, "edges": 1189, "sweep": 0, "random": 10000000, "seed": "0x16330b99afd05be9", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002378,
+          "chunk": 1048576,
+          "chunks": ["2e69da24121f830140b3dcf9b733232cec7f5ea3ebb72ac6e76ad5120024afb8", "77362e53849012a3ccd36ab2a0aaee01f11bf912d661fcebb17631db5c767bc2", "7121f394ba9d1603f9599fa88f295a7b93daedf438f8707e1ca7a299de2377de", "d1c68f4c380d25f834a04c9ba4d831bad7cc6f055bc292d3a2ad2006644a3f0c", "5c8e346d0d2ea7c7ae1eb8a0924d63914648ca577c066d0e2dbf45fce3cdfc40", "ed03cc8ec81749def0102380ad1ec28b25b6c0b30122644408d62da7bbb97299", "954191be68dac14f0a28371bd3e2c3427ffdf693716217579c4ad99dbd86fb23", "b9d0df30d3fe8e792b583da916b9c872dda683987aab903821112654dbbe6548", "6db74903a0ee453c6273ada4e7412c30809a6abc703ce21fbcecf4b6504e75ed", "87c64c56168b2bdf0a49c86f9d86b8eb62277bee67de1b838f0b8287a59ae3d6", "d5df7fcdcb7852aa982af060be09f13b0550d2d54b4da15f37351879d01cb50a", "641b5e2fa414e73597c4842e572e0b13391bdd9ecdcb00f1f57f04a06ba9b7df", "ae0e2147768f2db68996800f7b5d457fd90786363b561a21f329107de9d7d31f", "71ca8bc1a003e593425490c50a3f78f599d042781484ca313d7013e468229551", "eb53a7e042f0006ed488fa04ae7b439c17016b8f73fa80217a9c18e1de0d1d1a", "ad0bf46563aa22344be3b34045c85bf2a9880c6ef202dda19fe0c2e7cf7409e5", "0c72622b99bf7c83bbe48443b0ba22cdbd454a6e19f9ef28028cef7a20669f1c", "8620131bfa0a61aceb3f27cf9a56925be50c95a71d7420c80513d56073d1a5a2", "45e3efa77bb08fe910cd083f3bd67fa897d3b94ea131241b78f18877b1084b08", "c139df073eed9cd6c24877f546bd628b62dc128ed3f82468b7e4e9504bd9b8c2"],
+          "file": {"path": "div32.in.raw", "count": 4096, "sha256": "4a27382360dc718f9eea1cd95e09b22b104bef48c9cf3db914efed306b067312"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001189,
+          "chunk": 1048576,
+          "chunks": ["b4f9bf8b3276ae9aba15a1c2d0a9a91453d42f4a69c9fb41ee40d11675341c1f", "1c5210dde7734092f91cf1800da0f71e0e05e76fde6dfbf32d789e3af99e0d14", "bce1dc4d809fe3016b2e53ca93ddce8889f1ace001bb1adbf266d198cb30fd02", "f63ba691aaead5f9e8b7efe67afe5c38cab877b89e7b4359e9b0b2017cbe99de", "7f8da92832ce0cea5a6fd0b8c9bdc0785f875f8edb232a60010cb793e2d1872b", "eac275b5627433616e8333b2e4f2036f80e5991a3159b5c05f1e0d1ba645be7b", "1475de91abfccafc61e51d7404d420a4fb487a24e27cfe606655b157d4ce1e9f", "d43628be5226d17f756e712c48fa208902330b57c011fe3110af2d9f517c1000", "35fddabba2021d870ab08bf9b6e772d7919f21f4513945df504c802c204d48fb", "eecc4474cb10e5e96fe08b06260d27a5907fc935cad49d379bfded5780a766c1"],
+          "file": {"path": "div32.out.raw", "count": 4096, "sha256": "c59dbd2a65cef1e8948c0f708caa5732f8aaf61c31deaa447d9236e497d2e866"}
+        }
+      ]
+    },
+    {
+      "name": "pdiv32",
+      "params": {"macro": "PDIV32", "upstream": "fixed_generic.h:104", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10001189, "edges": 1189, "sweep": 0, "random": 10000000, "seed": "0x9d48d93539375afb", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002378,
+          "chunk": 1048576,
+          "chunks": ["93d32c2951dab8a411e0b5aa4dd63a841edc50ed9440f98e1223851fde34aa15", "f5f4d454e3914b712c2b68cb78b1b4c51aea86e72614a90fa69dea0a7d7b10e1", "9bd3362ce5a2cf43b9856173796585f2dc8ba187419aff3e40f13da3623efec8", "e831fb4ca27a77acdd96190a47481b26843e932f992a986f17ed7be540cec513", "e0ab4ec89601381eb07225bc318a46a4de9f5b7789915586a68e8765d6595b2a", "4ebd2c9abae9675e2b080c1be3fbfd19f3da4eef3d644cc08acd0d5b175eb18f", "f07b9be93057fca22e9d33c450cbbd7098ab1aa52e7f24bb51859eb74f142448", "2b6f799b2d4c1750a46d3d2c61a15dfddacd565abd6ba3d9a8e6ef068ca5a293", "b7f2bdac3b3f0f073d8ce9f002352e4b99257260ea0beb055f1b2d82b2b0e482", "341e0fe83e800acf9812428787cb7adcf6e3bd2c87ed9899864511108ff2222c", "94b810eb3074afb71bd6c0338021e9960559ac2952b3b15ea30e0d1e9d4c932b", "bca111f5e88fb81f51a916fcae14fe3c5c308377a9345a3a761d17f3241a332c", "4646f5c9340366f95b60f30d23a89d351decebdec22506f404be864e0656cd32", "ee667f744cf852164e11351a4cdbb0c6106c91fd003972923faaf519ece9dbb3", "bb7ad7c260622ff266528766728166028f0ae58fcce1db45c5be2abd889d2035", "832c942432cad028f99f65ed63933f00bf71e42f83b169bfcab35c3c05d9a7b2", "3159d16290c4063974916003ff08c94fa4bdae627c247e4bda6a9c4d87c3ed01", "f000e71e0519fe9bec5eebb485702b452abeff05e4bbd317663e9704b2bead12", "3e794fbd8dc815a32d30d673faed8abbbf4fab5ea81fb1590c3e10d8ee783f54", "27a2bf93db55b3046df477f9548e17a0f7263c49e91ce91a6f9dc6f31c503ca3"],
+          "file": {"path": "pdiv32.in.raw", "count": 4096, "sha256": "dac2613602762fd2b419a2dd751b57637675e7e6a3a55352fe00b58363258ef4"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10001189,
+          "chunk": 1048576,
+          "chunks": ["c4135c9fdc73c65a52af01ba87e762bdadc34e887bd052104d978f38a376d851", "ec9bea20ac80fcf24398ca804abe273716cdd3590683b8760672879d04ffcbde", "1da2339cb7ce91fe93ef1fdfafc9f2526e4d38282198f9abc695db6fcf2f25d8", "794e01063c6d2f98ade5b56dc6085c028d92d98d4d495ca611c1a9904fc3e7b1", "7125e6215438389393d445d41dfd514e34724b0fda1bacd27dee08b86b63c665", "9cfce004681c63632f4cc14c99729dde16c413d3a10735ec9c25bbe7f51492ca", "e659c9fb9a6257ead3e053ad101a7a1865d208247565afa2c281662314a3a3de", "4fefd9d49fea7b362350c278c507243f6711ec330c196f76c8860c466c5dfddb", "81e2f41bab108e4f35cb5911eb9c5bc480989b0fb53069c07b51a820ccbae6d0", "bf3de57d6b7e689801715976acb5bec268ed8a5057a5462d0f67ab9367c96fba"],
+          "file": {"path": "pdiv32.out.raw", "count": 4096, "sha256": "a1d594646cd11a3e18cff088ac570d6302d323c8039771bce4b64eaf6c1c5332"}
+        }
+      ]
+    },
+    {
+      "name": "float_add",
+      "params": {"macro": "FLOAT_ADD", "upstream": "pseudofloat.h:97", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10072900, "edges": 72900, "sweep": 0, "random": 10000000, "seed": "0xc04072ef19ad154d", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40291600,
+          "chunk": 1048576,
+          "chunks": ["ddfbe4c477aded479229c4cfba54ff5e6256a1acfd51a331a3494fcd900c0f15", "8da77c8a086053a9896d51747f795d9ab219689c00e31cb5447b70c8a1dab72c", "923fa204c643d27665c048e9d85ff0ded4faee2d9bbb4df1d7ae8f46fd9a06f4", "f00c391aeaa5569f30fe34e5db1b90a8987eed68b7e8b3318c1a6b8d1da695b4", "8b7bce41a3014a05636fc7e41682e904614c5fb8fc493016e11056882d1590c1", "6a2da44f7d0b9ea2ea3ef560aece0ee30b28e0d7b52f0ee7f826890f08e691db", "bd35ed255484ccc5d303ee4333a75236c95ed081e035b268fd53896cb9ed3479", "293520a705c524c75c1a3941b86c3e5cd439f18343c3a13abc70f8f7a74860ff", "b3062e8866bf3a3f016d6caa1be454916751d6199caba26bb96fc23ba5776968", "2635889ea8604ca045d0d6702d49a552e258ae110d283b1824e7070b52b1b8a1", "6f922eb04856eeba41104a06f6775e1407571f103114619c10a5faa98d97269d", "d75002e46d61a287c72122984c147ff2efefcacf0d8623f49e8c364c547a7a25", "a81158995f12d688821c2f11919222893de9a335ffe9ca3601a784976d517256", "9b255b883d7f6d69c9be39921134ed9c0f3485ed2cf8bdfd98cfb2603405d26c", "5cb2e5373b0c305f3877389283874fb74830a89d0aaca54cb2d988ee2589907d", "0f2c1211db8728f6eee5b7eee785c2cd56a4385cf69ac4760f6033a39caf1e44", "4d1828c447a291e677a258da54c8ec7c7a5eface4363a63a206f5fb2060e2618", "92d2b24a3bab5e7e0e72cd0af64a5d3f3eb115671b9802517dcf764537c498c2", "60903d6c5925ba305c655b690e6e0f6a775ec1d7e3c1d4e0501e951fd09345c3", "7c50c1b39f703597113ca5a131ead7fe1944e776b6100452594b2d020607bec4", "b98afafbcac73389d081a3d91a17021ce2d5262d7010064f055f9cb330e830b5", "2e4c1baa1eab432d64df9cd50418d8ed3344a271edd18b21184b569f4149a92f", "89baef96db4dc6744c0dc38a306a21d91ff4b0108297789517a5b6de6b1f4484", "4b3f0f156f141a325555e6d9afe42f8b2014d685bfa1e1516877e0bfa9381ce2", "b101c6cef437ca3bee8fb537b7e1922505de27f9a8de06a940ed8e1b699b6a0a", "1836b7a666c43fe9917ccd0220b5a4b934f1494429d85a705c4545ffd601d5c4", "d49f2ae5986248120ecb034aef1243133e2d6187ea7adc28617be76555ac294c", "3a09f4dfe56c8d5cd02a4a43096fb8993b1470103de9d5812d80b73672a08374", "08240839e12e7381e95650b97addc615b2e23eeaf0ca68a1d27003bb1057e6ad", "1335429b98f74d2cd2c06207f8ff57e3aa05f0f9e015f1fe89a25dcac967a95a", "a0055fa6c60b60214cc6a1e34635e02ae627d61c043cd7cdff4895039815b914", "e3dd5fea4bf3676555bd276bf608708b1b69f3b43e1b659eda784423ed6f8485", "1107112c6022e569dd60e785b6c56b4d0db42d0a7ea20d43073ef1b8abdb862a", "0033dc10af4eb94070f24ae0d951fe0e568f7dc70513d5ae4c4c9ee4f68f9c79", "ea6356ac2c9988db3973d5cadcfcfb4f31f420544c733568af4b85f947ed4764", "6b18c22076655a45c59398182f848cae1a9ce00d55ab9e252c43e5afd025c7bd", "8362171b2fbdf4629e21cd1d8072ce025f7d1490f11174d5a9e447f96e3b3a8a", "28a2d156209cf328758615a219035d5da8622f882b366f9285e38a4fdaed6da8", "7ad064eec4b02619955d891ba61da723f9da972ada759b05e41138bdb81f1377"],
+          "file": {"path": "float_add.in.raw", "count": 4096, "sha256": "2e174dd4650d3a4242e37f1779312b46e692a0608c1b0dcf3e688e19ae772e12"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20145800,
+          "chunk": 1048576,
+          "chunks": ["edc7c77aba19d08680d004e145a782cdd99db76f913d3027cc927599abc0f0b4", "22e3348a5f566d3073d1c7d059f583924eee929b74b84549bcd6bd7e97139ac1", "9d41f8ff07f509a383f6c3e7d74692137a5fd7cc23806d3a91409f50406becf0", "db7b2810ee838298d9c38e033ac441135e315f0ec6d75be91240f2d933a1b0a7", "0919106ff1f40823848cc4c41cff2b84d64a32500d92c5df3c8762e09ca29adc", "ca6bbbdc21e1713a955153d7859e98ed10debcb2cbacf3e2ef8f4cd9e06d5d3d", "3d259c1453b3da1e7c73d25950aa7968c5d7376b45e0e880a40a3eb87ab46d61", "1c778650bc13320359f850fd7d89a739e584c04a004e57c5ae3ea12f70003e5e", "e2925407b64fad558cae480909fb7f9f31f23e322ec093ae6ca095f66bc94895", "86892834c507dd1a6314243cfc6d89e42318fd2e05d35eef6aa64bab8f036939", "703c5deb5b2320aa235ccb6798dc35e12a1967eafbdf1c6f2155748943b7ab1f", "f95bca96845ce7d4adbf423ca862df2b7c6a75368dce6bf691f54c3c5e1167da", "d8d3dd9763ba70ef222bfdcaf2c9c36ca317c7364e534105d743771d0c9e51c9", "b9e2e6ef5bdce714540fa35fdb9698e141f9c6494409c634484c259981359525", "6baff080329013927b84b5c85e1c7b8f212630829361f7ed8d08c204b2d3bbd3", "43e78d60c2fa20552c33cc4ce425b845dec78d9207d57c920b921e29b078a0bf", "b0dc67326b46388e9ec007016cc8c711cf48519e437b05dfa2a5e92de7c939ba", "228639e2a1884de03101cc080c65b00b791117c661d97b16a0c534d8b49861ff", "4b6ffcb806ea2fb1475bcb25ad82c2f427555c92b6aada14b80a8eaf65bb3df0", "aed3db5091cb5c9c32d7090437a540509d0d08037d93a1b4d86690f56b1cf9be"],
+          "file": {"path": "float_add.out.raw", "count": 4096, "sha256": "91ea94ef7a1e5c640d3e140ca831ee957345091f0df8130a1c6ea360569da89e"}
+        }
+      ]
+    },
+    {
+      "name": "float_sub",
+      "params": {"macro": "FLOAT_SUB", "upstream": "pseudofloat.h:132", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10072900, "edges": 72900, "sweep": 0, "random": 10000000, "seed": "0x372ba0ef5c5de91c", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40291600,
+          "chunk": 1048576,
+          "chunks": ["b4f020d5d0fc202e6c03b62047a4b2b02757ba72239bdb9115c23c721f2c58b9", "3c5ab98bc2cc9b750d0152fee02f1b9236f406f6cfa00f5f93deb25623b72ba6", "029e45c8aaeafabc74be5081fc5f827497e646d59e786aa2ad7c2fe9a37ac17e", "e870eb3d3b9a7071e06b990a308fe18d0a14664745da3b054e62d6ebc473196c", "38994f49d853e7b11aa60af3067a857578e2c63dc60b2fda9da8834b24e4d192", "108393052b875073239152afae155d46298e0e46b23aa42a1f3c3a9c3fab2ac9", "ad464f53830328e88de523afcd1299a82de0fb0c28158f7aa3cbee78c7740e9d", "2f2330bc5f7fd48ade6f1073ef6eee59559440ba120eb3b9827c17004f676137", "a7339552250e9c5d705202ede17bee11245c2aedfd6ea8a32a04a52a073a5fd9", "59262c7b611615533cea02e3450c80d12449e1661ed3e49e04f529539f72fc95", "11b034a8b4a30b0538c38be8158654ecec3a1c4db038b64e505afb82ce4dface", "b02b83ab4a0d4398612b3dace4b8ae420505173b0495b80d51e83f4bd33f55e6", "787302fdeb005713657d09aaaf67ac9ec3f47a3cd56a855588e06e4cf9869679", "2cbf08fc176e6dc38a74bef5a55a592a6aa612b05d1b331351aee06328abb507", "7a865549d69875ca95681fb7010102d1586c77d233fbc528c4eff000e6f20d2e", "9f31effe0716b3d7d76d5266467101e771bf7cc0a24e54c145099ac2a1de36ee", "8a88767cde4196adb333a0a2c08fbfe37f54aee5c4bd77d5da99b93ad190ddd4", "644264dd556ebf7ff9778205d106f140048ca5d0f9b8fe74ded702e3c55c61f5", "293d8105730aba50177204a6e18caaf631b9590e6d6e2ecd915b348241d77290", "b8d447411dab108763f42dabf86d14dd0398a39be1fc5a45338f8e6fc49e1b94", "ad7a28dbe388ac95c3bb72a2225d57a8061fd858efe983eda4aa55b3929303e9", "5d81c92042820608e737ffb98af849bd8f82792eabaa8338fbc62c7d923e3a02", "102dcef552ddd28cb211eb1263f6c55dca573a79eddcaf3120f5d1da161ebc39", "5f945886bcc7f2a648e3cc5c27226c71b4a465dd5b36ec1109132aa70a39458c", "4d5d2acd05e5f337d23fe7db6853706b61746159191818c19cd7385a90111743", "d1b6173f4081c26228613b5d91ce89b0e69c8a8df2cbb4617aea0ed499929953", "a17be064ce16009f498beeba35ea5c28ef1e8e6ed9f602792f1c19ca46b59c29", "912639ab760fc80bec6ef02fc51705cb9fb771a4f547855205a845f53429eb09", "b353bc6fa36de2832e307df233501c65074580814bdbea62f04d10e8bf76c5ff", "f17563f0cb59f316eef88af3600c9f30af8be576f75c8dba6fb59cd8ab06c7a9", "1f8aceceb29d483dd352dd00261f0fb979e00af4b0787c3b37542d451a9360d0", "d562d16dc7b4886d05822a87511eb02bdadd51bd000738cfb26241eb97e335c9", "d5b8c758de9486c15ae10b3f710c723033d0cb6961db8e3fd5b79002e1a68c08", "d49473078f715f44d34afe0a62bbcf573b64b4cc8c91215c4f32fce889f064c2", "dc4516d3cba33e89fc2a2ab8ac73fdd5c5e3e058ad613f2c54334bed98cf26c1", "914b7146f31cfb6043141577dd56509304e46ebf681c6a8aab48a48676a22ff1", "c0cf5fd5caea19e4934044f7682196b3fe3f150d4f5a6b88df945842d8d0320a", "7f3efcf25a7b0fe2ee90e327348bea777b311ba26c2cf55782c14de36ec7e9c9", "0bc4386bfab4b9c992345f964a6fcaf6ba08a815dcf1627d0a42c0aeb16eded7"],
+          "file": {"path": "float_sub.in.raw", "count": 4096, "sha256": "2e174dd4650d3a4242e37f1779312b46e692a0608c1b0dcf3e688e19ae772e12"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20145800,
+          "chunk": 1048576,
+          "chunks": ["ba373372b635fb4cfc25304e8be4ddea8976795ac001cef3b80748c2eb79ca73", "02799d61504c7922f0f6f9395bb131eab7ac07582907b53c37350fbb1741e165", "73d3cde73e10ea94243cca99195bf960030fbb01d543fc617f655c76edfdc37c", "fb719f555d91122a8beb03ff578c77a8ef6d190c49dcc5375bc45abd9b0e0999", "79750f49264d02bf346a927b6b76b0feed449d18a3ea44be0656ac8fe34fec15", "9ae2db8255a8b031b392cfaf4559b1b84d657d47dc4c6d896abe6cf66f46e941", "2913e3eb3614630173642a7bc060c44b317494d7d6415aa6f0f61a1944598b7f", "4bfc38bfabd32cb07978652c3b6f730534a37c12c8d251c22889898b215a4269", "fad450ef6d1a23e9c0c49ce7e2ecfd7144e1f54b9f22359e6398413af8201744", "9571adff5e93277bd7fdb14cff729abff7cf7a10c3f83deeb640fe207e632a91", "b58d40c4cf17c47f2c7aa13e69198e428347605b7905c69118d12b045bbc38d9", "0f2894a975ba28ccd0661479848c3b6e48e207bdcad81b81b09e928dd0251f96", "7cb7030fb447fe5300f7e4f69cf66f8e2270ec91ee8ae676f5e4f00465147061", "ff51621898834274b12fbebca9fc8ba21bb3192baa904fa0cd5ea2bffe72ce2e", "b21bc8b8ecd8e87fcd0e47c14f744cae8b364e974c9b4135b04297e1394e7e5f", "aff4e31871dcdb6eec62272f824fe9283029f86ea011fb6888ad0f4ec379c32a", "ffab561844ac35d5801958d8511181b75e0439e96e7c627b658e237383bd094b", "660b0030df1f4fe650c51a348bbdf059bedf3efeb319d15eefdf5b481b07163a", "22af365a92bb53145297a2f9b990720890bed4025b9ed78c1107f765d8176372", "c4b39df5c877fda248860ec0da370ba612887edc815e2e3fa7c808dcb7d81e9f"],
+          "file": {"path": "float_sub.out.raw", "count": 4096, "sha256": "27f69567cb26a04faa8715b3d0051ca1261d4395fa5ec5a45bba04e8a1e680b4"}
+        }
+      ]
+    },
+    {
+      "name": "float_lt",
+      "params": {"macro": "FLOAT_LT", "upstream": "pseudofloat.h:167", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 1, "tuples": 10072900, "edges": 72900, "sweep": 0, "random": 10000000, "seed": "0x07988fe02e679eb6", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40291600,
+          "chunk": 1048576,
+          "chunks": ["cf178fc53e6f321e49524aac7f75a4ac2ebffb4946192954fe8ca3278982b85c", "38e56ac656b611555f3b4e3262f0e53ea6b3c498c169abaa29dbb93b9524bc81", "d96107aca58ab25469535a9fe12ec33bc1d4add7dd24e1748bf14d99b98bcc24", "d41946258844a444e3dc83d84b385d2daffd860d3844ec2199d598acaca98952", "c054a62abb203b4a62be8316e9a0c78fcf82340e0d57cc229b5eb676c2a20bf4", "a1100267017aba70d749568f8c7c902d1fca89a2033927ab44d82588e1c70f7b", "80236b1b11fbbea1bc652bbf00da897400fb54e0cd3845002ba8b9ffe35f6f23", "50f89ce5a9f106e4e854f420efc421621654640e36714da773111afe46cb0957", "35bb3bd4b74687c1a58d89c19dcea8ddb9dca3ec3de548e731cfe84306c9dd51", "0c7992a94c84d669652fb667135ba94a281dd1e8c4764c60d90a704163b48650", "8ca4367579fc99c96541cba94beda1b64853de88b170faf4f51e7f79db2aa9f7", "fb1757974ab0755d8129deb28bbb4d286c5216961f3fbfbc58e8f4f2e1e0ad69", "391454a6079446796323783e8ba51cb347f3ef54cffaa535715d233f63722666", "e79544f86a9ba72add07998d36e449b14d3e99933783aead33f2f652de8f8927", "2cc9c5261b21d9823c0ae423215b3dce21e3834089774a3b94c29feb717cc55e", "912ac127f6a1f5b13f15b732ff3ca4f11fb95619c874738d0162305989649e3a", "50070b4c18fb54ef235049e9490e9280942f93540fc013f0ec95d3a0fe806fa2", "43ad5fc772e3b4cabcdadf67f1099f12d47b37e5bbc5f39dfbcb472a7ecb57eb", "bf5ab4bacffb79c6b95e44e1d68877a1bb6d0d611b9494e23e250422ef8802f4", "519ded24a8eb469d50b90dc8b361a6922de4212c253eef0917d1b3955f7726b6", "ef72e62d4cce9fbde154393f4018c3e2a6e4246fc778ef4357dca6f2d7729e63", "f9f312219528fec13f3256542bb843c57b61ed3faf70d48a97cf1cee6ae2f3a4", "9ef64475c3524df2ce3f97646586d568ea1ce7ec974a912bf931623f86647b2c", "cebe667cc11b09fd0244949d990c00886c5ca2839b3f37595c371a94962aea34", "ace46a927f760da3a63d53dfbd5ea3e5f3c1a15e76e886bfd68b1a48ced7fa76", "cbfc436fa5ab3f240418ea7d0f8c866b54f05a16460bde0ffa10d5c299ae4d02", "70612814180fbca0b16ba9b80d6598a7f89686bf0145041c763698fa89439649", "bdd3eff6e429f5494571959f5e9f85d6315a4b330f4e80622c6cd5b8bd647906", "45373dbd77b2bbd01f5ebb15ea33f1acce28ca64bcc250cc8bad0ce7cfa48e75", "e34c65c20acffe4c03a70d7879e8bf1864ec90f53b5ff667f1f010e138c620b0", "13f3f955ae6f3e5493831a95ab19a501f153a588f60d554379718c5fd880ca30", "e6c1aa7515b7f7ed3852668dc8aa06823193cde6315f59a35949d98102b59a62", "ca26622075bb8a88d83fbfdc320e500d3b569f9d0cecb3a060020a5a1fd9cd70", "0fd24befedca8fd1daa189e56e622fbe2f10f0f9ee52438c06508958c5f655de", "5ceb23eddee38f37e5c48a0893e27460deb14e3d0f6970c4f57c016c404e5288", "808fe6e5e603b5b9a615813e45a4cdf670e3f3a43f5846f95eb2f5597e9441d1", "36aa2d1414effa4db80ba1e5826ff7f8f60889baca11ab0b619148fca456683d", "5fdbbc64b14dece0420d030257709a96e1089c129c4e8c0f7ed9d92181e7449e", "676a81dbcb5134f6c89e293f09661c83367a5185ad914b4428cc867af1062224"],
+          "file": {"path": "float_lt.in.raw", "count": 4096, "sha256": "2e174dd4650d3a4242e37f1779312b46e692a0608c1b0dcf3e688e19ae772e12"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10072900,
+          "chunk": 1048576,
+          "chunks": ["0bea2247301c83147a78a65ec9ef03c142814ed3da8d5936558c84b76488ed94", "aadb30286f357b982cf245dedef562dcc0ab31808090a425a2980f7d50fb073e", "467f26ac3a408eb53ff80d3de9baa59108c816cef3b494d3486c299f2b2b1b1c", "4714ef1ea455f00d4a58b5e13bd876cdc5147458bccb92a95f7f16b0db389daa", "f1f243d2e8f79d669c933a215b390f736c1867cb9a87fa1fdcb0c34ca3022788", "3900db46d52fe82f9d8ca452e52db82ea268add723fad651a218c43696118277", "466c87b5fe53a0bdd22b87b0f0d7356c524c1069e83b1919b6df9843faa4b3e6", "1d4d93df23b9aa26f15429ee233e5401c0839330fe257796782f7e118ab870be", "30822fd6bf22c02a6926bedb018bdfb1fc781bca015975cead9f3e2496f4a6d4", "19a9c63f4f19824699bda7da2f02745ca79ab0aa167f9dc59107c329aed3c3ef"],
+          "file": {"path": "float_lt.out.raw", "count": 4096, "sha256": "ba625c1b7708351dd6d1c990c9cd90ea1e344258e4ba8767eb6dd66be65fd555"}
+        }
+      ]
+    },
+    {
+      "name": "float_gt",
+      "params": {"macro": "FLOAT_GT", "upstream": "pseudofloat.h:180", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 1, "tuples": 10072900, "edges": 72900, "sweep": 0, "random": 10000000, "seed": "0x07afa1e02e7a9c2d", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40291600,
+          "chunk": 1048576,
+          "chunks": ["5ad76a0a233ce17cd61fbd9b1881be5e60fbc2d19cc76bf085e923154ddd9b6f", "cce20e86c6d221ac1e0187b8d21602922779b2cbf0ca406bf23519daa19459e4", "5762106fa4f3f1fdf31b72f2cc82d964c493248d5c185427c1bea87910f8f199", "6aae8bf914f4656e1bfed9cffd2fd8cea476cf7da6a6afda512f597c0c79d79c", "ec6c49a84f1491d48b2923913d64b5288f3dfb818b49c278fc6a7ed7a38b42fc", "7ea95a189ddc256d3860016a59bcdbbd1f698eb1fe0d348b80291846c1abb630", "e1e52a21f63920e53c0ff0c2ae8b3e6a9bff583316ae7e7cd4b2f874d8027668", "ec20240ded046bd0b3cc3163d5238a48fe22d4eb8dad2c92b91f362a91c659df", "a9f0fe273ac1cfb73c45fb9f60acada824e07bb2d7d9e1835fa0c1d3e4ca4d9b", "d49e84d3428110951bdb4c2d6626270823f2c2591d0967a6f483783291d49160", "960c9d35e824a45770e3917359e150a9c20fa87a5e722e7ccba266789dcbc1c4", "7a29f9b910fa2c267297863ac35d6b212a44bf904bb6002bacff3a75d1e7b29a", "26cf6a13bb74173cf809d9f0fcb62df5900dfba1de14f294f1a2224e26d848bf", "7af84469de3093f83cf0c96ae1a882563a04871b19344b9fdeb35a5beea998c3", "91a68f2cd74d0ea25b1b4d5ca644483100b56a69a3d44d527646fe54a239b15b", "cd2d1446571d8939d64a188d17b7107bb384c645b1057b6b7ca537520f5dcdac", "34ad5c410e3dd184e79c48989ef48adf18f23245a3b5d91acd2df0037fc5f2ba", "8d4b65512b8cb90ff1509c1b0adfa70d813977d0bb58c5dead95b399c06b5dc7", "1cfd5cd63212683337fc0adcaa689b7a00d521b9293e307ec4e62b8a031a6aa3", "a6cd17a99a7c8800740e692f67fc595b17a2cc03f89dcd2f63548de15f8c1a88", "6636a197a04f8028204e1409c97a8bf88f0c5aadc393b57c785188164283844e", "1df817f62f0d46b57754318e9d4e1ab6933792963c4c2ff05615f4b512734684", "83cc6a35e1caf48e4b676781957ba86e4ef31ae956bf545f0c0bf4f7f9afa967", "07c31cb28d3402a7373122c56dbcc86c7517f0817cd131ec34d9f05dbff65fa8", "999f4c854e58dd46752e85a55a9b0950f7e86525f14dc96c8910e5eb47fe849c", "84589f36be64248f9e49773940759365267fdc4ce4ce3eada117251bca1601f3", "456d794b0d9468f96c254fb4cd134a694f4e86fa050dc1eb89fd2a3ebed96388", "ea00f3abf77afc97e1e71e7950852529a327120cd2aba3b4d6b4d479f956d8ac", "29c22de2cb87ca8bb4eeba5a863beba8bed2040a774d3175b3e4cca8e6cd2047", "990222c5860262215a2c33ffcad1e02a5dba50b6dae1eca9533f5251516c1db3", "f1c78b8eebbdb9c2cff0b1d663c282feb059d337303eacd98d13227c42dbbafb", "7a52475a63d8449bfa9ac3f301539e468da380443da81225274bbfa51cb7b68b", "b9bfc7dcf0adb896f158f4fdb83038799e91d80309f41584d61c48d5c8b9f57e", "6452fca4addf3a962c1e8f022e30ceb9396dcd58753ece41ff489190fb5aa95f", "d08859a3eb886b8c3cf632ad9dd3b02e235455e69301de74dffb2e3230cb53d6", "94a92327ab6f3a0275bf9e1af09abbe623566d23fcd50db0d358f6673a520440", "34892bcece2518a7d34fbd39ce270e9999a1a02dabc6eeedd364145105525534", "9ed54cc73d0b1052560ce4cb612bd9762c813786ad7c2e965ac3b84a245dfcbd", "1c6952ad31060be71ca74190c9d93509570bdd80412d0b0a258e0c885ad4763c"],
+          "file": {"path": "float_gt.in.raw", "count": 4096, "sha256": "2e174dd4650d3a4242e37f1779312b46e692a0608c1b0dcf3e688e19ae772e12"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10072900,
+          "chunk": 1048576,
+          "chunks": ["5f03f4f5ac5d6eed4f4d8f86245b1a9544187a6747461265f44c9cada77a2909", "27b954a92d6bea5a8a155c253c617acea37d2eab20f8f7ce83d569cbd2379444", "a1145f0432cdc0ea07c375433ffa17ee4f890ada8cf39e91c094b24170f14dfc", "6ee461dbd397e576576eb417cc7e4803b53bebe6389183001a53bb4717276e1f", "be5a4225a69a6e5497f32f2aa13a32a14d6cf70af37755419b241f6feb8836c7", "2688e47b5f87c4b9e9360d3a30fba3dfff961ba3ec380ff3bdd886bce3d4f5d2", "8c40b3d54e4f975a4c44b6eb1015bb55d2aabe2416842c8338fec738dfbea0db", "2bdf06151983fc5dede518286201814da70272649725fe7f9daa3cd57f8cf71e", "a1780bcb380a6ec1374f6bd4969a2e3004edbff0e952457f3da24d7cefb07147", "d62cb10a9e80a192ab5dee937ce9e3a35a651d84adda8ee807c6ee281509ced9"],
+          "file": {"path": "float_gt.out.raw", "count": 4096, "sha256": "579a146a5bed7e91e345cf0e7dd8ed2ee550f0c860bff93a7af76fa8de3ea9c7"}
+        }
+      ]
+    },
+    {
+      "name": "float_mult",
+      "params": {"macro": "FLOAT_MULT", "upstream": "pseudofloat.h:185", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10072900, "edges": 72900, "sweep": 0, "random": 10000000, "seed": "0x61aac9e32fb5a744", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40291600,
+          "chunk": 1048576,
+          "chunks": ["6c0eaad7081b771c790dde4ed79bdf3678ee3f15c6f74a191a7af8aac3b8864a", "729803e5fad1ef5b775990f9379e604bf76c45e35e07259705aec62a9278e845", "58cb70e28f130c382bfa61bd8cb77913091522b9ac6d568848f13b71c2d45771", "e489e79badfaba8180ba79dde4f59aec296adc84e06777324dfb72fa5af54a21", "ced58d0f0ce14a1bdd490c49a73afa9c2058781534d34a453ce0d2159ae6e6f6", "88e36081ed4ca202554c199d3b10526fd870fea8ee0500c6e1e71c9910b913db", "406d975621fac50e8f77788df8fb0ebd74114e15de8510b8e9f915f79f0d6146", "823a5faf3c0f414302e09d35153f70bf5d75dd08f4f42163d224d5ce421dd8f5", "ddc74d730cdb2fe5af5813ba1c35b8b47060ae4d6195458a9d068c9e8ac6a1bb", "84b33cf66cd20555a4a2a557a78b27537b82969dc2ecfb7e36c3f67c37e4c2cd", "9b6143e1154c4c7e2cded41ec9c5babc81039e18ddf3a867ff6c7a76ff98b501", "6170ff08ab0cad935cd836fa13e29f2bfdc057f69f53c04fa69941c612722f0c", "38022a0c9d8ce8cd0dc71105ece5339b1a384e7190f6530f4b7403bec994f95e", "6200b51c83d81b87f9b6143c68c7f92e52317b7f7f9f793fc4ce3fb821c05c58", "2da2208c2c2e672e587262f6c7e60e07c1877b9f680f546589aae03dd99cd4f2", "28a55888269d7148c037612bb693350798783a0215515a51849d5350c2c12173", "1df97328481b8a0da65ec90d64492812e004bc31d76218dbe5dfedd98093f1cf", "984d6e4ce513eb0bcf3b2a6f7c75eb9de54b2b25aadba7837c7c3ba39b49dbd0", "1b5287438906c7af3c79705a622a4f5cfd229cc6468d6352d5d264b30b78498d", "92383fae971f0ee043b7595e12cc70e9de3d662463ef32049596e901015ee30a", "02d175bd997f2712ab111fc0b8089c8d0eb07e67a758e44275914d6d28ba73fd", "160c6e7aaa5c43319dd9c68296be969f0fe5198c51f2ca65de3fa3f6ac3f5f9b", "a299994d92d1fd8bcfaf7747305f73770e4d3dfee769e9ca2e5ec368a73ff38b", "09750a372a4938b22389d15e002e068f673d7c3537aed9cb1c3064937dc68991", "b808eeb30008d7a2cc4a0b96c5ba1ca936716550791e8f186d563a3362a786e4", "d71f45034e0bf0bc6eab7c413d1752f00a1f277775886f7d235835adb49f6479", "891b4a6ae41868a74fe5eef8f4531bc58f6a9c220bf8f3144f31f0b4565420aa", "5fae94e7a0836d931e671ad2b3f693465fbb1df05bdcbb6c6d596c7aca7af50f", "b7a4f3fad377f878766b6043a9e0c32d0564593c38e7724628f1088fad4d5f1c", "2a8d3e114d48a0d71aca820b42f215b27dc448d964315d83b716f28d14bdacfd", "4d1aa7d5ed1d3f3bc802bffeb9a591548a8f630518c0596acf7e457911a200bf", "e36698574f5e6b08f736331c9895b7c527f7f1ea096ba08b8558db75662c9515", "4e77b5f54ab07617f36981d1d3c03534c7f6dfb32919f59b695299f5a1586aec", "4967a533889a44d395243b463c9eb658841829713ac14f158919f153f6cd44b1", "d78378b8a80f7ff998eaa64c551af70d75ebd249675e8264e77e92365832d234", "bccc60a8fc11580829385d904e82601e5597deb8300db0ffe5bdbbd1cebabd1d", "82bc005e08ac4f203547c08dc0c1685b19b57cd84990da1d2ad991d8c25304a6", "1845f474d665d538ee62253f796c354aa0c5933e4fa0ab98bf3b4266c3141fa3", "87f4d1706c80fbb4a00e0820f2c4adaccc7fb0ebda496153406730c062d37fc0"],
+          "file": {"path": "float_mult.in.raw", "count": 4096, "sha256": "2e174dd4650d3a4242e37f1779312b46e692a0608c1b0dcf3e688e19ae772e12"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20145800,
+          "chunk": 1048576,
+          "chunks": ["ef5af5ba2c562b15a9eb8605a35a94c3f94aeacfc0b285cae3ec73bf7763c3fd", "b89a01f3a2f0452345545505e23bd0771a4f55d843ed54a3a6e15c4e14a2e911", "961b4bd8596701382a5b4f3de0bdd6cedbd7bc08de8d5781ae58b96f017f04df", "490ace2dbf76ca5558a30ab4adc8a6206ca41f399b78e496e5f37207f660d037", "2ad9d496cf5d19440487b2eca9848f85ef4af6316be41d4b5e86b6529581d421", "c8dd384119598dac4280144971eff4e68c6d237323a01d8e042d48c42d1e935b", "3dbd133bc96d4e87878e1c48f4bda21d718a44bdc1b39efe25ab86abbb7151d0", "ee8c5244cb49385ece01999d0c0691a735ee9c96122cc67dfa3bf2315b9aa081", "39ed446c2c9504feb72b04ff886947cad8cfe215c9188889009d27a818123fd2", "b172e5a66bcafd10173a4c5198b48ef6d187f81bbcf1fc727c458f977f38561f", "604c12c68874ab4383471735c729d49855ec4c769deeb9f062032c80fbf8ea72", "422086148a951ce437c0af783b9fbd3d0acedaea5c111a00ae28d803cd390be7", "db5eae69f595d2a4e224d74608c199575f1cd38b492302b96989f6a6847f7705", "8da4280ea1fb8b3ff516da5bb300c163ee084c3236df58ad9542ec51e9eeefe5", "81fc0da4a2dbf1e08836508ce8d7de7bef95c85be5966cd4460414a7d4cb659c", "5c75afd338b146a68d16789eabaefd8052734a7124ea7b53bb49b7098becce67", "705fb831accd1dc58d5a1e08d6d4bec43a9e84313c6b107af55e232601797432", "fc5875129adbeef4d928dcde6d2516043d97adebc254314db3424d1466171e77", "689e06ca8c0e8f91949c7fbfb7fbcbf9b204102118d416c5fd2227abaca828b0", "d3c5cb2817fae74c390bcfe36b17b7b204e91801b6653a5eebc067a829cf3d77"],
+          "file": {"path": "float_mult.out.raw", "count": 4096, "sha256": "551d43bed6e79714d5491cd8adc293fdda33e9dcf518493ead23138e2de85150"}
+        }
+      ]
+    },
+    {
+      "name": "float_amult",
+      "params": {"macro": "FLOAT_AMULT", "upstream": "pseudofloat.h:208", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10072900, "edges": 72900, "sweep": 0, "random": 10000000, "seed": "0x956d381bfb3c1b07", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40291600,
+          "chunk": 1048576,
+          "chunks": ["103cfc97836434d22c49207b73fd3a345345315abef1b1dad11a1c3d16c6ed6e", "b7519349630f6eb117ccedd6b69eef71cb76b427795da23a19abd5ed690a720f", "2346e6d1a21cba3d047a241cb2e6ba5c7175e2e451b94372fdeaf08e61bbcbc3", "d933f8eb055952b8e50d15339ba6be619a0d3ffea60bcf887fcf44140950166d", "9f9dda14704a832aeca801fea26a61f837383b7eacd2b352b1f22ccad7f200f1", "7ffe6436856b92655adab924a6112bfb9eef37579ba0617170e323e5b847bb3a", "dd621dc9b78dd03a6fc3cf7afd175cee56065817bc0fcdfe46bebb5fa9044647", "203b44ffcd4deaf9ca7e953a6ac4318c33fc0735609e3231598a567f00195c7f", "f1864360d64d67121a5b532dd246ae70f35464ac5143a2e6fc28aad8d2f65c53", "acb9849f3402930d0a514afa78352f97778a008a74f8587f58ae9043afcac6f4", "0008d953ba2dfe78905b86262f88c1b0859a517819b529eae1b472f6407f39e8", "41fa0faa00e95fbc3ce9171ed1f23236b874a83584d6cf050917c130dbb5b21e", "efb70e85fb2b2d4f1a81594d01d9fd01bb858389a2f6929aa1a065e2128dc314", "0f970c4270fd7a6dc322ecdbdac356e90c775b248ef28b497a756968804689c3", "19c9bee2116bbb4f31d49dab02954b53f575165e82a281c1f13abc0f5b53a4bd", "2fe2d470e5a1e409c435b4241ad49e19623a64e85c807447e1b7c6c68a9030a9", "af130acbfd0e3db13198b45f87c115b463f886132aac276a36791f26c3832383", "e79c7fc9df5efb637a0b539b5f05773ca1598571ccfc8b82b23394fbbd56fc92", "3712028a72ebfef4cc54393e75ec59844cbb23a816727f40f3847aebda8cc28a", "6dc452fd93533ed3a5517998090d4dde83abc11a29da2ebeb4e21620a86e3cc1", "b271d15fc4e471c0bb6f1dbf41c036e51c61124ad4a4df25dd18eed228c217cc", "b9ca8c0e691b468f328cc12a5f5ddc66b9f0c0d2cc5d46d668998c59690fa3fb", "04bfa20d78446e99859e6c0ccb5cb8b839550f2a91cb8624f7e84b25291dc153", "04b47a86e92128d993584f16c866912cc6fda1de02a686690af0751d475de1f2", "bdd4ed24457977f88a66f4c3d9053fda1efb4c23dd3e27e1c0635b49789dbe22", "fecafbf8d70ea174019d128a780906961ac53c17c1b5c9dbb8062aa73ea1ce22", "610ca0123b024f2292dcdd1a9bacc5effa9278958ef24add7ce5cb0adb3ef00f", "5031b49a784a758f378863bad1a5b61024bb5fee746b9ab87db5d89f5002301f", "e5fccc945325909b737fa10499881990e8bdee16f27a33d63fb073160770a662", "a1a39ff0aa2db4770896d98ae0007069d965a12dc4d6ee862487c8fe13db31e7", "767964cf305068d1c86e87fdc8527792e9fa20dcac1a86ffaa52ed0fe9a8bb49", "1846e1ff95b317a6f3945bc0f7264b1d1f20c363d140180e36a50e99b61e2775", "ba54b289ac9090ce3e1ac6fbe30ae2675684dd4d8382de35de5d996bcbe74335", "1204a855d6d75ddbf21d5af5d75201a3d1299c9ba84d28bf6c86f3fcf8e010a3", "a94525a2ea8a784fb11575f81035bb711be6e6ef3ce7318dbe0223ece7f1c0bf", "46797d01610e3c70e3958854a43a96675b01f61c1fd95c45c80f21eea0ea043c", "33dd23c45ff9767f53578bd3867de96de57a15409b3586f9c1912fa256a61340", "f0afad6ca8f500668375a84bb6d3006d934999577ca88303a9bde556e9bed02b", "13792b60914c80a58430d18be2c084295e5ea2bf3f55c9bb32f264a7f7beeee0"],
+          "file": {"path": "float_amult.in.raw", "count": 4096, "sha256": "2e174dd4650d3a4242e37f1779312b46e692a0608c1b0dcf3e688e19ae772e12"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20145800,
+          "chunk": 1048576,
+          "chunks": ["fd97ee83fc4084e079a6bb66e263f32018d5af1e7a84f069308fbc0e45975db6", "ddbc80430bced6d040027ba1233a78880cf09654108b0ea9f0cf676e49659b91", "86d12c8c4d61c3e42005219a741da840c7970f60628b7d6e3398f0126a8ad4a8", "ff28cf9276ca1d4e1abef97d0e6989d81246060e4da63b038e6790152b483647", "8915463818e0291cf38e26a6bda878b00a349a48a45b324d0d03964a039a8157", "74c70b9f8279aa0db46c26b7f28aa4a67925a3424d6d38e1b02d135cf178b465", "1149813522ace2c446ed12b4a3047fdbf3ad11e641c6afabcec7b7f2de4feb32", "3d5563d2ee299f69c0089148005914b0b04482f8d2d7c76cba2d32696b12b0ab", "1801925e8a949e28da74909f3153af5b2f9733b75d0961adbc6dbea37820dba4", "7c08b30442b93d3bf7e6ced28c81d7c702bbc52296dee405d41c54aecd199509", "18c81fc0888919f91a10249a4f945bcfbc3bb1ce8f672a3b37ecabca4c635e77", "faea1a24db5312712a4aaa4dd4d1aecefe53b3d65986c641b222a95dcb82858d", "6af847849f47c1dc7ab4069d439df0f71dba7cf8824fd026b885583b654ab6d6", "00ae6d3df099103c497dcdf85b8bfebdd70f9902e2974407efbc27099b43b0b9", "6d6d8cc82ddeb9f0e8ffa90f0fab57a5410e57ebc8e58c1c0c37ced9477de5ba", "4933a75b9a448eb96c8ba9cba91be5b69d229200fada746e24d02718ff79a44d", "11fb1c7466ddf9d5df3abb75846f333411110b579a856f774d35ca0a942f29d1", "bf6c19ed43894787fc297dd72a30cab621b29ddf7919c138f34513e3eea536bc", "574f4bf5f0b1db4cb87582e2382032cd528ab8738775f1d68851e04ba8a6df67", "99004f37a99d59e76adf41dc7ab6339f41bdd400d42bd125281d4c65bd3a8089"],
+          "file": {"path": "float_amult.out.raw", "count": 4096, "sha256": "173eae320676812fd1cc6fc6ee1bd038fa276e27957b26a321edfece7561324a"}
+        }
+      ]
+    },
+    {
+      "name": "float_shl",
+      "params": {"macro": "FLOAT_SHL", "upstream": "pseudofloat.h:217", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,32767]"], "outputs": 2, "tuples": 10004860, "edges": 4860, "sweep": 0, "random": 10000000, "seed": "0x3720a4ef5c53e863", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 30014580,
+          "chunk": 1048576,
+          "chunks": ["b85be51c8112d3855c3d71f56e66d0d00cf609645c0f296defa758bcc1782e43", "5a9214aa3a98a5336f968df49d7c952a1057d3124553aa9843a0bf6df1009131", "19cf1b3fc3766077dd3922663ef89281a5f8e9a0c1f6b2fb58f14c84a3d3cc0e", "f8aad365b1884f13a08ba84286d4afcf6d10fb811d9be779d969cf1d971abc76", "b5c390d6d78c9efa3dd23584ce6845eab398991231469aebe3e0b5f49a4a75aa", "1a5ee418e04171dae01c70632e59c24640f9159f9ff8e0133432780897124e88", "8e082bcaad49a89d76de26a392eebb97751fb5753e992dfeb6e8d1cb257893ec", "bdfb5149a64989868dc50ab1b46ac28a5cccf2c817716715f2a74ed26bf890f1", "4bf4161a2ee6e0c783d312d249f4aaccf0a8fcc3d504bf1c14bd5aaa4e010348", "4195ca0dae043b07c42578adc7f1c682a9f4961d156af9c38ac3774541d6cc5e", "9eb71f1a38982458a1f24d7378559f7a69b15fb10929a027fcb42e4f221d7fdd", "604ec88c01eccd694bd737c3282bbe72d8ee7f3ac3ac48ef4d4317aea6b293dd", "92521295986d0e245c690dc29759c30fe32fdc4896296934651beefa149ca7c8", "e94178feeb95fde38824c5ff9cf316b9f2a6a8017a310da965bbb6df4f1d3d0c", "332234501c1716259651edd0fc34f89be62730def8f59a3b64c10afc35e14117", "ad5c630014c90c18c96d615831cc258f20ffd48e531f0749f523d286e133dfa6", "a3190ed701e01b1d1eb136931d6086b078f580ba35c048f5d35f02956d74aec6", "58d05bff1cd0f29b530b4bf8c3a64f31c1d59d7b7c869a0a3468ab01dd5c9f90", "67bed40638f5f58819646d72732537c22aa7336b5ec5facf4a2ba4050de0418d", "200d0cae83c96d65dbdb4e1d44800f4d5b6ea998499c24c930117349b4634c99", "232916f0b30ea9ad640b1eeef326047dd6a5add2148dbf78173a646f9a51281d", "842641375bf85b0fca4d3f6a35c2886cc70b965d95ba9aaf1008b58301eac323", "649927ed5674216fce0ba043c5e8610bfdec8d195beaac29f8073e70f27e5095", "c4a0c7dd6884fb58ddc2a9f7d1de7be0efbbfcd2979221eabb8be166139b9729", "bbdb554974b6b12c8ead76504be9c227d04286401ee0c7f322d3c9bec3348b69", "eb99c3e762b64b4067d8b1f2f2441105e580a6f064fc8bed94994bea00409c16", "4709394645749faf2c07ef118179a21661949d7f975ed0f817ba9c923660d94f", "881ce80730e433ab7b9c97fbe8175d4ba667334fcf9eff2e3d7ff0ce1b7c8354", "3bce23645a68b3fa27bf88d1c0dc1e3f88062a7eea45d0b80c228866a54a594f"],
+          "file": {"path": "float_shl.in.raw", "count": 4096, "sha256": "649043f5015286645d2e9b6bd1143cca9d3d7ab93edd88035cabaf522908b4b3"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20009720,
+          "chunk": 1048576,
+          "chunks": ["bc3307782f9f5986b4ee567591bcbbf2760225d775d90bd66befeb6d850bae71", "dff667260b69be8c97b81a21cf842a57e4de53b31b94f2352b62129c177ccfb8", "198dd997bd7e38d2c6b8c73f4eadd7694321f4b1100eead26d5e57f1448f7329", "06ac22bf051b9943b49f971e610e8e66c5ed1ae32bbc7988213a46239f39bb03", "6be68407864a55a30bb1f5adf9c952bf6ae28572e970cdcd22829e16cc76c922", "2a1db2f8fc0f941b3453f667a8b1374503cd2113a43f5dc82f0ae80089b0f52f", "9172fe12ad370cfdf25e8d571a4ff5a99ad5e422409979802ab02f2451aeead0", "cbaa27ee508924af81751b10c4cb7b2b2cfe6b434148f3cb09509fae8651c2c8", "50d1d252ea36579e9ca329786fd3bbafe52d9ede80cfd0a8681cdd8a6bdad722", "ef418780ecf42472d9d85b70ef31f3ea329e927916e352d8710e35a9928403e8", "28ddb31bace2de3a57633dc9e0b5c7d1d96bb580459069933a70ac62d1cc1610", "31db1bd626152a8d5b0b9f2e1a2cd9fd3682aa705826d6095cd072ede16682fe", "54b8a6294ba79b417d61ee8ee194eefd557891ffdbe270eb1adedb420ff5ebf4", "d985149d3f489a16fc0947e4d385fd41e2a0e148b72205eb59aca7d38e197568", "172f62801daa0e6d1337846c2df7ba882292bd7f36986324c23877e92e650707", "286ce8c01f7d4bb200855836ea82d2de56fd2669b4d5fcd57b79951149a8acd8", "60084af60954b1e6450c3979cbee69972ba6aebee725ebb7abb1986dfb749db9", "c514fbea4835795d8d5644ccdc47585ed7cdeb3a4156425ebb3e9fd7bf59e66a", "76b17fb664495cb5ec39b399eb538943bf486317f4907ce0a52a5b78de07565d", "0573b3c811bc7520339ec4b8a1ddc69dc711d6a76c30e3716190ea438fedba81"],
+          "file": {"path": "float_shl.out.raw", "count": 4096, "sha256": "622df7f08cfe359c7ef52aaef4aa3a4768634ad921e07268e7644fe4aaa4adb0"}
+        }
+      ]
+    },
+    {
+      "name": "float_extract16",
+      "params": {"macro": "FLOAT_EXTRACT16", "upstream": "pseudofloat.h:225", "mode": "exhaustive", "args": ["int16[-32768,32767]", "exponent[-31,31]"], "outputs": 1, "tuples": 4128768, "edges": 0, "sweep": 0, "random": 0, "seed": "0xe571f281ecf5b6e0", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 8257536,
+          "chunk": 1048576,
+          "chunks": ["2d98c8b6afb68818e2c08679ddf34826ec0e205d94c04e8e6a0048ae0f73a9b7", "d6ed9ece70fe3097aec0634ea42b4a3ec8d2a4c5fdd9d0223d1c8dfbf76a1688", "43b4e1f09fed4262727d755b1e18519d739c62a6b9658b5a1986fd43956df1d0", "0358d48b99e34371c8682a31cf5b355d2a60fecdfbbf49109d4b30682fadf189", "67d75cc272b3e3698faf9a40ddefeb18588c286f03ad7c21c18335244924e276", "9a68a9c354662fb2b4ca927ac233ca00cf8a57687be200376c12607c3e4ed27b", "f0071970554be6be663d8ae17a361dddfc391c32150b6493ea486ee15ca53c74", "67ca722064617f29085b3c115d36b84ec25c7852493209dc0276295fce56a2ef"],
+          "file": {"path": "float_extract16.in.raw", "count": 4096, "sha256": "723b0098329487e590a70d85b21242f3b164a200c1252eee195835ca3b495020"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 4128768,
+          "chunk": 1048576,
+          "chunks": ["b057021af020bfed92a9c4b41a73352d5cfa4c19924a4c55902f3d1514dbdd46", "558be405e2ab88e292ae82979712f15fc04736ee7ecc9982558abeb681e6f797", "f6fe82d8e1d8343dc76e63e8389e14751d90e88b4dfc93f1a80439bf0e710b49", "127eab356160465a827821ba6547127d4dce1f40aef36918a3fe1abd0729589c"],
+          "file": {"path": "float_extract16.out.raw", "count": 4096, "sha256": "5fd0ebf6a3dda4724c7b4d11dccd08097bd4c1f303c93c80d34e06f7689d9062"}
+        }
+      ]
+    },
+    {
+      "name": "float_extract32",
+      "params": {"macro": "FLOAT_EXTRACT32", "upstream": "pseudofloat.h:233", "mode": "exhaustive", "args": ["int16[-32768,32767]", "exponent[-31,31]"], "outputs": 1, "tuples": 4128768, "edges": 0, "sweep": 0, "random": 0, "seed": "0xe56aee81ecef9166", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 8257536,
+          "chunk": 1048576,
+          "chunks": ["2d98c8b6afb68818e2c08679ddf34826ec0e205d94c04e8e6a0048ae0f73a9b7", "d6ed9ece70fe3097aec0634ea42b4a3ec8d2a4c5fdd9d0223d1c8dfbf76a1688", "43b4e1f09fed4262727d755b1e18519d739c62a6b9658b5a1986fd43956df1d0", "0358d48b99e34371c8682a31cf5b355d2a60fecdfbbf49109d4b30682fadf189", "67d75cc272b3e3698faf9a40ddefeb18588c286f03ad7c21c18335244924e276", "9a68a9c354662fb2b4ca927ac233ca00cf8a57687be200376c12607c3e4ed27b", "f0071970554be6be663d8ae17a361dddfc391c32150b6493ea486ee15ca53c74", "67ca722064617f29085b3c115d36b84ec25c7852493209dc0276295fce56a2ef"],
+          "file": {"path": "float_extract32.in.raw", "count": 4096, "sha256": "723b0098329487e590a70d85b21242f3b164a200c1252eee195835ca3b495020"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 4128768,
+          "chunk": 1048576,
+          "chunks": ["26d573ee21f4f0df4c773a2ec56ec1c96642eb47314945df64291a037297ae35", "1bce58fa451ab0f6e578c6453b28b6182819bb9b8fa435a752ce1e4b80704344", "8ffac0530efbc6b96af2894edabf9f100939735be9d59f1cd7b5fa18eaa51fae", "b6dc4faffb71ba158c3ae688708c5cc72582744f1e412b8aee15607658a7d346"],
+          "file": {"path": "float_extract32.out.raw", "count": 4096, "sha256": "824979dfa657f0830b5d37329878691040a360b258ea43599b53722a8d405e47"}
+        }
+      ]
+    },
+    {
+      "name": "float_mul32",
+      "params": {"macro": "FLOAT_MUL32", "upstream": "pseudofloat.h:241", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-46,16]", "int32[-2147483648,2147483647]"], "outputs": 1, "tuples": 10039690, "edges": 39690, "sweep": 0, "random": 10000000, "seed": "0xabb27d0a12613e39", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 30119070,
+          "chunk": 1048576,
+          "chunks": ["1f9a75e814ac28c721d8da97113db1eab20185c43a9ad17444bb0b6e14133975", "0f820d628906d5cb9482d82a62786108638e3b528606f73e455bb35bd63cc84c", "d0c7710fd6a7f141807458744678abecd2b48a361ff82830c59b8e0b0727c6b9", "e2dcea4f3a8ec4ca19199cba1e03f31a42c8e96395e5e7166a6ad1b60f1bcbc2", "ddd05b86fbf956c82070da0a4dac6b274e219ae672fbfc72319c4d2a5b90d349", "bd66e9923653579c83cc028ae03d978305cab69a40afef4fce1b40f2e8d0e148", "9b8272733161238dc752ac8619d9e760ac8674fd9d55d653b4af24a828c17b32", "b24eb0e0472f9f845f8688ebfc4c42d9baf7b349e7236fe0dddc7cd42117f876", "6ced38708dd5d8334a17f558785bbb6170f8437e4850e09df830ba7403de1208", "6dc5337179efb2a50a1a86154b2c724f9b9713ae0f27196dc06ecd5b53072b8c", "ce5dd3fd346fe38504fe8003f8d2c890f08a6467f71e79ab5222d6f4b276c68b", "1e92c5cccc5081fecc4ddafed18ab249cb58e0e26fc70bf462618e868417041c", "05bd2fa198014b60c138d35e3e730c9634cfbcfa70f83734ffec24f55f5c50d6", "e1f04a6384660d4b5a2a17dc7cf1e54e713865a0103cf835c4e5c265d0abb10b", "d53c12e23d3a4c5875e39ae3d97d52fbdbb5dcd070b8a4f421f88f700866023d", "5968e6bee3f82ad57b23ef246497d659b3a27ea44eae8baf368b7a64bf872fc0", "04886fac4e0136a27e7d171a6fa93aef06607bbd44b4f8ffd0e8d396d180ad03", "45811cadddbaf1f473ad99714ec5df82202b4ca1e00b151ab976351a1cad1001", "7482fb8c0df1be074a30dc6cfeb5329714e770a833c0ebf2c983e7bd8de44d0e", "8bb11c6dddbaee15d2a8ea5b901610c97f93127290d43191dac4474a70bd8188", "27fa8af922ac23ef331f67a7c13bd0071beaa9175d1be925784c71d91ded46f3", "11b4a62cadb930573e90ae7f110e1379a7e83c21108554531bc1d32123a611e4", "3b726b3d98267a809f7af5a6a6310334b0f3330f4431287e5bd0bf7d3bf83400", "f3f3b8199c4591d027218a262e9dc5274d6944467f0d8bf406385468fc2696e4", "325e5e542f77eb8146f40ffa79269ac1787a3c6c46b9dc280951472b8ba063aa", "8c59521acabc7f122443a14528b73ff5126d79a479d2f1eb79a75cfb31f9af3e", "d3d1042b87f82061793af4eac636bf1895f865aa2b7c68da090262caf2db1fab", "8082382e1165c79a451774ef1692613103eb64bd32a298cc6071fa231943d812", "3434d175c3c1067fbfa2aa09a05a967d39483ef741fef26ca118e7d289e1e5f5"],
+          "file": {"path": "float_mul32.in.raw", "count": 4096, "sha256": "91d5bd40b5acd242b52a9559efcf373b0a760639c6302f53ea93e4f4b839303d"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 10039690,
+          "chunk": 1048576,
+          "chunks": ["3359b3d10511962529f1f122698db522a42b5fbf23a7215a142e0b2344b8c4ce", "ed18ddf26b5fe8a4ab4945449157500ac335eda5cca96e0ca969be0fa12f5217", "1b0e29f7902e5f63d16fcd14e76cf55c778d0780e98937269f7a60ebeab81f46", "6b43e0e8f7f39afae3ec6ee893b40fe30e27979bf8a68703b60659b19135674b", "bd8626a18c414143c4090acf67e5db2a04ad3028f1855d3435c4c9321c5c72d4", "fa77916278e100ea84de93c642e17d5d51bd4c957e7d7c57c023dc2eb98d3379", "1223be9bf4476bb032cd6eab49ed015cf20963a3cbc88f1f85dbfd6a42861252", "3892b3c304189407e41da1736e28af0eaa66832b6b46835806af79fc02e6c351", "fc33daa8838166e323e84a901379751bda7e3c6b2748f96911d974f2179be30a", "60393a6f37f1037def67b59d7cd3f71cea40e3a56518114d8c6cf7bf6c5c7abf"],
+          "file": {"path": "float_mul32.out.raw", "count": 4096, "sha256": "74c481bcc966718e44199fd7feadeec2ce9f2f191db3bc83a07b8288022b3472"}
+        }
+      ]
+    },
+    {
+      "name": "float_mul32u",
+      "params": {"macro": "FLOAT_MUL32U", "upstream": "pseudofloat.h:246", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[-2147483648,2147483647]"], "outputs": 2, "tuples": 10001225, "edges": 1225, "sweep": 0, "random": 10000000, "seed": "0x2188c41d3b3cdb24", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20002450,
+          "chunk": 1048576,
+          "chunks": ["94cbf12d7fcbbb84998ad6911a1b9ca2c29788fbad7da040b67ac3353d200d75", "82a55dd28e34ab43a6b735d01ac1db0c6865ec57ce805ed55707ae4b94dea2b6", "298e5cb675c569fd89792f152c4bc3aac6d0541559a59c28a6f3be6bef7c77ae", "8ec5a1e04a714c2421154a75aff17bd13a44943618b3df6870c5a4f5dd9b74dc", "ea5ef28d5e7b81c0e78c3e0d2fb6f7e6e5616911c1493f550ae0c585edd119f5", "6d87e4ffb38a3900236fcfe83605b24f34749298a257d106b9567928461a6ac2", "56efaa4e1e45433ba25400791d557194bbfaa992bcf5caf5e86c8dd4048481cf", "e34c0f2a0ffabb7f4403cee85215737e6f15ba30756ce819795871c46c8d942c", "8fd07b6e5f43284640cdb2e7d81eee30e2fa23f027c8869bee41e9934a6a62cc", "ccfe14be15fa501259c3b0effcb3db41439bc67749664363b33f003cfa6402b0", "1d2a5f776d7a810aeb2e05d34faadc7a4731f685bfc8758b75db55d80d5bb0bf", "cf2f65fafdcf181d60a585f8c28fcf08f86480027b28194f31302d13a9a23c86", "88f8624e2a225661babf9ac10a7eeb6162693d731c0d2213449ccf5b9856fc6d", "749e3ef61674d261c482a0e6e8eae3da1d4ec6337b804fe3a023869c0ae44262", "ad02c5ba995fd1048efd8717bfb148401ac8b172f7aa07fec88df759124d64be", "b2fa8dfaf13aa96e17fd74c40adae8000bfa54baa34312a5e04c9095315952d6", "1b1fe792e67fc1c02594be55711a57585ee2a2a54863a295536162cbc7a1d60a", "dcb3daba6dd233cfd02144137bd4e8fe83d4497ee9888c261e40486ae6d9813b", "fca352e42f5af9328a7106fdb38e54d3bb0ce3c73a284f98ad707524c79e018b", "217a538bac215c94da4a142007876c4b281eece4fb0e3a90974a1385eb16c758"],
+          "file": {"path": "float_mul32u.in.raw", "count": 4096, "sha256": "113ce3e4d4a1c50d6bf25f3fb9435257082bb2d123dc81c256c6098ed9b5c67c"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20002450,
+          "chunk": 1048576,
+          "chunks": ["7137c09912a52b03e0abd30fb2e059b473f5b014f668f38bbc2866d66795c737", "be19b08877e7c56c649709d2966f6052eb0486204a6d965728e1007c843b5337", "25da0081106422987c95281f1dd71d575eac4fe98431403a04e7fcde43f5c57c", "e2aa67aabf3a600c55d43121e4f4f72147874ca49ee564fb8e299ac7e29e1266", "7ebfadac0946470a94c5251db477e8c7d78a995e0ada0786f0af1baeefb6f3dd", "5c57935b3745b83ae0fdde2d196f777232fe3310b7f0749f50800c93b7c40ac7", "619c94f03d8c1081cfb8b51f88142186802e6614ee5c28f00f54973b0da15394", "a244c11637edf600193f418888e282d28470e2090d52d77b1306a16f4b31da66", "40990fdcffd8952bc07f3150af5eaf050354afef6a867f85f1ff1c4684893738", "6979a029112b8bf8819f332891615ffc9d98b5de8f5fa3f690c58ed05d1c97c0", "28a6c4ec4aae0949dbce4ed085f005f1a9bab89fcdd77115a289860673b05974", "5a9f4c37ea89e2b0a7ea959075b6715b3097a4406476b9805fbdd1f0f241d3d4", "339c434f32a0f30f78b5aa4033c6b99a6318122d3b587b7993fbc1fcb7f5e8c1", "aea109a4ee73c09cba05dd55275546126b44152be663829a0d628b3766d75b1d", "c66fa6be706a3e04aa1842101fcd1682d79739bb699798e5f84d3aecd14ad82f", "3c80798b79ad2489d4cda1051dae97f43478201944df17faca3b00bebcac430d", "fa2a344ff458cdbe849d76676ad868a42fc80b7aaf93a4224de67a08ed420d26", "3b452dde687c375284de1fda6cd51038a2ece60b78725115a2f048c97235f696", "9b56881b4b98ed84aa8dbe5ec6b557589a479e0c4c96c8d95cbe4b9752e30235", "acbe7b7714db99f8600205ce25903afa0beb0d89800d45fe49b0528306a389fe"],
+          "file": {"path": "float_mul32u.out.raw", "count": 4096, "sha256": "0ef93ccc4be9244204baf7ce94eaa3455233ac9b4febccbc59da6b645892628f"}
+        }
+      ]
+    },
+    {
+      "name": "float_div32_float",
+      "params": {"macro": "FLOAT_DIV32_FLOAT", "upstream": "pseudofloat.h:264", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int16[1,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10004725, "edges": 4725, "sweep": 0, "random": 10000000, "seed": "0xd071bc1e70155379", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 30014175,
+          "chunk": 1048576,
+          "chunks": ["edbf10fc7c09261026451bf0c70b277ee971fd52563e542e20c26620c60cd777", "0d2b493b91ef45a75f645fc31f0bff48d5cef694708b469323e47eeae197ed2a", "f519fe9124f930d47e7b7943340d64823d7df25b6578f15e31cbdd05528739e2", "d68552c60845c6cab8df9e2dd1b0d5c8fac870570c057b71496655b6f04f98d1", "6a98e957e66a29c09f04264289d2c507b43ae6698367334642f8cab024fe9ac5", "74ef888e5659b9da6c08969a0f4f1d9a42dffe872717064651621dc98f5ac7a7", "e25f588e78a0a0e8aa5978b42809c72ec75336dbb469ae59ae51959a554f4708", "fdc77f30b7789c4967c3493b6142ef15c822c9274968b04e16b1a9c440701928", "7243584b1bc17f47e574587952db5e7d59f60bbd94939bd50ac80f48069aa86f", "2b7521f1bbcabd2753dca35d2017b22cd1449f5908b6318311cd645874cb3f18", "e9d35643f370e770bdd95da021189cafdc591d46af5a4e37c09c1e6d52b2e36c", "611760d224125b128d62a736ac701318b3b2d5b53decee74ef95b88b80b27b29", "2eb3d88aa504da8c6f1411365a7d73dde8e4ecf8f1b0efa11be5b1050958d7c9", "a05a55cb2a0ab1ab20a9c3aa840cd9e953eb189f613bac4342e992d8026c4b87", "417c95624c3569e3bd8313c9fbff876a4d009af1613bc76983439f0c118df2ed", "62d207f9055894f3d9f56a1046486f3821de1a178c3379f07537055057a02b01", "5f61335af50d91a628c2182e6c7e52bd7d7c6a7e3e7c2c7e4fbf55ede3251925", "949529f317804bf729e2843d0ade2703531914025076f1aebb438ebd657bf76c", "6c56ff6675a52dd50eff1bf1fe866cf8c87f6e723d0c3a1a7a7d7832f7721534", "73d731e9a2acf76f0f4326f5e275ecbbae49cfe909e7b8d96c186cb7529a05f8", "b76884c0f835d4ea555890bf21989a92bacd9d06e7769100322d47d433af5c22", "bd189008e5e53fa1a697952a18844d034f8691c5a2ea3f310a4f2ca44bab0790", "da4708935dc1b80939eeff3408caaf446880eb3ff89ba9e2c2f23e470fc874ad", "b77d7b78948db7b7a43db993e9390624e72b8202824d30e50e23ac70245bca7c", "ef203cf5c1be03ff813032bf8c20a156b660510cb045b2bb5ed9b8f69523f47f", "5eda23cb352acc4718584c0128711ddf46f0083049cc606522c21a2afbf3a86b", "c1a89c3e705c0d0804eee54e3eae4bfdd9dddd56b5e23bec0a978663db0845eb", "70c8de45303eb9698fd7512b51782439686268f8da74e6e64ab553cbe3b4bdf6", "e9b99b9e063dd867b8c54b083eb19386c88dc4dbe23d713410ba60060c4ac2b9"],
+          "file": {"path": "float_div32_float.in.raw", "count": 4096, "sha256": "08f5958018d84b91617206828baf960488562446a858b30ac15d9a09cbb1b32a"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20009450,
+          "chunk": 1048576,
+          "chunks": ["cbc620129d123a248e1561bfe2fe7fbbf2d7f9ccefb9c72887048c77810f5e5f", "2455d092953477dd084ba67bdfde1008af250b1803f8236b485861824def3e01", "9a3185b8fb542ef9945a5a80efe221a1a65a124a8c666ad01be69f02dfdf46f5", "1ad4ec48d3fc48e7fd751b29affc334be7624702c08be52689cbc2518fa72c92", "2e08c7936c22e04f8a12bb3004d93dffea77b073bcecad92253494233e4200f1", "d72a3e119a028709f7b3845990add0155288d9715d80ac460290d9dac3be78c8", "f12e44ad6be76eeea7a6f358ea11ab191264e15f7fa9c968fea6c26c7ac79c8c", "8c428b4e1c6302517fd69fe5c7dfe4d5d9be215855bfb0573948bd050b3f4765", "7fe9537a2ea6ba57a4a82ef5699e640d14c37d9b6ada9ea685bd16fd1810f581", "14bd62833934a90a6eddd4144ef50a55afa67a8c3765a7eb42768d58694f5950", "98c252bbb6c1be1745bd46c09aedab8c7d5b8b2db440807269461e20062a3069", "39b5b696f9bbfcf3eebb4f9097b8e5bd2e4981c9845eb2177aa6a8341c9476af", "ef625c491f49afa7c48a2210e68bcb6b95f5094bd8c5a6f0313b97b4facd15a3", "b019ad18a6a6f51a70055944c31f589018285491cb9fe165ab45173b8624d3ef", "8fe390303ea3deb990ff967f8fd1043213f1a10495173efeac7d58c7c37d7c8e", "5de8ccb041e76ae11e5eacf69562ee715ce6718df64a7cec22f44b2538c0e6df", "4df5d9332db79f27961accd3b448af792693151a2f1b215d6fecba8216fa6a6b", "545c9dd5c01095905c6b697acef413ff7fafabae5efaa81c1cecba654506fb54", "f3dcf7bee16e3b19feb2b0cced43f30f08c47aaae3045a95ff80f6213bc84f37", "ab74b2703f23724f04b8a819e707c224f02eb7070cce70f0aaac1bf4177cb100"],
+          "file": {"path": "float_div32_float.out.raw", "count": 4096, "sha256": "dbd63a80259c762af56f3048c27be1114a2b97e589ad7d0ad10bde2e484ccdb4"}
+        }
+      ]
+    },
+    {
+      "name": "float_div32",
+      "params": {"macro": "FLOAT_DIV32", "upstream": "pseudofloat.h:286", "mode": "edges+random", "args": ["int32[-2147483648,2147483647]", "int32[1,2147483647]"], "outputs": 2, "tuples": 10000595, "edges": 595, "sweep": 0, "random": 10000000, "seed": "0x046e5b7aa64906c4", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20001190,
+          "chunk": 1048576,
+          "chunks": ["4733047eaa284fab1a17c2c4f064b0ad962edd6b15027b65f1a0583d1433ce5f", "b9a3c5388c8fe852c283746526d593107770eeda90177e3b1c82446d284e50cf", "0346cfb06a98eaab55806de4ba747e9709b4ae128ccd30f64b241d0d45745637", "7a16cd5ef3bb6e6448c2211f60664b87c8cedcbf6a81a4106641695c3c97115d", "32c33ba637dc4d18023306d6a7425e6e3e160c335a2631115cb62f290f1e4a8c", "e1541296e79772ac74d3c39164ca3358c085e14f17bc3c2def557452d3daf395", "deeedc34192c726bbdf0b5e9a93a1459707b35defd67f0c95befc434fba14ad1", "3747be4854e83eb05f35112e679611fb94ebae440ee296cb51220693405db069", "e90964372af27c2ce3f2335ba3b26f15d1dbe256b51e4ca43f9a0975ae752472", "a04aa909de4c6a359005c96b3a0b552e4b856528563f15526b258165a034d65c", "ea64701a78d11ed400b96baecc49d70ccb7f0440cd3f6f64c174edeaf2767ca8", "33e0eacbf22aa59abd547251fb58dda910c5a725e3da6e6461986dad5b22c858", "e5c2dfcb58ae5491d51b58d85305b3fb1ecb36c18d943b2ff152d7182a76b2ad", "6329d79dc961a945c1cb05a502c191285de2877d8881d8e8d3a412ff997769d4", "9c327fd9daca2ce1044e28ab2b6e2eaab68e89e6dd04491ec34591a3397d850e", "dffdd1a994afaaaf84a2ea82be93de7c3a71c842707f989cfe8482c322d2de6b", "031275b68d135803ef4bb1160b74c7cd2737a165bfa11031a0c13ac4ba96cfe8", "513aae99638aace9250238fa8e41abf4af972de72994dfb943ff21aeaefb4c81", "e8dc7cf7b40fc9f14e0058e08f35eca50890d3760c51d56bdb9c0379960e63e3", "93bf8058ceb7f433f6d4719ae936914dbd60b763e154f3003d259834f7918f51"],
+          "file": {"path": "float_div32.in.raw", "count": 4096, "sha256": "cf5c238b748e29eedbb3e8dea7d9dc7fb5b587342fa529f1ff4fb229d9d3b472"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20001190,
+          "chunk": 1048576,
+          "chunks": ["a4d1e65b04cba061df66642789dcaf745b3be3ff49d737310de7848c459623cb", "8a1846155b833e03934e33c7d04c94c7cedc36151c4b99f6173a16d3eb994159", "e7a731d970dea44bc396640e10284e28ad9d65a072df518bcaabe81937421afe", "a831b8cd5e98dde3e62e650c7b49042df681aab9d389ad3a8fc639485857432d", "a4ddcdb051ca87970cbfa85c8fad35d8c64e075b29861f69b80036e2b71f5681", "5a7833c99de6551511f6b60d5cc8f461dc8de384cfd0ae9d21d7e2e2a476b3f0", "0a74d577b61981e9ae368752a723ecceb630d5c617bad23b665b0dae7280b36a", "0360795da8153779b131eab8a02ae9c3d1375d3a47bc7037942ec086f752a4c0", "5d7550b6e65202e5eff4c80114badaacee3f45d14c0b05a73860bf8032262f83", "3d183c81ddf31236888c30e596079e216c23730ada0ff33fc2283fcb90b7d25e", "278ed471acd5865b27cc746dfaa13d0597e5414c10bd689f2a317f9becb82114", "876175c01da58f9b6ad1bd5d300057312c05d089f6e02819f003313a67aee2f3", "6da63e14bcce1499c1de51f3166b6a2af26cf4e1a29a7503bb17b02cc89cfcc1", "0043b7f24779750ca147c7df8fe7d034ea8cac9d398dfffc70b5bb0986465be7", "5c0ec0fe91efa1d3a0f366fd0454ba6f316fcfe6378e0135004fb94fd2196e86", "3c0e465529009534559dfa79a955e0e9275257d9ce0a528700d942d9f7975a5b", "86219c9a64cb604e275104c25e147966c7ae33a6c1f1934f6abba28048d85194", "09d0d5d4430421d023fa7c49c00184a49d3cd20c329a6acc5c277cf13257cdcb", "bb8aaeda76309a69442dcd2a1e3c23068a4c6fc282da3fcd925768579ad130a9", "dff6b7785b910c2473659a88ef8933fe45d4f84207d7eccb938435189134e83c"],
+          "file": {"path": "float_div32.out.raw", "count": 4096, "sha256": "3fd6f2e7c1e1a52cfa13558e74bf3b70bb0c8d4c70c4321561f5f692898262e7"}
+        }
+      ]
+    },
+    {
+      "name": "float_divu",
+      "params": {"macro": "FLOAT_DIVU", "upstream": "pseudofloat.h:314", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[1,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10036450, "edges": 36450, "sweep": 0, "random": 10000000, "seed": "0x1f925b1ee25deac4", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 40145800,
+          "chunk": 1048576,
+          "chunks": ["1d666018a8da54a7b9009e4f5ee05331d94fdfd6a82746e24bd4c73d6917042c", "b48a273593cdc127a435788aa25d3d56d93885de41f041d1607da0efd872e048", "3626639b00e4bdc32b520b03f60e93db8d6a67514a2e8ec9c3f54a5a16eab858", "8c45c11daeb65aee8a345c80d6d9d2e9e1238e18c5625e777dead7620ee99466", "4d34882ef307f7b259fdc1980fb74e87676780f81431f918c24bf8477bd57b40", "605201b8c60dbbd0cfb608046a49f481a7c4d1919d093508f509c6db41ca1579", "898fa658ab86be158403a4afcc2abdd81e4ac695d14c702106ea31d41d19f914", "f967e2698f1dfc91d5acb69cffeb9bd15dd1fba0c402beee8a97e5b61b1a5059", "665bce6772b9e7d78149a379c31bd509eea361d3a53b639c3475093761f3962d", "95b34a92d036be2b23404b1e87bb3199695b6a2e0a0e858fb225a0944193e07d", "47da1b20cb2a885abbc1f28c9629c37703d6601a103ccf7c42d075ac0cc1c001", "f0f56146b2fb9c75358f4e9df3222cf641cc3c8a8ba462f87d684892d337a799", "90aa8669206fc93ed3dae2f34e5be1915083545c08bd87b052c46ff1fdd9974a", "d47b8124f640aaf3d5039e3c6622704b5376c0b43aa1e9102a540716fe1e6f13", "5666aa1c0da247a05a4a57ce5706f8295c639dc3aa02ffc021b33e7c8324bc64", "7ccf55a62412d300b98c9c1c1adb9465ffb998bb5c1b53d8678c3284d49fcd38", "221925cb321fda8e6b2c17ac0890f29a7394435c6db2bd06a58c0809f6ddb21a", "8d17073ef495363b327ebfb00d34c5257f6090c1ac73d8e8e85a40930b67e679", "e08c13759fac6e1d022c78abb7daf9ec48762804de5a444d12a0b853e4381e39", "b4c2e307fe5e817409374c6a4398fa12dbb3622c2c59ae6455e78a564d7c135b", "4fda7d668bd4faaa7e1926f9259d304eaef1803bfbed43bb7f127be1bf6aaadf", "72ed45fc81043eb4e1ea3f150e4a5d6beeefc35124dd587aee5a6dd087d1ada6", "1c216bb4b58771873cd8d286af4547d8575b203cb621f45675049bfc7f59a63b", "a852cd0cf7d97fd72eb8e8d5f3065381683dee4ffa10c3a80cc6714e1d760656", "b96a756651fc981c9058565a56c3091810c26ed49aa09f03f43f2210713f5ec5", "804f2ab6f65afcba31977102f0df7765739e105127a69d8111ca6726305a8779", "3cf2a871a6e100549154a9c733093ac15131ae3473c3a216914e3b4e43cb2ca8", "e866d0028c4124bba94439e7b1e68e4a845a5148f234b83e558cfe8f7b8d91dc", "d71a8ef0ac793d22ee36f07147ce09dae96cd0550c8655c1afe4fa13fda0430d", "2f9081c3d108d833c74774fa81063cdb89483dbce76f77c2397b4b6d7261eca7", "03c7e7381a3730bd8c302cda027ed268f2971fd164d4860f03c4039bdbb0f552", "c9336d5a629687e89b81ed834ea7460a72a4dc2a553796e0f987bb52b913167f", "8c01f0ef106d5b9892f0370a1282a0ef0cc085558878084963319448a343e7ec", "f71f299dff42c01a88250b8238ad010e115f25c8b2971d880452e5ec4ec10b05", "a773ed3ad21a6c1c31d0605d50f4748fdfd4066220b2c53d308b5464d3fbdbcb", "0b68fad4321873b62e124960b18e86fe30501becef683fd202d23c97abb34c02", "0e7fa7514225f7d9e0767c1ab97e0e9b413c3b43ddb15358acfcb4ab0f853b1a", "5e6e1deffc320cc992ab5d05b287e152e4c3c621d30dbf7506a2ac0bfcc3d21b", "6681044132ab4fb4ab5774baacfa912fb6ad5dbf26e849ef6436949695dc5983"],
+          "file": {"path": "float_divu.in.raw", "count": 4096, "sha256": "803e3f1321dc059f2b34e026b1d2a8c6f75d47afc94e7dcd057914ed9fa61dab"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20072900,
+          "chunk": 1048576,
+          "chunks": ["a30be1912065a5bad55098903f285c59ee05e8d9fb6ab4e2cdbfba6f545227f2", "f03f736bd71bdb64410a2fa5da93c7b38bab97f88c3a187e63ee3a8d3072f732", "99a61f18701b260c5ed5f47f3642000c045ed9db90dcf3ead198a2e27a2447a5", "5f942762c6e32aae838b2d5665693d1ae2c73c8a9cb4d397a16aa5b55b3b01e9", "0b966046ea5c947cd74210b65f287055cb0493c4298feb63ed43a3e2ce944c0b", "a6316c08f4b7af0d13cf8cc8a734465b01f88cc298525becd4ef41e03b4d4dc5", "5cf9bb8823df9128ad65b69144155d1d6bee85718740795b3210a90ce11ba135", "ff7f6fc45ec681c5163f2ff8e41aadbdff080cae13fea55d27c8fabab3e743a4", "a092452f3c89cd2ee49344edd464a54e838a5df9a01ef74fe92b3d7b3e93038e", "6bc198f477ec96fb6c6f0a1e8c68b8be936ecbfc7f069e320321ed9afd0a40b1", "cb04b068ca846e1ca4985bd57f44a6163319255ddd8c63f0e149f0bc43607af9", "62351341822616353e68292cf6087b3488ab6b35cb012a33238e9b59597d8cfe", "a97fc35376c5e4e8c04fcaf045f47d3bad89ad7e89a49e028526c2dd280aff64", "f3bdaf4b77e07f1c37fc460d8c134a69ba429f20ce05648fd0c5fe315314c183", "fa9a01d2fcbe5ff524045f1c609936bde3b0cba6e71853500213da985a0e4025", "758fdc3e5a49da246b1073e94df1a59eb7ab2f5fbf0a008a21b924c3d2ebe86f", "3a4b1d291e941364cb1f4f3e7edb0226e686b39f74616e9a1124d67f35e4d07c", "c7433f4f90d1cb2aed190790af24e096cf7a133b3d9078badd314d77c13ba37e", "d40b9bd33f1592ef34f06de8276637b6fc6ea9fdb93e3428c669fa5ec48540fe", "55698434d90a718c73985e1430832b507435502d0be9c29b4f965e3ff05f81c5"],
+          "file": {"path": "float_divu.out.raw", "count": 4096, "sha256": "622a764967ff781810303c5ba4a71037cefcbfa5b6638b688fdb6009b27b4770"}
+        }
+      ]
+    },
+    {
+      "name": "float_divu_nonpositive",
+      "params": {"macro": "FLOAT_DIVU", "upstream": "pseudofloat.h:314", "mode": "edges", "args": ["int16[-32768,32767]", "exponent[-32768,32767]", "int16[-32768,0]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 36450, "edges": 36450, "sweep": 0, "random": 0, "seed": "0x170500f581a6819b", "warnings": 36450},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 145800,
+          "chunk": 1048576,
+          "chunks": ["2e876eed081359a568fc7fbc7b7eeece1d8b9341bdf3f2d0cbd04f5089b97bc0"],
+          "file": {"path": "float_divu_nonpositive.in.raw", "count": 4096, "sha256": "0da042988292db07883576841dadd1fbe2cd534f2780334ff938a8053c86e064"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 72900,
+          "chunk": 1048576,
+          "chunks": ["ac2f09eb855e4b4334688e5a027d1620f610e71c0b650210f82e9b9fe379f245"],
+          "file": {"path": "float_divu_nonpositive.out.raw", "count": 4096, "sha256": "9ab56dd90a8f81e745f442c54598072d22baad69a96a5b869aea2b5b477d5556"}
+        }
+      ]
+    },
+    {
+      "name": "float_sqrt",
+      "params": {"macro": "FLOAT_SQRT", "upstream": "pseudofloat.h:337", "mode": "edges+random", "args": ["int16[-32768,32767]", "exponent[-32768,32767]"], "outputs": 2, "tuples": 10000270, "edges": 270, "sweep": 0, "random": 10000000, "seed": "0x3d5b72ba05370b0c", "warnings": 0},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int32",
+          "count": 20000540,
+          "chunk": 1048576,
+          "chunks": ["c4e1d9497fab96dfe971acd1be80c0c0fea36daeaf6e54b0d412489b7fcebd3a", "05063832daf80dccc04917d3a12db6a1514d76edad8d5737e22431beea23fae4", "452c9c13d523877959505562887f87703c7b5e22e2e37bb0fcf83a438725f2aa", "6156bf1edbbdd652370343c771778a33b80f348f9681016f5106953c74a36606", "f8f014d0c40069c296a475b8a31f4abba4db5a2e82d88a7fffae30c51e97c931", "40d9698353061bd9baad6830da888d1d65eba9454a328828b1a455cc1ca43493", "501ab05b96ca4f67128d895d4fc519bd171624f14a8418a21dcd2545c02bc4f1", "998ade744a163e5d269692a0ad00a517502da0908a8fedf6f20e04dc0ead2bd2", "cacec7f848194fca5c1c6c6f976ba32921996d43871d921e56b1c72b1b6d2223", "c9f1b5426c6aab4a3a6be6175e173b0626c21c6e4d79b68ab8ef99ce572c236d", "ee4f8bce10312aa3f0a4763539e4e266a150c5d1d8a3a5e6cde03fabbb2fe3e1", "b99fe397ec8f66242e67cc88c814eb982970c478606a4b843e4e5de7634ed2f7", "34d4538f0ced166b32802000796b858a0067657541718db7ce23f3a544df2be9", "3863d1470351e4d7f870c9c15089899a80e027c22c5aad5b6bc862bf30c712f8", "dfaa10fac88f5cb0aa6790dcc07f7777049deae157ed3f7694a8aa071b9301f8", "e312ce7e28e880054c4978c121115aa3b2a64d1d3bc40e44c2f7851c01d28856", "2bddcdba4cfb83510c8593ccaa46b55430fabf97edb7b25c492c98ea6ee72060", "f3cf32f771e6e40eb56d0ea37a7b45b19c77fff88b6ca303446868f5aa8d6363", "6bef918de04ee36ed798ee12627d404df64b3a217fdc3737d7582be4e91a9c41", "0d520903633ae7b7e35833d22bfb84512a44cba8187663b0c2e4a25d2c2fa111"],
+          "file": {"path": "float_sqrt.in.raw", "count": 4096, "sha256": "6e53d655c7273333f1e8917713bf8b52acc8786a5d7fd64670c65216d9e13434"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 20000540,
+          "chunk": 1048576,
+          "chunks": ["b762d04fc843cef92087004e71734434e9085dd7876b850b3ce1e017f93dfe3e", "bc72bd4c3ea2089c2e70dbf687710ac5655e686c1ffc6658d787d63592e07309", "9ad2a103ca06823add2e7ffe4bb6dd198e2ba5bc65cb9e54a4c60256e9ac0cd3", "087bcf4c705d6fac3e00fe0df89d81296e178df806cf5feaf90fdfcb1d95fb73", "616b98489e0497eb635cdb547e1fb89827463266adb38f5e90ea1e8e4a0798f9", "76f38c2ec71da4c8d5769861eb12e8f1e6c6c522de2919a9303aa6ccd2cf3753", "acf65c8f6b38dac76f4043c21d170354f02c9558fa745697ec979345799e8c6e", "032109f44ad49ea7c5e68c494e34ee327516792b29180ce2291d2e4895ec2a41", "271da0588070c1674233715cff2c7c0a631371c021aad60c5e3dad23310c504c", "61a7265d1f84beaf16c0b241771e4ea83418acbb41fcb25ab80e4197ae499c0c", "140adbc0689a00d798422cf2463defd61308b6c0c660faa04373aad823318dea", "6c28f3637c53a1995339e74f572312f2ce2d613187cb71bdfccaaca99c8dce85", "c7318f5428f0d7f7c48d67d9022a85aa96ce4571822b19590a86c7eb9353cf74", "da5e29ee472f514ddb6b5b8aad5a2ac377ceddfb0c57900c427877dd5ea834af", "0f016665f8ffd9e81c11acb8c427fb6c7f6ae0b99736c001a70538fa577d5556", "28f6ddaaa2089f7eef00d67b3383b37acb00cd1b12e3401cb3bb203cde0dca18", "e33701a1fd23215c55f606f912f5ea7b9eefca182c76cfe198be8d8536fb1172", "0fe11ab3949ccc03067b672d683ca5438dd5df6af944628837c28c767970b06b", "b3b7078ea3352495c93f4e7d6ec068ee0e56d0f0475d260385b4834a7da1ceb3", "51ef5726c4f05bd6f0795e83ca7343bc232caf6217b0bae051e88b5bb8bbc0f5"],
+          "file": {"path": "float_sqrt.out.raw", "count": 4096, "sha256": "ad23174aeab4c80c09a6682739d30b681dd5de607029667af35f510899aa6d16"}
+        }
+      ]
+    },
+    {
+      "name": "qconst16",
+      "params": {"macro": "QCONST16", "upstream": "fixed_generic.h:38", "literals": [["-0.16667f", 15], ["-0.33333f", 15], [".03", 15], [".03f", 15], [".05f", 15], [".075f", 15], [".15f", 15], [".199f", 15], [".1f", 15], [".2302585f", 11], [".25f", 15], [".2f", 15], [".3", 15], [".333f", 15], [".3f", 15], [".4f", 15], [".5f", 15], [".60f", 15], [".6f", 15], [".7", 15], [".7f", 15], [".85f", 15], [".899f", 15], [".89f", 15], [".8f", 15], [".9", 15], [".95f", 15], [".982", 15], [".992", 15], [".99f", 15], ["0.11513", 11], ["0.16667f", 15], ["0.20f", 15], ["0.35f", 15], ["1.271903f", 14], ["1.f", 13], ["1.f", 8], ["100.f", 8], ["2.4", 11], ["2.f", 13], ["3.", 8], ["3.f", 13], ["4.f", 13]]},
+      "streams": [
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 43,
+          "chunk": 1048576,
+          "chunks": ["0fd87c4158e5db1bfc9be056e140ba0039283efb18159e428cf409861c1c4eed"],
+          "file": {"path": "qconst16.out.raw", "count": 43, "sha256": "0fd87c4158e5db1bfc9be056e140ba0039283efb18159e428cf409861c1c4eed"}
+        }
+      ]
+    },
+    {
+      "name": "qconst32",
+      "params": {"macro": "QCONST32", "upstream": "fixed_generic.h:39", "literals": [[".1296", 23], ["1", 15], ["1", 19], ["1", 23], ["1.f", 11], ["1.f", 7]]},
+      "streams": [
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 6,
+          "chunk": 1048576,
+          "chunks": ["2548305edb8c702cde0471fe6ef3837a7f7dcd6a658f52328432181998eda801"],
+          "file": {"path": "qconst32.out.raw", "count": 6, "sha256": "2548305edb8c702cde0471fe6ef3837a7f7dcd6a658f52328432181998eda801"}
+        }
+      ]
+    },
+    {
+      "name": "word2int_f32",
+      "params": {"macro": "WORD2INT", "upstream": "arch.h:104", "input": "word2int_f32.in.raw"},
+      "streams": [
+        {
+          "name": "in",
+          "type": "float32",
+          "count": 2000053,
+          "chunk": 1048576,
+          "chunks": ["e05d1dfa61a008e13378ce6a3a614d34eaa239a6dfc7ec62baca044ad3940892", "5e2671e3ed71b2c64cc0f8598f6caf3070efc2595f594c7c746683e1083a5480"],
+          "file": {"path": "word2int_f32.in.raw", "count": 4096, "sha256": "403e95ff07fe0f7ea023dd0235ccfde5ba291d10e3626dc06aa9353b605273dd"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 2000053,
+          "chunk": 1048576,
+          "chunks": ["9b1fc16ee948379553ed3ecb3f32f45827b2e4f64c4d9d861c9ad4faabc3e617", "071d37d578d0a65724c312e02d19cff2abd373f23710430ee958ad8d15c87bbd"],
+          "file": {"path": "word2int_f32.out.raw", "count": 4096, "sha256": "e45e550f59effa3b66e22255c01d5b4b1e2d8726625524b94cfbe13f32df5e6b"}
+        }
+      ]
+    },
+    {
+      "name": "word2int_f64",
+      "params": {"macro": "WORD2INT", "upstream": "arch.h:104", "input": "word2int_f64.in.raw"},
+      "streams": [
+        {
+          "name": "in",
+          "type": "float64",
+          "count": 2000053,
+          "chunk": 1048576,
+          "chunks": ["59cdd0eb3f02dd8332504147c0ee733215fd7cda60ff41ae31d6b5545571b2e8", "f23548bf41cb5e214b8dc66ba3a245bf309659f58c09218bd3767af71e128aa6"],
+          "file": {"path": "word2int_f64.in.raw", "count": 4096, "sha256": "744eedc32f7a24d9e3f529bae29d9605d0eea399760aba425ee38121e60f3e61"}
+        },
+        {
+          "name": "out",
+          "type": "int32",
+          "count": 2000053,
+          "chunk": 1048576,
+          "chunks": ["72d887deb91c2a1f3674be37b60f0570e5900b7f5257bb073eb7752cd7b156a0", "1cbadf53b3aa6e525f69e6fc5a92f20fce7ed867b4c713559a7b49dba9f9a666"],
+          "file": {"path": "word2int_f64.out.raw", "count": 4096, "sha256": "9238e77035f1455e8fff1adcb25cc379d2f3604481588aaa4dc872758f4cbffa"}
+        }
+      ]
+    }
+  ]
+}
