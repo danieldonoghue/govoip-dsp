@@ -227,3 +227,141 @@ store of the caller's own index and at most two `copy` calls, with no loop,
 no lock and no read-modify-write atomic (`TestWaitFreeSource` checks the
 source). Neither side ever waits for the other; a side that finds the
 buffer full or empty returns 0 at once.
+
+## Resampler (`resample`, WP1)
+
+**Algorithm.** Bandlimited interpolation (Smith's method) with a
+Kaiser-windowed sinc, as in SpeexDSP `resample.c`. The ratio in/out is
+reduced to `num/den`. Each output sample is an inner product of `filt_len`
+input samples with one phase of the filter. Two kernels exist, and
+`update_filter` picks the one with the smaller table (`resample.c:647`):
+
+- **Direct:** one table row per phase, `filt_len*den` entries. Chosen when
+  `den` is small, for example 48k→16k (3:1) or 8k→16k (1:2).
+- **Interpolated:** `filt_len*oversample+8` entries; four neighbouring
+  table entries are blended with cubic coefficients from the fractional
+  phase. Chosen for large `den`, for example 44.1k→48k (147:160).
+
+**Parameters.** Quality q sets the base filter length (8, 16, 32, 48, 64,
+80, 96, 128, 160, 192, 256 taps for q = 0 to 10), the table oversampling,
+the Kaiser window and the bandwidth (0.83 to 0.975 of the lower Nyquist
+frequency). For downsampling by a factor d, the filter is d times longer,
+rounded up to a multiple of 8.
+
+**Reference behaviour kept.**
+
+- Rate and quality changes keep the stream: the history is moved, and a
+  shorter filter leaves "magic" samples that later calls process first.
+- `Reset` (`reset_mem`) clears only the first `channels*(filt_len-1)`
+  memory samples, so channels after the first may keep history.
+- With `den + (num mod den)` above 2^32, the fractional position wraps in
+  `uint32` and the input position stops advancing (case
+  `wrap_q*_frac_4294967294_4294967295`): the output grows without
+  consuming input. Ratios that large are not useful; the port reproduces it.
+- Constructor and rate-change limits come from `multiply_frac` and the
+  `INT_MAX` size checks. Downsampling fails when `num` exceeds
+  2^32/`base_length`, because `multiply_frac` scales the base length by
+  `num` exactly: 20000001:20000000 fails at quality 10 and works at
+  quality 0. Downsampling by more than about 2·10^6 to 4·10^6 fails at
+  quality 10 (table size). Below those limits the filter can be very
+  large: 4000000:1 at quality 10 builds a table of about 10^9 entries
+  (2 GB), as C does.
+
+**Numerical notes.**
+
+- The sinc table is built in `float` and `double` as C does it, with Go's
+  `math.Sin` for libm `sin`. Every table of the fixture matrix (652
+  configurations, all qualities) equals the harness table entry for entry;
+  see `docs/testing.md`, "libm findings".
+- Accumulation is wrapping `int32`; output saturates in `SATURATE32PSHR`.
+- The stopband levels below sit at about -55 to -70 dB for every quality
+  from 1 up. An interpretation, not verified separately: the 16-bit
+  (Q15) filter table and the 16-bit output limit the fixed-point build;
+  a tone of amplitude 2048 at 12 to 20 kHz through 48k→16k at quality 10
+  gives all-zero output.
+
+**Deviations.** `SetRateFrac` checks for overflow before changing state
+(C changes part of it); offered lengths are clamped to 2^31-1 frames; NaN
+`float32` input becomes 0; there is no `NULL`-input form. See the package
+doc and `docs/acceptance/resample.md`.
+
+**Measurements.** From the Go implementation, which is bit-exact with the
+reference, so these are the reference's figures. Mac, 2026-10-26:
+
+```sh
+go test ./resample -run TestMeasure -v -args -measure
+```
+
+Latency: `InputLatency`, `OutputLatency`, and the measured output position
+of the peak response to an impulse at input sample 0. The measured peak
+equals `OutputLatency` in every case.
+
+| q | 48k→16k | 16k→48k | 44.1k→48k | 8k→16k |
+|---|---|---|---|---|
+| 0 | 12, 4, 4 | 4, 12, 12 | 4, 4, 4 | 4, 8, 8 |
+| 1 | 24, 8, 8 | 8, 24, 24 | 8, 9, 9 | 8, 16, 16 |
+| 2 | 48, 16, 16 | 16, 48, 48 | 16, 17, 17 | 16, 32, 32 |
+| 3 | 72, 24, 24 | 24, 72, 72 | 24, 26, 26 | 24, 48, 48 |
+| 4 | 96, 32, 32 | 32, 96, 96 | 32, 35, 35 | 32, 64, 64 |
+| 5 | 120, 40, 40 | 40, 120, 120 | 40, 44, 44 | 40, 80, 80 |
+| 6 | 144, 48, 48 | 48, 144, 144 | 48, 52, 52 | 48, 96, 96 |
+| 7 | 192, 64, 64 | 64, 192, 192 | 64, 70, 70 | 64, 128, 128 |
+| 8 | 240, 80, 80 | 80, 240, 240 | 80, 87, 87 | 80, 160, 160 |
+| 9 | 288, 96, 96 | 96, 288, 288 | 96, 104, 104 | 96, 192, 192 |
+| 10 | 384, 128, 128 | 128, 384, 384 | 128, 139, 139 | 128, 256, 256 |
+
+Passband, with f_N the lower Nyquist frequency and tones of amplitude 8192:
+ripple up to 0.5 f_N (dB), the -3 dB edge (fraction of f_N; "> 0.95"
+means above the highest tone measured), and the gain at 0.8 f_N and
+0.9 f_N (dB).
+
+| q | 48k→16k | 16k→48k | 44.1k→48k | 8k→16k |
+|---|---|---|---|---|
+| 0 | 0.291, 0.721, -5.0, -8.8 | 0.181, 0.751, -4.2, -7.5 | 0.185, 0.750, -4.2, -7.6 | 0.182, 0.751, -4.2, -7.5 |
+| 1 | 0.008, 0.795, -3.2, -10.2 | 0.006, 0.825, -2.0, -7.5 | 0.006, 0.825, -2.0, -7.6 | 0.006, 0.825, -2.0, -7.5 |
+| 2 | 0.004, 0.854, -0.3, -8.9 | 0.002, 0.882, -0.0, -4.7 | 0.004, 0.882, -0.1, -4.8 | 0.003, 0.882, -0.0, -4.7 |
+| 3 | 0.006, 0.874, -0.0, -7.0 | 0.001, 0.896, -0.0, -3.4 | 0.001, 0.896, -0.0, -3.5 | 0.002, 0.896, 0.0, -3.4 |
+| 4 | 0.005, 0.905, 0.0, -2.3 | 0.001, 0.924, -0.0, -0.7 | 0.001, 0.924, -0.0, -0.7 | 0.002, 0.924, -0.0, -0.7 |
+| 5 | 0.004, 0.907, -0.0, -1.9 | 0.001, 0.925, -0.0, -0.5 | 0.001, 0.925, -0.0, -0.5 | 0.001, 0.925, -0.0, -0.5 |
+| 6 | 0.008, 0.927, -0.0, -0.2 | 0.002, 0.933, -0.0, -0.1 | 0.001, 0.933, -0.0, -0.1 | 0.002, 0.933, 0.0, -0.1 |
+| 7 | 0.005, 0.940, -0.0, -0.0 | 0.002, 0.940, -0.0, -0.0 | 0.001, 0.940, -0.0, -0.0 | 0.002, 0.940, -0.0, -0.0 |
+| 8 | 0.006, > 0.95, -0.0, -0.0 | 0.002, > 0.95, -0.0, -0.0 | 0.001, > 0.95, -0.0, -0.0 | 0.003, > 0.95, -0.0, -0.0 |
+| 9 | 0.006, > 0.95, -0.0, -0.0 | 0.003, > 0.95, -0.0, 0.0 | 0.001, > 0.95, -0.0, -0.0 | 0.002, > 0.95, -0.0, -0.0 |
+| 10 | 0.008, > 0.95, -0.0, 0.0 | 0.002, > 0.95, -0.0, -0.0 | 0.001, > 0.95, -0.0, -0.0 | 0.003, > 0.95, -0.0, -0.0 |
+
+Stopband (downsampling): the highest output level relative to the input
+tone (dB), over tones above 1.1 f_N, 1.25 f_N and 1.5 f_N, where f_N is
+the output Nyquist frequency. The level includes the output's own
+rounding.
+
+| q | 48k→16k | 48k→8k |
+|---|---|---|
+| 0 | -22.1, -43.0, -61.7 | -22.1, -42.8, -61.6 |
+| 1 | -62.6, -66.0, -68.6 | -61.0, -67.0, -67.0 |
+| 2 | -66.4, -70.5, -70.9 | -66.2, -66.2, -66.2 |
+| 3 | -68.2, -68.2, -68.2 | -63.6, -63.6, -63.6 |
+| 4 | -69.0, -69.0, -69.0 | -61.1, -61.1, -61.1 |
+| 5 | -64.3, -64.3, -64.3 | -60.7, -60.7, -60.7 |
+| 6 | -65.3, -65.3, -65.3 | -57.9, -57.9, -57.9 |
+| 7 | -64.4, -64.4, -64.4 | -62.3, -62.3, -62.3 |
+| 8 | -61.0, -61.0, -61.0 | -59.8, -59.8, -59.8 |
+| 9 | -61.1, -61.1, -61.1 | -55.7, -55.7, -55.7 |
+| 10 | -66.0, -66.0, -66.0 | -63.7, -63.7, -63.7 |
+
+Imaging (upsampling): the highest residual after removing the fitted tone
+(images and noise), relative to the tone (dB), over tones up to 0.9 f_N,
+where f_N is the input Nyquist frequency.
+
+| q | 16k→48k | 8k→16k |
+|---|---|---|
+| 0 | -11.9 | -11.9 |
+| 1 | -39.9 | -39.9 |
+| 2 | -66.3 | -65.1 |
+| 3 | -76.6 | -77.9 |
+| 4 | -72.3 | -71.7 |
+| 5 | -74.3 | -72.9 |
+| 6 | -74.2 | -71.7 |
+| 7 | -71.1 | -73.8 |
+| 8 | -70.8 | -73.3 |
+| 9 | -68.4 | -72.6 |
+| 10 | -75.0 | -71.4 |

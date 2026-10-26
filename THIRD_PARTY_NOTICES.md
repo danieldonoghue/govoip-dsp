@@ -25,6 +25,7 @@ test harness only.
 | `internal/fft/kiss.go` | `libspeexdsp/kiss_fft.c`, `libspeexdsp/_kiss_fft_guts.h` (Copyright (c) 2003-2004, Mark Borgerding; `kiss_fft.c` also Copyright (c) 2005-2007, Jean-Marc Valin) | KISS FFT BSD-3-Clause |
 | `internal/fft/kissr.go` | `libspeexdsp/kiss_fftr.c` (Copyright (c) 2003-2004, Mark Borgerding) | KISS FFT BSD-3-Clause |
 | `internal/fft/fft.go` | `libspeexdsp/fftwrap.c` (Copyright (C) 2005-2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `resample/resample.go`, `resample/filter.go`, `resample/process.go` | `libspeexdsp/resample.c` (Copyright (C) 2007-2008 Jean-Marc Valin, Copyright (C) 2008 Thorvald Natvig) | SpeexDSP BSD-3-Clause |
 
 The reference harness (`reference/`) contains no upstream code; it includes
 upstream headers and sources from the fetched tree at build time.
