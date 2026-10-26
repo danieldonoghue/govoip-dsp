@@ -233,6 +233,38 @@ The three rows marked with signals 10 to 12 were not caught by the first
 nine signals; the inputs were added for them (`docs/acceptance/fft.md`,
 "Changes").
 
+### `buffer` (WP2)
+
+Run on a scratch copy of the package on the Mac (darwin/arm64, GOMAXPROCS
+10). The four ordering mutations ran with `go test -race -run
+'TestStressSPSC|TestResetSPSC'`, the source mutations with `-run
+TestWaitFreeSource`, and the rest with the whole package (`-race` for the
+SPSC index mutations).
+
+| Mutation | Result |
+|---|---|
+| SPSC producer stores `w` before copying the samples | caught (data race reported; without `-race`: sequence check, stale sample) |
+| SPSC consumer stores `r` before copying the samples out | caught (data race; without `-race`: sequence check) |
+| SPSC indices as plain `uint32` loads and stores | caught (data race; without `-race`: sequence check in the read view, on arm64) |
+| SPSC producer free count one too large | caught (data race and an out-of-range slice; also without `-race`) |
+| SPSC indices modulo Cap instead of 2·Cap (full reads as empty) | caught (`TestModelOps`, `TestFullAndEmpty` and others) |
+| SPSC `Consume` releases one slot more than it returns | caught (`TestModelOps`, `TestStressSPSC`) |
+| SPSC `Reset` sets `w` to `r` instead of zeroing both | caught (`TestResetRing`, `TestResetSPSC`) |
+| SPSC `Commit` not clipped to the free space | caught (`TestModelOps`, `TestClipping`, `FuzzSPSC` seeds) |
+| a retry loop added to SPSC `Write` | caught (`TestWaitFreeSource`) |
+| `CompareAndSwap` instead of `Store` in SPSC `Consume` | caught (`TestWaitFreeSource`) |
+| `Ring` under `Overwrite` discards one sample too few | caught (`TestModelOps`, `TestOverwriteDiscardsOldest`) |
+| `Ring` under `Reject` keeps the last samples of the input | caught (`TestModelOps`, `TestRejectKeepsStoredSamples`) |
+| `Ring` read position wraps at `>` instead of `>=` | caught (`TestModelOps`) |
+| views returned without a capacity limit | caught (`TestModelOps`, `TestAppendOnView`) |
+| `Ring` under `Overwrite` keeps the first `Cap` samples of a long write | caught (`TestModelOps`, `TestOverwriteDiscardsOldest`) |
+| `Ring` `Reset` keeps the read position | caught (`TestResetRing`) |
+
+The ordering mutations without `-race` were caught on arm64, whose memory
+model is weak; on amd64 a plain-store mutation may only be caught by the
+race detector. `TestSeqCheckerDetects` checks that the sequence checker
+reports a lost, a duplicated and a stale sample.
+
 ## Platform determinism of generated inputs
 
 Tests regenerate long inputs from seeds, so generators must give the same
@@ -249,6 +281,10 @@ Under `-race` (detected by the `race` build tag) and `-short`, the
 `internal/fixed` reference tests compare the committed prefix and the first
 chunk of every stream instead of all 10^7 inputs. Full comparisons run in
 the normal `go test`.
+
+The `buffer` SPSC stress test moves 2·10^5 samples per capacity under
+`-race` or `-short` instead of 10^6, with the same capacities, chunk sizes
+and access styles.
 
 ## Speech
 

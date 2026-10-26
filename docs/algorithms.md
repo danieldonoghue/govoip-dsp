@@ -116,3 +116,111 @@ returns NULL (odd sizes) or aborts (`speex_fatal` for a radix above 17); it
 also rejects sizes above 4096, which no MVP component needs.
 
 **Latency.** None; each call transforms one buffer.
+
+## Ring buffers (`buffer`, WP2)
+
+**Algorithm.** Two fixed-capacity FIFOs of `int16` samples over one
+preallocated slice, with no wasted slot.
+
+- `Ring` (single owner) keeps the read position `r` and the count `n`. The
+  write position is `r + n` modulo the capacity. `Write` copies into at most
+  two segments; under `Overwrite` it first advances `r` past the oldest
+  samples it must discard, and a write longer than the capacity keeps only
+  its last `Cap` samples.
+- `SPSC` keeps two indices, `w` (stored only by the producer) and `r`
+  (stored only by the consumer), each in [0, 2·Cap). The count is
+  `w − r` modulo 2·Cap, so `w == r` is empty and a count of `Cap` is full.
+  The slot of index i is i modulo Cap. Each index is an `atomic.Uint32` on
+  its own cache line.
+
+**Reference behaviour.** Own design; no SpeexDSP code. SpeexDSP's
+`buffer.c` (`speex_buffer_*`) was read as design input. It differs in
+these ways:
+
+| SpeexDSP `buffer.c` | `buffer` |
+|---|---|
+| Counts bytes | Counts `int16` samples |
+| Always overwrites the oldest data on overflow | `Ring` chooses `Reject` or `Overwrite` in `Config`; `SPSC` rejects |
+| `speex_buffer_read` zero-fills a short read and returns the bytes it copied | `Read` returns the count and leaves the rest of the caller's slice untouched |
+| No zero-copy access | Two-segment read and write views |
+| `speex_buffer_resize` is unfinished upstream (FIXME comments) | Capacity is fixed; make a new buffer |
+| Single owner only | `SPSC` for a hand-off between two goroutines |
+
+**Parameters.** `Capacity` (1 to `MaxCapacity`, 2^29 samples, so the SPSC
+index arithmetic, which reaches 3·Cap, fits a 32-bit `int`) and, for `Ring`,
+`Overflow`. A free-running 32-bit sample counter was rejected: it wraps
+after 2^32 samples (about 25 hours at 48 kHz), and with a capacity that is
+not a power of two the slot mapping breaks at the wrap. Indices modulo 2·Cap
+never wrap that way. 64-bit atomics were rejected because Go 1.26
+implements them with a lock on `mips` and `mipsle`, and on `arm` before
+ARMv7 (`internal/runtime/atomic`).
+
+**SPSC overflow.** Overwriting the oldest samples would mean the producer
+moving `r`, which the consumer also stores. That needs a compare-and-swap
+loop or a lock, both forbidden on the audio path (requirements §16), so the
+SPSC rejects the excess.
+
+**Latency.** Exactly the samples stored; the buffers add no processing
+delay.
+
+### SPSC memory ordering
+
+The argument uses the Go memory model
+([go.dev/ref/mem](https://go.dev/ref/mem), "Atomic Values"): if atomic
+operation B observes the value stored by atomic operation A, then A is
+synchronized before B, and all atomic operations behave as if in one
+sequentially consistent order. The race detector checks the same
+happens-before relation.
+
+Each side's steps, for `Write` and `Read` (the view methods split the same
+steps across two calls: `WriteSlices` is P1 and P2, the caller's fill is P3,
+`Commit` repeats P1 and P2 and does P4; `ReadSlices` is C1 and C2, the
+caller's use of the view is C3, `Consume` repeats C1 and C2 and does C4):
+
+| Step | Producer (`Write`) | Step | Consumer (`Read`) |
+|---|---|---|---|
+| P1 | load `w` (its own index) | C1 | load `r` (its own index) |
+| P2 | load `r`; free = Cap − count(`w`, `r`) | C2 | load `w`; available = count(`w`, `r`) |
+| P3 | copy n ≤ free samples into the slots of [`w`, `w`+n) | C3 | copy m ≤ available samples out of the slots of [`r`, `r`+m) |
+| P4 | store `w` + n | C4 | store `r` + m |
+
+**Which store publishes what.**
+
+1. The producer's store of `w` (P4) publishes the samples copied in P3. P3 is
+   sequenced before P4, and a consumer load C2 that observes the new `w` is
+   synchronized after P4, so P3 happens before the consumer's read C3 of
+   those slots.
+2. The consumer's store of `r` (C4) releases the slots read in C3 back to
+   the producer. C3 is sequenced before C4, and a producer load P2 that
+   observes the new `r` is synchronized after C4, so C3 happens before the
+   producer's next write P3 into those slots.
+
+**Interleavings at each index update.** The only shared accesses are P2
+against C4, C2 against P4, and the slot accesses P3 and C3.
+
+| Interleaving | What the other side sees | Why it is safe |
+|---|---|---|
+| C2 before P4 | the old `w`: fewer samples available | The consumer reads only [`r`, old `w`); P3 writes only [old `w`, old `w`+n), which is disjoint. The new samples are read on a later call. |
+| C2 after P4 | the new `w` | Rule 1: the samples are complete before C3 reads them. |
+| P2 before C4 | the old `r`: less free space | The producer writes only [`w`, old `r`+Cap); the consumer reads only [old `r`, `w`). Both ranges fit within one lap, so they are disjoint. The freed slots are used on a later call. |
+| P2 after C4 | the new `r` | Rule 2: the consumer has finished copying out of the freed slots. |
+| Full (count = Cap) | free = 0 | The producer writes nothing and stores nothing; the consumer is unaffected. |
+| Empty (`w` = `r`) | available = 0 | The consumer reads nothing and stores nothing. |
+| Wrap of a copy | — | A copy that crosses the end of the slice is two `copy` calls inside P3 or C3, before the index store, so the rules above cover both segments. |
+| Wrap of an index | — | Each index is reduced modulo 2·Cap in the store itself, so the other side never observes an out-of-range value. |
+
+**Why count modulo 2·Cap is exact.** Each index only advances, so the
+values one side observes of the other's index never go backwards. The
+consumer's own `r` is current, and the `w` it observes lies between the
+`w` it saw last (at least `r`) and the current `w`, which is at most
+`r` + Cap because the producer never writes past the `r` it observed plus
+Cap. So the true difference is in [0, Cap], and modulo 2·Cap, which exceeds
+Cap, it is recovered exactly. The producer's argument is symmetric. With
+indices modulo Cap instead, full and empty would both read as a count of 0;
+the mutation checks in `docs/testing.md` show the tests catch that.
+
+**Wait-freedom.** Every method is at most two atomic loads, one atomic
+store of the caller's own index and at most two `copy` calls, with no loop,
+no lock and no read-modify-write atomic (`TestWaitFreeSource` checks the
+source). Neither side ever waits for the other; a side that finds the
+buffer full or empty returns 0 at once.
