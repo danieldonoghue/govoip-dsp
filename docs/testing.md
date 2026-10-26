@@ -264,8 +264,10 @@ Each component adds its fuzz targets here. `internal/fixed` has none: its
 functions are pure, and the exhaustive and 10^7-input comparisons cover
 their domains.
 
-`internal/fft` has `FuzzTransform`: any supported size and any input, for
-both directions. It checks that neither call fails, that `Inverse` leaves its
-input unchanged, and that `Forward` restores an input without -32768. Run on
-2026-10-26 for 60 s (`go test ./internal/fft -run '^$' -fuzz FuzzTransform
--fuzztime 60s`): 2.5 million executions, no failure.
+`internal/fft` has `FuzzTransform`: any supported size, any input and a
+wrong length in either slice, for both directions. It checks that a wrong
+length gives `ErrBufferSize`, that neither call fails otherwise, that
+`Inverse` leaves its input unchanged, and that `Forward` restores an input
+without -32768. Runs on 2026-10-26 (`go test ./internal/fft -run '^$' -fuzz
+FuzzTransform -fuzztime <t>`): 60 s before the length check was added, 2.5
+million executions; 30 s with it; no failure in either.

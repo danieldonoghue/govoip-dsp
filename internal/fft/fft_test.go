@@ -84,6 +84,16 @@ func TestBufferSize(t *testing.T) {
 	}
 }
 
+func TestZeroValue(t *testing.T) {
+	var f FFT
+	if err := f.Forward(nil, nil); err != ErrConfig {
+		t.Errorf("zero FFT Forward = %v, want ErrConfig", err)
+	}
+	if err := f.Inverse(nil, nil); err != ErrConfig {
+		t.Errorf("zero FFT Inverse = %v, want ErrConfig", err)
+	}
+}
+
 // TestStateless checks that a call does not depend on earlier calls: an
 // instance that has transformed other data gives a fresh instance's result.
 func TestStateless(t *testing.T) {
@@ -171,7 +181,7 @@ func TestSmallestSize(t *testing.T) {
 	}
 }
 
-func TestNoAllocs(t *testing.T) {
+func TestNoAllocsTransform(t *testing.T) {
 	for _, n := range mvpSizes {
 		f, _ := New(Config{Size: n})
 		in := signal("noise", n)
@@ -189,8 +199,7 @@ func TestNoAllocs(t *testing.T) {
 }
 
 // TestRoundTrip reports Inverse(Forward(x)) - x for docs/algorithms.md. It
-// asserts nothing: the fixed-point scaling defines the result, and the
-// reference tests pin it bit for bit.
+// asserts nothing; the reference round-trip streams pin the values.
 func TestRoundTrip(t *testing.T) {
 	for _, n := range mvpSizes {
 		f, _ := New(Config{Size: n})
@@ -211,9 +220,9 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func FuzzTransform(f *testing.F) {
-	f.Add(0, []byte{})
-	f.Add(3, []byte{0x00, 0x80, 0xff, 0x7f})
-	f.Add(426, []byte{0x00, 0x80})
+	f.Add(0, 0, []byte{})
+	f.Add(3, 0, []byte{0x00, 0x80, 0xff, 0x7f})
+	f.Add(426, -1, []byte{0x00, 0x80})
 	var sizes []int
 	for n := 2; n <= MaxSize; n += 2 {
 		if Supported(n) {
@@ -221,12 +230,19 @@ func FuzzTransform(f *testing.F) {
 		}
 	}
 	ffts := make(map[int]*FFT)
-	f.Fuzz(func(t *testing.T, sel int, data []byte) {
+	f.Fuzz(func(t *testing.T, sel, delta int, data []byte) {
 		n := sizes[uint(sel)%uint(len(sizes))]
 		ft := ffts[n]
 		if ft == nil {
 			ft, _ = New(Config{Size: n})
 			ffts[n] = ft
+		}
+		// A wrong length in either slice must give ErrBufferSize.
+		if d := delta % 3; d != 0 {
+			bad := make([]int16, max(0, n+d))
+			if ft.Forward(bad, make([]int16, n)) != ErrBufferSize || ft.Inverse(make([]int16, n), bad) != ErrBufferSize {
+				t.Fatal("wrong length accepted")
+			}
 		}
 		x := make([]int16, n)
 		for i := range x {

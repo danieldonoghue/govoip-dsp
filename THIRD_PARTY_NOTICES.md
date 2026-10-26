@@ -21,7 +21,7 @@ test harness only.
 | `internal/fixed/fixed.go` | `libspeexdsp/arch.h`, `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `internal/fixed/approx.go` | `libspeexdsp/math_approx.h` (Copyright (C) 2002 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `internal/fixed/pseudofloat.go` | `libspeexdsp/pseudofloat.h` (Copyright (C) 2005 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
-| `internal/fft/kiss.go` | `libspeexdsp/kiss_fft.c`, `libspeexdsp/_kiss_fft_guts.h` (Copyright (c) 2003-2004, Mark Borgerding) | KISS FFT BSD-3-Clause |
+| `internal/fft/kiss.go` | `libspeexdsp/kiss_fft.c`, `libspeexdsp/_kiss_fft_guts.h` (Copyright (c) 2003-2004, Mark Borgerding; `kiss_fft.c` also Copyright (c) 2005-2007, Jean-Marc Valin) | KISS FFT BSD-3-Clause |
 | `internal/fft/kissr.go` | `libspeexdsp/kiss_fftr.c` (Copyright (c) 2003-2004, Mark Borgerding) | KISS FFT BSD-3-Clause |
 | `internal/fft/fft.go` | `libspeexdsp/fftwrap.c` (Copyright (C) 2005-2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 

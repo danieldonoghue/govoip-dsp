@@ -437,4 +437,5 @@ Rules for callers:
    array that `spx_word16_t *out` holds in C, so per-bin code ports
    index for index.
 6. An `FFT` is not safe for concurrent use. Its methods do not allocate,
-   block or panic.
+   block or panic; on a zero `FFT` (not made by `New`) they return
+   `ErrConfig`.

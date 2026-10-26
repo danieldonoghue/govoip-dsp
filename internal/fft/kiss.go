@@ -3,6 +3,7 @@
 // libspeexdsp/_kiss_fft_guts.h.
 //
 // Copyright (c) 2003-2004, Mark Borgerding
+// Copyright (c) 2005-2007, Jean-Marc Valin
 //
 // Use of this source is governed by the BSD-3-Clause licence in
 // LICENSES/kissfft-COPYING. Changes: ported to Go, FIXED_POINT branch only,

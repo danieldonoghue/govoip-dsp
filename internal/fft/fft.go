@@ -57,9 +57,8 @@ func Supported(size int) bool {
 	}
 }
 
-// New is spx_fft_init (fftwrap.c:304). It returns an error wrapping
-// ErrConfig for a size that Supported rejects; the reference refuses odd
-// sizes and aborts on a radix above 17.
+// New is spx_fft_init (fftwrap.c:304). A size that Supported rejects gives
+// an error wrapping ErrConfig (the reference returns NULL or aborts).
 func New(cfg Config) (*FFT, error) {
 	if !Supported(cfg.Size) {
 		return nil, fmt.Errorf("%w: size %d (want even, 2 to %d, size/2 without a prime factor above %d)",
@@ -74,12 +73,12 @@ func New(cfg Config) (*FFT, error) {
 // Size returns the transform size.
 func (f *FFT) Size() int { return f.n }
 
-// Forward is spx_fft (fftwrap.c:324): the real transform of in, scaled by
-// 1/Size, into out in half-complex order. It rewrites in exactly as spx_fft
-// does: in is shifted up for range and back, which restores it unless it
-// holds -32768. It returns ErrBufferSize, touching nothing, unless both
-// slices have length Size. in and out must not overlap.
+// Forward is spx_fft (fftwrap.c:324), rewriting in as spx_fft does. The
+// package doc gives the layout, scaling, length and aliasing rules.
 func (f *FFT) Forward(in, out []int16) error {
+	if f.n == 0 {
+		return ErrConfig
+	}
 	if len(in) != f.n || len(out) != f.n {
 		return ErrBufferSize
 	}
@@ -90,11 +89,12 @@ func (f *FFT) Forward(in, out []int16) error {
 	return nil
 }
 
-// Inverse is spx_ifft (fftwrap.c:348): the unscaled inverse of a
-// half-complex spectrum in into the real out. It does not modify in. It
-// returns ErrBufferSize, touching nothing, unless both slices have length
-// Size. in and out must not overlap.
+// Inverse is spx_ifft (fftwrap.c:348): the unscaled inverse, leaving in
+// unchanged. The package doc gives the layout, length and aliasing rules.
 func (f *FFT) Inverse(in, out []int16) error {
+	if f.n == 0 {
+		return ErrConfig
+	}
 	if len(in) != f.n || len(out) != f.n {
 		return ErrBufferSize
 	}

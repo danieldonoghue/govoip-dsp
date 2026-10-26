@@ -53,7 +53,8 @@ to `|M|` in [16384, 32767]. It trades precision (about 14 bits) for range.
 parts, followed by a split step with "super twiddles" (`kiss_fftr2`); the
 inverse reverses the split (`kiss_fftri2`). The complex FFT is mixed-radix,
 decimation in time: `kf_factor` takes radix 4 first, then 2, then odd
-factors, and the generic butterfly handles radices 7 to 17. `spx_fft` wraps
+factors, and the generic butterfly handles radices 7 to 17 (and radix 1
+at size 2). `spx_fft` wraps
 the forward transform with a range-maximising shift.
 
 **Reference behaviour.** `spx_fft`, `spx_ifft` and `spx_fft_init` of

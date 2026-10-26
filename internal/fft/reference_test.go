@@ -10,9 +10,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
 
-// Mirrors reference/drivers/fft.c: the size and signal tables, the sweep
-// generator and the supported-size rule must stay identical, which the input
-// streams check.
+// Mirrors reference/drivers/fft.c: tables, sweep generator and size rule
+// must stay identical, which the input streams check.
 
 const fixtureDir = "../../testdata/speexdsp/fft"
 
