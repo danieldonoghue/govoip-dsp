@@ -592,6 +592,8 @@ the corrections.
 | R4 | one cut within 50 ms | n/a | one cut, 30 ms after the step, all rates and `fast` | pass |
 | R5 | no cut on clicks | n/a | none, including clicks in pauses and a click over 3 frames at 9999 Hz | pass |
 | G1 to G4 | ≤ 3 dB each (regression guards, registered after measurement) | 4.14 dB at −30, 4.56 dB at −24 (from the review) | 2.048, 2.336, 2.420, 2.547 dB | pass |
+| G5 | +14 dB step: one cut within 50 ms, within 2 dB ≤ 0.05 s | not run | one cut at the third frame, 0.03 s, at all four rates | pass |
+| G6 | +10 to +13 dB: within 2 dB ≤ 1.76 to 2.05 s, above target+6 dB ≤ 0.43 to 0.72 s | not run | 1.71 to 2.00 s; 0.379 to 0.67 s | pass |
 | N4 | ≤ +3 dB (noise-floor trial) | +9.99 dB | +23.16 dB without the safeguard, +23.16 dB with it | **fail**; safeguard reverted (change 7) |
 | N5 | 0 dB below the gate; above it output ≤ target + 0.5 dB, gain ≤ MaxGain | not run | 0 dB below; −23.98 to −28.22 dBFS above, gain up to +23.86 dB | pass |
 | Benchmark | ≤ 10 µs, 0 allocs | 1.27 µs | 1.29 µs, 0 allocs | pass |

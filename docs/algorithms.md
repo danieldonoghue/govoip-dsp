@@ -697,7 +697,14 @@ first `2K` output samples of a stream are zero.
   long-term, whose loudest frames just cross the −50 dBFS gate, reaches +23.16
   dB (N4, reported; design v1 reached +9.99 dB because it rose more slowly).
   Noise whose frames all stay below the gate keeps 0 dB. Raising `GateLevel`
-  above the noise is the only protection.
+  above the noise is the only protection. The owner accepted this
+  (2026-10-26). The AGC belongs after `preprocess` with denoising on,
+  which lowers stationary noise before the AGC sees it; callers set
+  `GateLevel` above the residual noise. At the default suppression
+  (−15 dB), `preprocess` reduced white noise at −35 dBFS by 13.3 to 14.1 dB
+  but pink noise at −37 dBFS by only 3.7 to 5.8 dB (section
+  "Preprocessor", sanity results), so the residual depends on the noise.
+  WP7 measures the real chain.
 - **A noise-floor safeguard was tried and rejected.** Allowing a rise only
   on frames more than 10 dB above a 1.5 s minimum-statistics floor failed
   C2 to C6, because a steady sine or white noise sits at its own floor,
@@ -720,7 +727,9 @@ first `2K` output samples of a stream are zero.
   0.48, 0.57 and 0.67 s (measured on a sine from −44 dBFS). All four
   exceed the 1.0 s that C1 allows for the registered +20 dB step, and +11
   to +13 dB exceed T3's 0.45 s. It is the cost of the +13 dB threshold,
-  which keeps ordinary speech from triggering cuts.
+  which keeps ordinary speech from triggering cuts. The owner accepted it
+  (2026-10-26); guards G5 (a +14 dB step cuts) and G6 (these times plus at
+  most 0.05 s) pin it.
 - **Small steps down.** A downward step smaller than 6 dB does not trigger
   the reset, so only the slow order-4 mean follows it. Measured on a sine:
   a −5 dB step takes 5.21 s to come within 2 dB of the target and 7.76 s to

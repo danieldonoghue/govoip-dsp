@@ -534,7 +534,8 @@ included), restoring `agc.go` after each.
 | Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
 | Rise step without the one-unit minimum | not caught: equivalent, in Q22 the step rounds to zero only below −80 dB of gain, which no configuration allows |
 
-Checks of the regression guards and N5, each on a copy of the branch:
+Checks of the regression guards (G1 to G6) and N5, each on a copy of the
+branch:
 
 | Mutation | Result |
 |---|---|
@@ -542,6 +543,13 @@ Checks of the regression guards and N5, each on a copy of the branch:
 | Power mean of order 2 instead of 4 | caught by G4 (6.78 dB) |
 | Gate removed | caught by N5 (3 cases) |
 | Gain not clamped to MaxGain | not caught by N5 (no N5 signal needs more than MaxGain); caught by C6 |
+| Cut threshold +13 → +16 dB (`cutRatio` 20 → 40) | caught by G5 at all four rates |
+| Cut threshold +13 → +14.8 dB (`cutRatio` 30) | caught by G5 at all four rates |
+| Innovation clamp 2L → 1.5L | caught by G6 (all steps, all rates) |
+| Innovation clamp 2L → 3L | caught by G5 (the +14 dB step no longer cuts) and `TestFirstFrameClick` |
+| Default `LevelTime` 3 s → 4 s | caught by G6 (all steps, all rates) and `TestConstants` |
+| Loud run one frame longer | not caught: the cut comes 10 ms later, still within R4's 50 ms |
+| Default `FallRate` 40 → 20 dB/s | not caught by G5 or G6 (these steps follow the level estimate, not the fall limit); caught by `TestConstants` |
 
 The noise-floor safeguard trial (change 7 in `docs/acceptance/agc.md`)
 was reverted after it failed registered criteria, so it has no mutation
