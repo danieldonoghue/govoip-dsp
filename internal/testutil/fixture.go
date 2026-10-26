@@ -18,10 +18,8 @@ import (
 // ReferenceCommit is the pinned SpeexDSP commit every manifest must name.
 const ReferenceCommit = "1b28a0f61bc31162979e1f26f3981fc3637095c8"
 
-// FullReferenceEnv names an environment variable that, when set to a
-// directory of complete harness streams (written by a driver run with
-// HARNESS_FULL_OUT), makes stream checks report the exact first differing
-// element instead of only the differing chunk.
+// FullReferenceEnv names a directory of full harness streams (HARNESS_FULL_OUT)
+// against which stream checks report the exact first differing element.
 const FullReferenceEnv = "GOVOIP_REFERENCE_FULL"
 
 // Manifest is a fixture set written by a reference driver. The format is
@@ -121,6 +119,9 @@ func (m *Manifest) validate() error {
 			}
 			if want := (s.Count + s.Chunk - 1) / s.Chunk; int64(len(s.Chunks)) != want {
 				return fmt.Errorf("case %s stream %s: %d chunk hashes, want %d", c.Name, s.Name, len(s.Chunks), want)
+			}
+			if s.File != nil && !filepath.IsLocal(s.File.Path) {
+				return fmt.Errorf("case %s stream %s: file path %q leaves the fixture directory", c.Name, s.Name, s.File.Path)
 			}
 			if s.File != nil && (s.File.Count > s.Count || s.File.Count < 0) {
 				return fmt.Errorf("case %s stream %s: file count %d exceeds stream count %d", c.Name, s.Name, s.File.Count, s.Count)
@@ -261,9 +262,8 @@ func same[T Elem](a, b T) bool {
 	return a == b
 }
 
-// Compare reports the first index where got differs from want, with the
-// surrounding elements, and returns whether they are identical. Floats are
-// compared by bit pattern.
+// Compare reports the first index where got differs from want, with context,
+// and returns whether they are identical. Floats compare by bit pattern.
 func Compare[T Elem](t testing.TB, name string, want, got []T) bool {
 	t.Helper()
 	n := min(len(want), len(got))
@@ -292,9 +292,8 @@ func context[T Elem](want, got []T, i int) string {
 	return s
 }
 
-// StreamChecker compares elements produced by a test, one at a time, with a
-// fixture stream: element by element against the committed prefix, and by
-// SHA-256 per chunk for the whole stream. It holds no more than the prefix.
+// StreamChecker compares a test's elements, one at a time, with the committed
+// prefix of a fixture stream and with the SHA-256 of every chunk.
 type StreamChecker[T Elem] struct {
 	t       testing.TB
 	m       *Manifest
@@ -314,9 +313,8 @@ type StreamChecker[T Elem] struct {
 	one     []byte
 }
 
-// NewStreamChecker starts a check of stream s of case c. With partial set,
-// the test may stop early; Done then verifies the complete chunks it saw,
-// and needs at least one unless the stream is empty.
+// NewStreamChecker starts a check of stream s of case c. If partial, the test
+// may stop early once it has given at least one full chunk.
 func NewStreamChecker[T Elem](t testing.TB, m *Manifest, c *Case, s *Stream, partial bool) *StreamChecker[T] {
 	t.Helper()
 	checkType[T](t, s)
@@ -337,10 +335,11 @@ func NewStreamChecker[T Elem](t testing.TB, m *Manifest, c *Case, s *Stream, par
 	}
 	if dir := os.Getenv(FullReferenceEnv); dir != "" {
 		f, err := os.Open(filepath.Join(dir, c.Name+"."+s.Name+".raw"))
-		if err == nil {
-			k.fullF = f
-			k.full = bufio.NewReader(f)
+		if err != nil {
+			t.Fatalf("%s is set: %v", FullReferenceEnv, err)
 		}
+		k.fullF = f
+		k.full = bufio.NewReader(f)
 	}
 	return k
 }
@@ -417,7 +416,7 @@ func (k *StreamChecker[T]) Count() int64 { return k.n }
 func (k *StreamChecker[T]) Done() {
 	k.t.Helper()
 	if k.fullF != nil {
-		k.fullF.Close()
+		defer k.fullF.Close()
 	}
 	if k.failed {
 		return
@@ -432,6 +431,11 @@ func (k *StreamChecker[T]) Done() {
 	if k.n == k.s.Count {
 		if k.inChunk > 0 {
 			k.endChunk()
+		}
+		if k.full != nil {
+			if _, err := k.full.ReadByte(); err != io.EOF {
+				k.fail("full reference holds more than %d elements", k.n)
+			}
 		}
 		return
 	}

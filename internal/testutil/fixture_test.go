@@ -162,6 +162,22 @@ func TestStreamCheckerUsesFullReference(t *testing.T) {
 	}
 }
 
+func TestStreamCheckerFullReferenceErrors(t *testing.T) {
+	data := seq(20)
+	dir := writeFixture(t, data, 8, 5)
+	full := t.TempDir()
+	t.Setenv(FullReferenceEnv, full)
+	if r := run(t, func(tb testing.TB) { check(tb, dir, data, false) }); !r.fatal {
+		t.Errorf("missing full reference file not reported: %q", r.text())
+	}
+	if err := os.WriteFile(filepath.Join(full, "c.out.raw"), EncodeLE(nil, append(data, 7)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(t, func(tb testing.TB) { check(tb, dir, data, false) }); !strings.Contains(r.text(), "holds more than 20") {
+		t.Errorf("trailing full reference data not reported: %q", r.text())
+	}
+}
+
 func TestReadFileVerifiesHash(t *testing.T) {
 	data := seq(20)
 	dir := writeFixture(t, data, 8, 5)
