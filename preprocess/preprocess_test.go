@@ -385,3 +385,13 @@ func FuzzRun(f *testing.F) {
 		}
 	})
 }
+
+// DIV32_16_Q8 truncates a quotient of 32768 to -32768 (docs/algorithms.md).
+func TestDiv32x16Q8Wraps(t *testing.T) {
+	for b := int32(1); b < 1<<15; b++ {
+		got := div32x16Q8(128*b-1, b)
+		if want := b >= 512; (got == -32768) != want {
+			t.Fatalf("div32x16Q8(%d, %d) = %d", 128*b-1, b, got)
+		}
+	}
+}
