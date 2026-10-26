@@ -19,22 +19,22 @@
   "cases": [
     {
       "name": "signal",
-      "params": {"length": 65536},
+      "params": {"length": 262144},
       "streams": [
         {
           "name": "int16",
           "type": "int16",
-          "count": 65536,
+          "count": 262144,
           "chunk": 1048576,
-          "chunks": ["e00f7710ea38f827dcf27c4729dabf087ec18fb5d79f0b9981c76e27ffe63873"],
+          "chunks": ["af463a885e2c893f554bd9759621d3fef1be36a7f09bf99d2a1beee4fca4eb5e"],
           "file": {"path": "signal.int16.raw", "count": 4096, "sha256": "685d3fe34ea9bb5c2faa1827d83547b0ac806cdb3a9ac8a68b30ad8f3bcd8f86"}
         },
         {
           "name": "float32",
           "type": "float32",
-          "count": 65536,
+          "count": 262144,
           "chunk": 1048576,
-          "chunks": ["bc9bd02147468fdaff2f9d303f0705093307fdd8124e70cb05ae4db2959ac7a4"],
+          "chunks": ["60c8699ee853b22638da422628b648cdb0f893115109183d211bb22d0c58f296"],
           "file": {"path": "signal.float32.raw", "count": 4096, "sha256": "45b224790aa611fed0ff735373c02365c63d16fd7064e3e7595dba352b0ac4d1"}
         }
       ]
@@ -17701,6 +17701,93 @@
       ]
     },
     {
+      "name": "q0_frac_270000001_270000000",
+      "params": {"mode": "i", "frac": 1, "q": 0, "ch": 1, "num": 270000001, "den": 270000000, "in_rate": 270000001, "out_rate": 270000000, "frames": 4800, "max_calls": 0, "events": [], "init_err": 0, "state": {"filt_len": 8, "oversample": 2, "direct": 0, "int_advance": 1, "frac_advance": 1, "cutoff_bits": 1062501089, "num_rate": 270000001, "den_rate": 270000000, "mem_alloc_size": 167, "table_len": 24}},
+      "streams": [
+        {
+          "name": "table",
+          "type": "int16",
+          "count": 24,
+          "chunk": 1048576,
+          "chunks": ["c26f12d416c8337f435c622ff2d5b44eac3bdd01f569ca77af41ebc7e9230d8c"]
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 4800,
+          "chunk": 1048576,
+          "chunks": ["0c153ace991185376d9c93a550025e6cc2deab7b33b6ce29d9c221932c9f9ccb"]
+        },
+        {
+          "name": "trace",
+          "type": "int32",
+          "count": 138,
+          "chunk": 1048576,
+          "chunks": ["e45b18a745975794f77118fbb1fb53df71e8e3c0a36379b162ea25041af21459"]
+        }
+      ]
+    },
+    {
+      "name": "initfail_q1_frac_270000001_270000000",
+      "params": {"mode": "i", "frac": 1, "q": 1, "ch": 1, "num": 270000001, "den": 270000000, "in_rate": 270000001, "out_rate": 270000000, "frames": 4800, "max_calls": 0, "events": [], "init_err": 1, "state": null},
+      "streams": [
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 0,
+          "chunk": 1048576,
+          "chunks": []
+        },
+        {
+          "name": "trace",
+          "type": "int32",
+          "count": 6,
+          "chunk": 1048576,
+          "chunks": ["f107fa690aec528e2d41cafa20c4f7e48a202599c5b34243b2058745de9819d1"]
+        }
+      ]
+    },
+    {
+      "name": "mixed_q5_44100_48000_2ch",
+      "params": {"mode": "m", "frac": 0, "q": 5, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 5292, "max_calls": 0, "events": [], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
+      "streams": [
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 11805,
+          "chunk": 1048576,
+          "chunks": ["f1d20f5396722557a6d6cce973685ecb17ec31521043f90128e68da88fd6dac8"]
+        },
+        {
+          "name": "trace",
+          "type": "int32",
+          "count": 234,
+          "chunk": 1048576,
+          "chunks": ["c26b52213ec55e1144f26f177c8fa1d54f41712ebc50910c747715fce8b343ea"]
+        }
+      ]
+    },
+    {
+      "name": "mixed_q10_48000_16000_3ch",
+      "params": {"mode": "m", "frac": 0, "q": 10, "ch": 3, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 5760, "max_calls": 0, "events": [], "init_err": 0, "state": {"filt_len": 768, "oversample": 16, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1051092583, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 927, "table_len": 768}},
+      "streams": [
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 5881,
+          "chunk": 1048576,
+          "chunks": ["c7dfab8320ba3790c12f04d4c606f61916e27b14e169f31e6b909e18ba1d049b"]
+        },
+        {
+          "name": "trace",
+          "type": "int32",
+          "count": 180,
+          "chunk": 1048576,
+          "chunks": ["820b6ea80f91c7133ce713269f1913d281de09825e259dbacbe226e905214f70"]
+        }
+      ]
+    },
+    {
       "name": "wrap_q0_frac_4294967294_4294967295",
       "params": {"mode": "i", "frac": 1, "q": 0, "ch": 1, "num": 4294967294, "den": 4294967295, "in_rate": 4294967294, "out_rate": 4294967295, "frames": 4800, "max_calls": 50, "events": [], "init_err": 0, "state": {"filt_len": 8, "oversample": 4, "direct": 0, "int_advance": 0, "frac_advance": -2, "cutoff_bits": 1063004406, "num_rate": 4294967294, "den_rate": 4294967295, "mem_alloc_size": 167, "table_len": 40}},
       "streams": [
@@ -20218,527 +20305,527 @@
     },
     {
       "name": "skip_q0_48000_16000",
-      "params": {"mode": "i", "frac": 0, "q": 0, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 24, "oversample": 2, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1049470785, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 183, "table_len": 24}},
+      "params": {"mode": "i", "frac": 0, "q": 0, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 24, "oversample": 2, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1049470785, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 183, "table_len": 24}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3196,
+          "count": 15996,
           "chunk": 1048576,
-          "chunks": ["c7f4e730fb5333398e0f4477a5234c87f43efd66b18541f80701e664b6f0d3c6"]
+          "chunks": ["17375860995a5c7233501e30a3650079e0e34bc9138962e5997c148ca0bcda88"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 354,
+          "count": 1680,
           "chunk": 1048576,
-          "chunks": ["d2ccdc5d4ff343436e4cf28695b85245aa460c6f522b777761aeda7810993638"]
+          "chunks": ["e23d14015a8299a674bfba1b34b5f96e4d62dff18838a8f0714ef69b11a90027"]
         }
       ]
     },
     {
       "name": "skip_q0_16000_48000",
-      "params": {"mode": "i", "frac": 0, "q": 0, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 3200, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 8, "oversample": 4, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1063004406, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 167, "table_len": 24}},
+      "params": {"mode": "i", "frac": 0, "q": 0, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 8, "oversample": 4, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1063004406, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 167, "table_len": 24}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9588,
+          "count": 143988,
           "chunk": 1048576,
-          "chunks": ["0b42d25c97e114e15951ea6902174d3529519c374b61bae36a907487919f1ccc"]
+          "chunks": ["80008ba3180b677066b31628a814fc3757f4eecf2e8c5573f8579dbb220cff3a"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 156,
+          "count": 1590,
           "chunk": 1048576,
-          "chunks": ["9a49040c12c01a6ecf016c80cd3987645ed172b000c6c7be4136c0aceac327bc"]
+          "chunks": ["0013ed9bb4775992746f49ce0c3e37a5add2536a2caea72989463fa136b0635b"]
         }
       ]
     },
     {
       "name": "skip_q0_44100_48000",
-      "params": {"mode": "i", "frac": 0, "q": 0, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 8, "oversample": 4, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063004406, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 167, "table_len": 40}},
+      "params": {"mode": "i", "frac": 0, "q": 0, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 8, "oversample": 4, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063004406, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 167, "table_len": 40}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9596,
+          "count": 52241,
           "chunk": 1048576,
-          "chunks": ["088836df2378255604458a8db2aa9ba96dbface2fff7810f6e60cf4ab4e09a14"]
+          "chunks": ["1787459affa321a8fb12676abf8c443556661bc532b8bff72e81c9625b122ad0"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 390,
+          "count": 1704,
           "chunk": 1048576,
-          "chunks": ["4906317097fedc87147d51b10a8af53730b81fb2846fc1943117d6ef8fa8f7e5"]
+          "chunks": ["21600228626c4a8badb179ef690aa1dd3be2d9e232b5a2a75bfc730a9be1ab70"]
         }
       ]
     },
     {
       "name": "skip_q5_48000_16000",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3160,
+          "count": 15960,
           "chunk": 1048576,
-          "chunks": ["e4bf6375cefe5f1e8c80b9ff681a42e025d583d7ff0a85fc1b570e0f9860cb1c"]
+          "chunks": ["7176011d161347a57bf72291b6cd0eef315b34e3680066e12c3a9331f3503923"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 408,
+          "count": 1698,
           "chunk": 1048576,
-          "chunks": ["5b6f89f310f92508bb4845da98127d000c54da8df89f4b28db2d0f74f1015cb2"]
+          "chunks": ["1bf457230fc9157d77451a66f431a44006d6fbd945a84626d4d1ee9473e31954"]
         }
       ]
     },
     {
       "name": "skip_q5_16000_48000",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 3200, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064346583, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 239, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064346583, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 239, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9480,
+          "count": 143880,
           "chunk": 1048576,
-          "chunks": ["64b4485f0cfc151c4dc0194644234dd6de23df7815b333dad94fc63732818bcd"]
+          "chunks": ["793b390119c30e3b258ffa1019ea9c7cfc31baa4fa31c0a106c413d9e86ff1a5"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 114,
+          "count": 1746,
           "chunk": 1048576,
-          "chunks": ["1797b6230de8ff8cfc339e89cfbac80a064f1dd7f6ecaea28551db763501e0e5"]
+          "chunks": ["2084589503e26a12e47bf5e936f548effbbd58b6a01ecdda47d5edc3ec877192"]
         }
       ]
     },
     {
       "name": "skip_q5_44100_48000",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9557,
+          "count": 52202,
           "chunk": 1048576,
-          "chunks": ["d2987d6db75a3717ea56af31fde415571f32c2f8fef3bb203cd885496ae238d4"]
+          "chunks": ["f9bf97278cbe2393a30bf7813f3a93d38bfa947afff725f296d1aaa0d55758dd"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 246,
+          "count": 1602,
           "chunk": 1048576,
-          "chunks": ["18334198677c3b96c024b38f9066900ba78dc2d2b1b92a115b8d91a3feb05287"]
+          "chunks": ["4f3aac2af5814db10fffd8c81e3ff8dc40668740f777a3a0a7a9757cefe0263e"]
         }
       ]
     },
     {
       "name": "skip_q10_48000_16000",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 768, "oversample": 16, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1051092583, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 927, "table_len": 768}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 768, "oversample": 16, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1051092583, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 927, "table_len": 768}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3072,
+          "count": 15872,
           "chunk": 1048576,
-          "chunks": ["c7ef55cec18f1dca90de8537ced450adef5090b32aca25ed42f3b183d0b4a592"]
+          "chunks": ["742343e51a864788552bad8ad108dd5fb44f1140e8d80a9efc52595e19c9b3e7"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 390,
+          "count": 1590,
           "chunk": 1048576,
-          "chunks": ["320b29825daa0042f533a8fac53ba609dea18f09068746fb38eed6cdaeae66eb"]
+          "chunks": ["93e33192853c3f05df71cc90af07d04a0c28f5d5cd979e97c1e9aa43d01695f2"]
         }
       ]
     },
     {
       "name": "skip_q10_16000_48000",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 3200, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 415, "table_len": 768}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 415, "table_len": 768}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9216,
+          "count": 143616,
           "chunk": 1048576,
-          "chunks": ["1c45465df7c83701cd523a5136baf33db4c70c67305268f957995dc089d337e6"]
+          "chunks": ["fb2e6a961d9ded5fa2e39dc0f449904ab66b0964fb5321dcadad786133bd2711"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 168,
+          "count": 1602,
           "chunk": 1048576,
-          "chunks": ["f3daf5e29183ce364ac91e0ff441932b4e723c88c07dbe2354a9fa1e91379a51"]
+          "chunks": ["b7ac74239569613644299ed6cda109a7037241e74d642b1afd6256702a19017b"]
         }
       ]
     },
     {
       "name": "skip_q10_44100_48000",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[0, 5, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9461,
+          "count": 52106,
           "chunk": 1048576,
-          "chunks": ["efce393e95c3b1fdc60fe54d59a876fd6f7b3ec9c25843d9b266f2901f4e5a74"]
+          "chunks": ["72f41726bfc46a622a716641b9ef3150926043a2aa18c2c9afd8a03db76e7536"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 330,
+          "count": 1806,
           "chunk": 1048576,
-          "chunks": ["8f5b53ddc958e3bcfd90c0c5c5326d27a416062ca006869d9b3710ee59228a8d"]
+          "chunks": ["36de4585533218a510164fcfe0d2f44ec4bd3ca25568eae1eeac5a1de996cdad"]
         }
       ]
     },
     {
       "name": "qchange_48000_16000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 144, "oversample": 4, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050197797, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 303, "table_len": 144}},
+      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 144, "oversample": 4, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050197797, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 303, "table_len": 144}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3220,
+          "count": 15960,
           "chunk": 1048576,
-          "chunks": ["f4d031112d54bc5cc6ba399e2ab56ddc30cc4fcfe3372d7d6dc69bd3b1477229"]
+          "chunks": ["6deace1c9071885502f6fa03810f626da744602fd8a4705ca7d9519fd8f219d1"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 330,
+          "count": 1590,
           "chunk": 1048576,
-          "chunks": ["db0b915e1b23337a4b0d3294379bfcaa2e32b4fbd178cc2ef897849450a1b1c8"]
+          "chunks": ["414b2e5d59803f7fd11b21dc6dfb748490e9f230cf6d598c4f5d4642e585fd0d"]
         }
       ]
     },
     {
       "name": "qchange_16000_48000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 3200, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1063960707, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 207, "table_len": 144}},
+      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 1, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1063960707, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 207, "table_len": 144}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9600,
+          "count": 143880,
           "chunk": 1048576,
-          "chunks": ["c1f3be82dafaf27fef3c1c27842f21accddc611aad5580f14e51ba61f62b0cac"]
+          "chunks": ["459feb8db5f0c0f3234b062af7dd01412f16ee6400fe6ec1326affe65e1ae87f"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 102,
+          "count": 1752,
           "chunk": 1048576,
-          "chunks": ["74860d8ec6908a89b014daa264770d6c42cff2b57e2726a38d1672e6b02ab678"]
+          "chunks": ["7afe33ae999fed830d6792721ea8ba7d3c58097b9bb6f11fd22740101e9b3482"]
         }
       ]
     },
     {
       "name": "qchange_44100_48000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063960707, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 207, "table_len": 392}},
+      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063960707, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 207, "table_len": 392}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9622,
+          "count": 52202,
           "chunk": 1048576,
-          "chunks": ["55530f9a5f06d890ee7fd74e56a739f34c7feece1bf9a5d905ad85e64cc114a7"]
+          "chunks": ["686424af42216159f5b5041b5ff0777ca2c8d3065e9cad8ee450139292c025a2"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 348,
+          "count": 1764,
           "chunk": 1048576,
-          "chunks": ["81fbcaf71abf51dae956909a14c658fcdc7e1b3e616c78499f5d4a285c6bbab8"]
+          "chunks": ["ca2689296941471e851d42a694f67a2a4752f3a96ebc4f3846c5495fefaac46e"]
         }
       ]
     },
     {
       "name": "qchange_44100_48000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063960707, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 207, "table_len": 392}},
+      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[20, 1, 10, 0, 0, 0], [40, 1, 0, 0, 0, 0], [60, 1, 7, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063960707, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 207, "table_len": 392}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 19244,
+          "count": 104404,
           "chunk": 1048576,
-          "chunks": ["458dce046132563dec9edb4dc13754024a1f5c6da4cf89b00a8ea38005513096"]
+          "chunks": ["b8c8b3ca6bd5044cf113cbea91a54df41927b579dc9a3f5e02312a7bbcea460b"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 264,
+          "count": 1746,
           "chunk": 1048576,
-          "chunks": ["87c260c5c01ae9e8c4e47feec203d7972c8a99ee47aaadad35e0458a686ae1ba"]
+          "chunks": ["7843685e4eb5c964c06b58c8c176483d1ed735ee1cd7f3f0cba73956c1f28765"]
         }
       ]
     },
     {
       "name": "qburst_44100_48000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[15, 1, 10, 0, 0, 0], [15, 1, 0, 0, 0, 0], [15, 1, 10, 0, 0, 0], [15, 1, 3, 0, 0, 0], [30, 1, 3, 0, 0, 0], [45, 1, 0, 0, 0, 0], [45, 1, 9, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[15, 1, 10, 0, 0, 0], [15, 1, 0, 0, 0, 0], [15, 1, 10, 0, 0, 0], [15, 1, 3, 0, 0, 0], [30, 1, 3, 0, 0, 0], [45, 1, 0, 0, 0, 0], [45, 1, 9, 0, 0, 0], [60, 1, 10, 0, 0, 0], [61, 1, 5, 0, 0, 0], [61, 1, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9540,
+          "count": 52285,
           "chunk": 1048576,
-          "chunks": ["5645fa379036577f63859f83ac7633e730c40af5a1d24b835320276824c6d73a"]
+          "chunks": ["625ce09abef48f2a89e3c807befa2542ddaa49dbce63837d8dced8d360a51ef8"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 438,
+          "count": 1794,
           "chunk": 1048576,
-          "chunks": ["abd9b8f54586b9c45426aea35155e9ff43f6e6a7e85e0f7778903396406a4654"]
+          "chunks": ["844e4ba70f69de0e1e66765d2901c70bfc67a2864c54a285c3f5f8b6f326457a"]
         }
       ]
     },
     {
       "name": "qburst_44100_48000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[15, 1, 10, 0, 0, 0], [15, 1, 0, 0, 0, 0], [15, 1, 10, 0, 0, 0], [15, 1, 3, 0, 0, 0], [30, 1, 3, 0, 0, 0], [45, 1, 0, 0, 0, 0], [45, 1, 9, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[15, 1, 10, 0, 0, 0], [15, 1, 0, 0, 0, 0], [15, 1, 10, 0, 0, 0], [15, 1, 3, 0, 0, 0], [30, 1, 3, 0, 0, 0], [45, 1, 0, 0, 0, 0], [45, 1, 9, 0, 0, 0], [60, 1, 10, 0, 0, 0], [61, 1, 5, 0, 0, 0], [61, 1, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064346583, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 239, "table_len": 1288}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 19236,
+          "count": 104570,
           "chunk": 1048576,
-          "chunks": ["78aa853eeffba0bbe872d1e3439ffe698fdf4448a67a0d88ca9223b5031a8d21"]
+          "chunks": ["5da49868051d8ce19bfef65de717d233f914d486ca02a75c6cf9cf80a4eff450"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 276,
+          "count": 1470,
           "chunk": 1048576,
-          "chunks": ["682a6ef10f22e050c1a941e5a0e07617516ff2073e2830584e2cc347ae346b30"]
+          "chunks": ["a9950a2f22eaa8bf4086af855d2ae419c81502bcc7f5ea8ff4aca14ef1318611"]
         }
       ]
     },
     {
       "name": "rate_q5_48000_16000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[20, 2, 48000, 8000, 0, 0], [40, 2, 48000, 32000, 0, 0], [60, 2, 44100, 48000, 0, 0], [70, 2, 44100, 48000, 0, 0], [70, 3, 44100, 48000, 44100, 48000], [80, 2, 48000, 16000, 0, 0], [90, 2, 16000, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[20, 2, 48000, 8000, 0, 0], [40, 2, 48000, 32000, 0, 0], [60, 2, 44100, 48000, 0, 0], [70, 2, 44100, 48000, 0, 0], [70, 3, 44100, 48000, 44100, 48000], [80, 2, 48000, 16000, 0, 0], [90, 2, 16000, 48000, 0, 0], [100, 2, 48000, 8000, 0, 0], [101, 2, 48000, 16000, 0, 0], [101, 2, 48000, 32000, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 2588,
+          "count": 31265,
           "chunk": 1048576,
-          "chunks": ["693368b0d2e420694e17fd92a6c9e2afb4e24f488c5bb254f80eff498e3adee7"]
+          "chunks": ["1fd2acb96c1961271ba347740384b06114ac9d2bf1de9f97d30c19c17d83ba98"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 282,
+          "count": 1536,
           "chunk": 1048576,
-          "chunks": ["0979a44d9a68dd64a67688732178ec706e52bd15d243a011f6d836b69e0ee0ac"]
+          "chunks": ["cec427c9d92d8846bd42eb0536d49a1385ed264efa8eaf52431f0c6d3221e780"]
         }
       ]
     },
     {
       "name": "rate_q5_48000_16000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[20, 2, 48000, 8000, 0, 0], [40, 2, 48000, 32000, 0, 0], [60, 2, 44100, 48000, 0, 0], [70, 2, 44100, 48000, 0, 0], [70, 3, 44100, 48000, 44100, 48000], [80, 2, 48000, 16000, 0, 0], [90, 2, 16000, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[20, 2, 48000, 8000, 0, 0], [40, 2, 48000, 32000, 0, 0], [60, 2, 44100, 48000, 0, 0], [70, 2, 44100, 48000, 0, 0], [70, 3, 44100, 48000, 44100, 48000], [80, 2, 48000, 16000, 0, 0], [90, 2, 16000, 48000, 0, 0], [100, 2, 48000, 8000, 0, 0], [101, 2, 48000, 16000, 0, 0], [101, 2, 48000, 32000, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 5034,
+          "count": 62354,
           "chunk": 1048576,
-          "chunks": ["3af7f51fda799130d466c22eedcc94f18493983a6bc141656781a83849b46e86"]
+          "chunks": ["6fae0c278ab0ff784ab5476f3a55b5c5c5eab289bf54d9950d3a3f4fb554df8d"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 270,
+          "count": 1578,
           "chunk": 1048576,
-          "chunks": ["fe7ce0f84d7e13400ba510cca7b7997740213b7ba5ca8557a3af91464243b5fb"]
+          "chunks": ["4f43293b348f3a96388abf9f2e4d5b952564a24b6fc100d581e55d222b9d2a8d"]
         }
       ]
     },
     {
       "name": "rate_q10_48000_16000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[20, 2, 48000, 8000, 0, 0], [40, 2, 48000, 32000, 0, 0], [60, 2, 44100, 48000, 0, 0], [70, 2, 44100, 48000, 0, 0], [70, 3, 44100, 48000, 44100, 48000], [80, 2, 48000, 16000, 0, 0], [90, 2, 16000, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 768, "oversample": 16, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1051092583, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 927, "table_len": 768}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[20, 2, 48000, 8000, 0, 0], [40, 2, 48000, 32000, 0, 0], [60, 2, 44100, 48000, 0, 0], [70, 2, 44100, 48000, 0, 0], [70, 3, 44100, 48000, 44100, 48000], [80, 2, 48000, 16000, 0, 0], [90, 2, 16000, 48000, 0, 0], [100, 2, 48000, 8000, 0, 0], [101, 2, 48000, 16000, 0, 0], [101, 2, 48000, 32000, 0, 0]], "init_err": 0, "state": {"filt_len": 768, "oversample": 16, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1051092583, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 927, "table_len": 768}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3220,
+          "count": 31849,
           "chunk": 1048576,
-          "chunks": ["470f86d4298f30f73114ba8764520e2e98a7402bac679a3a3effe578372d06c4"]
+          "chunks": ["3dbe07e6e9f041805302e9b4745ade495e7d187de824eb6477d6aaf28faa0758"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 306,
+          "count": 1692,
           "chunk": 1048576,
-          "chunks": ["121c01bc845c8cb8017dd34770987895e225a37a52aee97db1c2ee80f2a50431"]
+          "chunks": ["d1d631e5f83e03e53313b15aaa46680549bf246a742f03fd5a8fcf1f6731b798"]
         }
       ]
     },
     {
       "name": "drift_q5_48000_48000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 48000, "in_rate": 48000, "out_rate": 48000, "frames": 9600, "max_calls": 0, "events": [[5, 3, 48001, 48000, 48000, 48000], [10, 3, 47999, 48000, 48000, 48000], [15, 3, 48000, 48000, 48000, 48000], [20, 3, 48001, 48000, 48000, 48000], [25, 3, 47999, 48000, 48000, 48000], [30, 3, 48000, 48000, 48000, 48000], [35, 3, 48001, 48000, 48000, 48000], [40, 3, 47999, 48000, 48000, 48000], [45, 3, 48000, 48000, 48000, 48000], [50, 3, 48001, 48000, 48000, 48000], [55, 3, 47999, 48000, 48000, 48000], [60, 3, 48000, 48000, 48000, 48000], [65, 3, 48001, 48000, 48000, 48000], [70, 3, 47999, 48000, 48000, 48000], [75, 3, 48000, 48000, 48000, 48000], [80, 3, 48001, 48000, 48000, 48000], [85, 3, 47999, 48000, 48000, 48000], [90, 3, 48000, 48000, 48000, 48000], [95, 3, 48001, 48000, 48000, 48000], [100, 3, 47999, 48000, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 1, "int_advance": 1, "frac_advance": 0, "cutoff_bits": 1064346583, "num_rate": 1, "den_rate": 1, "mem_alloc_size": 239, "table_len": 80}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 48000, "in_rate": 48000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[5, 3, 48001, 48000, 48000, 48000], [10, 3, 47999, 48000, 48000, 48000], [15, 3, 48000, 48000, 48000, 48000], [20, 3, 48001, 48000, 48000, 48000], [25, 3, 47999, 48000, 48000, 48000], [30, 3, 48000, 48000, 48000, 48000], [35, 3, 48001, 48000, 48000, 48000], [40, 3, 47999, 48000, 48000, 48000], [45, 3, 48000, 48000, 48000, 48000], [50, 3, 48001, 48000, 48000, 48000], [55, 3, 47999, 48000, 48000, 48000], [60, 3, 48000, 48000, 48000, 48000], [65, 3, 48001, 48000, 48000, 48000], [70, 3, 47999, 48000, 48000, 48000], [75, 3, 48000, 48000, 48000, 48000], [80, 3, 48001, 48000, 48000, 48000], [85, 3, 47999, 48000, 48000, 48000], [90, 3, 48000, 48000, 48000, 48000], [95, 3, 48001, 48000, 48000, 48000], [100, 3, 47999, 48000, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 1, "int_advance": 1, "frac_advance": 0, "cutoff_bits": 1064346583, "num_rate": 1, "den_rate": 1, "mem_alloc_size": 239, "table_len": 80}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9602,
+          "count": 48005,
           "chunk": 1048576,
-          "chunks": ["1b5625fc96c861768511e3bdc30e391145744a654a88c5adab858e9b7b66a784"]
+          "chunks": ["f87ec5322e2f3508b8f815e306477a1457dfa9f74bedfcb15771ac5823d77a55"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 270,
+          "count": 1692,
           "chunk": 1048576,
-          "chunks": ["7d917a2eb96884ae82b3c8bb3292030869a96b54139de89906fad6d1c1e05cac"]
+          "chunks": ["eaf5c00f6b7acee59e661a9dd2db74dc11e81b33b2331b4b545d76195888bc2d"]
         }
       ]
     },
     {
       "name": "drift_q5_48000_48000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 48000, "den": 48000, "in_rate": 48000, "out_rate": 48000, "frames": 9600, "max_calls": 0, "events": [[5, 3, 48001, 48000, 48000, 48000], [10, 3, 47999, 48000, 48000, 48000], [15, 3, 48000, 48000, 48000, 48000], [20, 3, 48001, 48000, 48000, 48000], [25, 3, 47999, 48000, 48000, 48000], [30, 3, 48000, 48000, 48000, 48000], [35, 3, 48001, 48000, 48000, 48000], [40, 3, 47999, 48000, 48000, 48000], [45, 3, 48000, 48000, 48000, 48000], [50, 3, 48001, 48000, 48000, 48000], [55, 3, 47999, 48000, 48000, 48000], [60, 3, 48000, 48000, 48000, 48000], [65, 3, 48001, 48000, 48000, 48000], [70, 3, 47999, 48000, 48000, 48000], [75, 3, 48000, 48000, 48000, 48000], [80, 3, 48001, 48000, 48000, 48000], [85, 3, 47999, 48000, 48000, 48000], [90, 3, 48000, 48000, 48000, 48000], [95, 3, 48001, 48000, 48000, 48000], [100, 3, 47999, 48000, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 1, "int_advance": 1, "frac_advance": 0, "cutoff_bits": 1064346583, "num_rate": 1, "den_rate": 1, "mem_alloc_size": 239, "table_len": 80}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 48000, "den": 48000, "in_rate": 48000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[5, 3, 48001, 48000, 48000, 48000], [10, 3, 47999, 48000, 48000, 48000], [15, 3, 48000, 48000, 48000, 48000], [20, 3, 48001, 48000, 48000, 48000], [25, 3, 47999, 48000, 48000, 48000], [30, 3, 48000, 48000, 48000, 48000], [35, 3, 48001, 48000, 48000, 48000], [40, 3, 47999, 48000, 48000, 48000], [45, 3, 48000, 48000, 48000, 48000], [50, 3, 48001, 48000, 48000, 48000], [55, 3, 47999, 48000, 48000, 48000], [60, 3, 48000, 48000, 48000, 48000], [65, 3, 48001, 48000, 48000, 48000], [70, 3, 47999, 48000, 48000, 48000], [75, 3, 48000, 48000, 48000, 48000], [80, 3, 48001, 48000, 48000, 48000], [85, 3, 47999, 48000, 48000, 48000], [90, 3, 48000, 48000, 48000, 48000], [95, 3, 48001, 48000, 48000, 48000], [100, 3, 47999, 48000, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 1, "int_advance": 1, "frac_advance": 0, "cutoff_bits": 1064346583, "num_rate": 1, "den_rate": 1, "mem_alloc_size": 239, "table_len": 80}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 19202,
+          "count": 96008,
           "chunk": 1048576,
-          "chunks": ["da0d6d354a68a313b0136dc2f9dadb4474f81a9694e96f2c869872399a4762f4"]
+          "chunks": ["5b6eaf7d87648cd79ab0c46577df5e5b6db36ad5469c8d3e02e5f5d038f62d2a"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 408,
+          "count": 1602,
           "chunk": 1048576,
-          "chunks": ["908f7c488c172c66062131564ccd429398b6be10ab48423121db57f0a2980f6b"]
+          "chunks": ["4e58e6a6f0c3c84241785abb8602bb72b7395c68deea51aa7dd02d3dd0cf46b6"]
         }
       ]
     },
     {
       "name": "drift_q10_48000_48000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 48000, "den": 48000, "in_rate": 48000, "out_rate": 48000, "frames": 9600, "max_calls": 0, "events": [[5, 3, 48001, 48000, 48000, 48000], [10, 3, 47999, 48000, 48000, 48000], [15, 3, 48000, 48000, 48000, 48000], [20, 3, 48001, 48000, 48000, 48000], [25, 3, 47999, 48000, 48000, 48000], [30, 3, 48000, 48000, 48000, 48000], [35, 3, 48001, 48000, 48000, 48000], [40, 3, 47999, 48000, 48000, 48000], [45, 3, 48000, 48000, 48000, 48000], [50, 3, 48001, 48000, 48000, 48000], [55, 3, 47999, 48000, 48000, 48000], [60, 3, 48000, 48000, 48000, 48000], [65, 3, 48001, 48000, 48000, 48000], [70, 3, 47999, 48000, 48000, 48000], [75, 3, 48000, 48000, 48000, 48000], [80, 3, 48001, 48000, 48000, 48000], [85, 3, 47999, 48000, 48000, 48000], [90, 3, 48000, 48000, 48000, 48000], [95, 3, 48001, 48000, 48000, 48000], [100, 3, 47999, 48000, 48000, 48000]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 1, "int_advance": 1, "frac_advance": 0, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 1, "mem_alloc_size": 415, "table_len": 256}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 48000, "den": 48000, "in_rate": 48000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[5, 3, 48001, 48000, 48000, 48000], [10, 3, 47999, 48000, 48000, 48000], [15, 3, 48000, 48000, 48000, 48000], [20, 3, 48001, 48000, 48000, 48000], [25, 3, 47999, 48000, 48000, 48000], [30, 3, 48000, 48000, 48000, 48000], [35, 3, 48001, 48000, 48000, 48000], [40, 3, 47999, 48000, 48000, 48000], [45, 3, 48000, 48000, 48000, 48000], [50, 3, 48001, 48000, 48000, 48000], [55, 3, 47999, 48000, 48000, 48000], [60, 3, 48000, 48000, 48000, 48000], [65, 3, 48001, 48000, 48000, 48000], [70, 3, 47999, 48000, 48000, 48000], [75, 3, 48000, 48000, 48000, 48000], [80, 3, 48001, 48000, 48000, 48000], [85, 3, 47999, 48000, 48000, 48000], [90, 3, 48000, 48000, 48000, 48000], [95, 3, 48001, 48000, 48000, 48000], [100, 3, 47999, 48000, 48000, 48000]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 1, "int_advance": 1, "frac_advance": 0, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 1, "mem_alloc_size": 415, "table_len": 256}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 9603,
+          "count": 48006,
           "chunk": 1048576,
-          "chunks": ["39c36309440ec75afdd33c0c3f01b1a358b90b050b3591b41ffd1a6d6e3aecd3"]
+          "chunks": ["fe2ce39adf3b60dc1dcf12e0c7c89879dd31ea03a2b85f2798c42477d2e5bb40"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 468,
+          "count": 1974,
           "chunk": 1048576,
-          "chunks": ["eeaef280b2368b2a4a803546cfa27265fc9d93fffa3bd0257c106dfb31e82254"]
+          "chunks": ["babdd235f4c06a08f20110f66996219f168c00f15984e18e4103fdee8940df7a"]
         }
       ]
     },
     {
       "name": "reset_q5_48000_16000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3201,
+          "count": 16001,
           "chunk": 1048576,
-          "chunks": ["73330660a95ae07e519d22d712207a56ca8c79465e826db5d3dc46106660138e"]
+          "chunks": ["9b76129c9202bc4d31ec5f669cd9c385db182c98fd93a8018dfc7fac1dd6ddb5"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 354,
+          "count": 1656,
           "chunk": 1048576,
-          "chunks": ["b7cffa156d7d4c31bf1a5ad66340229323894c1eaa79a5d24a7d73a0367af7b2"]
+          "chunks": ["0d445798f6e5f71e55ffd88e537f822762fe72083bc5dd286c1beba6b8b542c0"]
         }
       ]
     },
     {
       "name": "reset_q5_48000_16000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 2, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 6402,
+          "count": 32002,
           "chunk": 1048576,
-          "chunks": ["cf04bf33a48372e538f1b5fa9e1af8d19ce96a4671ab30977e004fbc795d87b1"]
+          "chunks": ["47686f06dad765bc37f50f82a03fad1a5b35d0e625204e343e05996a14f1b41d"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 336,
+          "count": 1602,
           "chunk": 1048576,
-          "chunks": ["f0e2f9f3d08815e0510f45f5f9254241af8b3e2f613dfc77466d20c0f095e3cb"]
+          "chunks": ["1e9d2860705896889e84a62fe3d17944eca0a43b59db46b44f86e23d6a3a2409"]
         }
       ]
     },
     {
       "name": "reset_q10_16000_48000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 2, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 3200, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 415, "table_len": 768}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 2, "num": 16000, "den": 48000, "in_rate": 16000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 1, "int_advance": 0, "frac_advance": 1, "cutoff_bits": 1064933786, "num_rate": 1, "den_rate": 3, "mem_alloc_size": 415, "table_len": 768}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 19200,
+          "count": 288000,
           "chunk": 1048576,
-          "chunks": ["59a2c7190620a3cf0e43319963342bacf8f20153e3a574eb6ebcc2e82a0eefde"]
+          "chunks": ["33ef8cc41153926905ab66cbbe1455d76496e2083b0b53b2ba6b384055cf9abe"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 204,
+          "count": 1578,
           "chunk": 1048576,
-          "chunks": ["6008e7289dba50662f8a0ebc4014915f7ba43e5ed830fb80c077c6e8e6136ea2"]
+          "chunks": ["c8cf6d05b71f41ae3a90509e222d1eecfa571692af1d0c6d270b43e900ed6737"]
         }
       ]
     },
     {
       "name": "reset_q3_44100_48000_3ch",
-      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 3, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063960707, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 207, "table_len": 392}},
+      "params": {"mode": "i", "frac": 0, "q": 3, "ch": 3, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 48, "oversample": 8, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1063960707, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 207, "table_len": 392}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 28803,
+          "count": 156738,
           "chunk": 1048576,
-          "chunks": ["8b157b0dda85bbb5461495815e163957cd80185591d7cb4a34d2dc304d8906db"]
+          "chunks": ["cbe97a7724708d417d2e1d94d97ce9705c7f3d049b8aa55d1fc778670c8587cb"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 306,
+          "count": 1494,
           "chunk": 1048576,
-          "chunks": ["9961d91bd0461c91286b96163646e9e34322a2e79789e8f767942d89bba5c331"]
+          "chunks": ["07ff66ebe0fba2484b53b4fb88b3f608277bec124b5c0786370112def705a5aa"]
         }
       ]
     },
     {
       "name": "resetq_q5_48000_16000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 9600, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0], [30, 1, 8, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
+      "params": {"mode": "i", "frac": 0, "q": 5, "ch": 1, "num": 48000, "den": 16000, "in_rate": 48000, "out_rate": 16000, "frames": 48000, "max_calls": 0, "events": [[30, 4, 0, 0, 0, 0], [30, 1, 8, 0, 0, 0]], "init_err": 0, "state": {"filt_len": 240, "oversample": 8, "direct": 1, "int_advance": 3, "frac_advance": 0, "cutoff_bits": 1050499787, "num_rate": 3, "den_rate": 1, "mem_alloc_size": 399, "table_len": 240}},
       "streams": [
         {
           "name": "out",
           "type": "int16",
-          "count": 3161,
+          "count": 15961,
           "chunk": 1048576,
-          "chunks": ["84ff0eaaa93666fc60d5c6f0b484eb8d3b578d0ab77841aa1fb2f0b58b9f5a85"]
+          "chunks": ["0c066597db71c1472260e955ca002f9681e96b5603f5bd39ff72d7b0475e7488"]
         },
         {
           "name": "trace",
           "type": "int32",
-          "count": 294,
+          "count": 1596,
           "chunk": 1048576,
-          "chunks": ["b44d352d09cb87c3d0543d7ab9911831879c381d8be50ed8b110eddd63e3d9a9"]
+          "chunks": ["ef016b20ae72007b7bc09db4adf37febd32716c754fd45695459a3fdd43f90ca"]
         }
       ]
     },
     {
       "name": "fail_q10_44100_48000_1ch",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[20, 3, 600000000, 1, 44100, 48000], [30, 2, 44100, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 1, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[20, 3, 600000000, 1, 44100, 48000], [30, 2, 44100, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
       "streams": [
         {
           "name": "out",
@@ -20750,15 +20837,15 @@
         {
           "name": "trace",
           "type": "int32",
-          "count": 354,
+          "count": 1386,
           "chunk": 1048576,
-          "chunks": ["d14099a45649713178365378603ae6373834276f1ab13b94b37d96ff234a21c7"]
+          "chunks": ["e01dc19d018a2a9326283d53088aff68ef8583e603da10db3e2d28533106677a"]
         }
       ]
     },
     {
       "name": "fail_q10_44100_48000_2ch",
-      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 8820, "max_calls": 0, "events": [[20, 3, 600000000, 1, 44100, 48000], [30, 2, 44100, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
+      "params": {"mode": "i", "frac": 0, "q": 10, "ch": 2, "num": 44100, "den": 48000, "in_rate": 44100, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[20, 3, 600000000, 1, 44100, 48000], [30, 2, 44100, 48000, 0, 0]], "init_err": 0, "state": {"filt_len": 256, "oversample": 32, "direct": 0, "int_advance": 0, "frac_advance": 147, "cutoff_bits": 1064933786, "num_rate": 147, "den_rate": 160, "mem_alloc_size": 415, "table_len": 8200}},
       "streams": [
         {
           "name": "out",
@@ -20770,15 +20857,15 @@
         {
           "name": "trace",
           "type": "int32",
-          "count": 306,
+          "count": 1338,
           "chunk": 1048576,
-          "chunks": ["dbaa30bca0c3f27b0196f716b721b5cb3b078f3d6bfd0f23a9c1b6770426f9f0"]
+          "chunks": ["df9472cb3362ff6ecb4159fe10ab4b57ac5c348142a2cd9ec9b1be45927e4d4e"]
         }
       ]
     },
     {
       "name": "overflow_q5_frac_1ch",
-      "params": {"mode": "i", "frac": 1, "q": 5, "ch": 1, "num": 1000003, "den": 999983, "in_rate": 48000, "out_rate": 48000, "frames": 9600, "max_calls": 0, "events": [[25, 3, 999983, 1000003, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 1, "frac_advance": 20, "cutoff_bits": 1064044284, "num_rate": 1000003, "den_rate": 999983, "mem_alloc_size": 239, "table_len": 1288}},
+      "params": {"mode": "i", "frac": 1, "q": 5, "ch": 1, "num": 1000003, "den": 999983, "in_rate": 48000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[25, 3, 999983, 1000003, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 1, "frac_advance": 20, "cutoff_bits": 1064044284, "num_rate": 1000003, "den_rate": 999983, "mem_alloc_size": 239, "table_len": 1288}},
       "streams": [
         {
           "name": "out",
@@ -20798,7 +20885,7 @@
     },
     {
       "name": "overflow_q5_frac_2ch",
-      "params": {"mode": "i", "frac": 1, "q": 5, "ch": 2, "num": 1000003, "den": 999983, "in_rate": 48000, "out_rate": 48000, "frames": 9600, "max_calls": 0, "events": [[25, 3, 999983, 1000003, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 1, "frac_advance": 20, "cutoff_bits": 1064044284, "num_rate": 1000003, "den_rate": 999983, "mem_alloc_size": 239, "table_len": 1288}},
+      "params": {"mode": "i", "frac": 1, "q": 5, "ch": 2, "num": 1000003, "den": 999983, "in_rate": 48000, "out_rate": 48000, "frames": 48000, "max_calls": 0, "events": [[25, 3, 999983, 1000003, 48000, 48000]], "init_err": 0, "state": {"filt_len": 80, "oversample": 16, "direct": 0, "int_advance": 1, "frac_advance": 20, "cutoff_bits": 1064044284, "num_rate": 1000003, "den_rate": 999983, "mem_alloc_size": 239, "table_len": 1288}},
       "streams": [
         {
           "name": "out",

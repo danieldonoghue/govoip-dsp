@@ -23,7 +23,9 @@
 
 #include "harness.h"
 
-#define SIGNAL_LEN 65536
+#define SIGNAL_LEN 262144
+#define EV_FRAMES 48000
+#define MIXED_CALLS 3
 #define MAX_CALLS 200000
 #define MAX_EVENTS 64
 #define OUT_CAP (1 << 20)
@@ -110,7 +112,7 @@ static void signal_case(void)
 		hz_put_i16(a, signal16[i]);
 		hz_put_f32(b, signalf[i]);
 	}
-	hz_case_end("{\"length\": 65536}");
+	hz_case_end("{\"length\": 262144}");
 }
 
 /* Draws the next call's offered input and output lengths, in frames. */
@@ -143,7 +145,7 @@ typedef struct {
 
 typedef struct {
 	const char *name;
-	char mode; /* i: interleaved int, f: interleaved float, s/g: per channel int/float */
+	char mode; /* i/f: interleaved int/float, s/g: per channel int/float, m: mixed (see run_interleaved) */
 	int frac;  /* 1: speex_resampler_init_frac with num:den, else init with the rates */
 	int q;
 	uint32_t ch, num, den, in_rate, out_rate, frames;
@@ -201,6 +203,33 @@ static void run_interleaved(const rcase *c, SpeexResamplerState *st, hz_stream *
 	uint32_t pos = 0, calls = 0, nch = c->ch;
 	int ev = 0, stop = 0;
 	r.state = fnv1a(c->name);
+	/* Mixed mode: channel 0 alone first, so the channels' states differ. */
+	if (c->mode == 'm') {
+		uint32_t p0 = 0, k;
+		speex_resampler_set_input_stride(st, nch);
+		speex_resampler_set_output_stride(st, 1);
+		for (k = 0; k < MIXED_CALLS; k++) {
+			uint32_t in_off, out_off, i;
+			spx_uint32_t num, den, il, ol;
+			spx_int16_t *buf;
+			int ret;
+			speex_resampler_get_ratio(st, &num, &den);
+			draw_call(&r, num, den, &in_off, &out_off);
+			il = in_off < c->frames - p0 ? in_off : c->frames - p0;
+			ol = out_off;
+			buf = malloc(sizeof *buf * ((size_t)out_off + 1));
+			if (!buf)
+				hz_die("out of memory");
+			ret = speex_resampler_process_int(st, 0, signal16 + (size_t)p0 * nch, &il, buf, &ol);
+			for (i = 0; i < ol; i++)
+				hz_put_i16(out, buf[i]);
+			free(buf);
+			put_rec(tr, T_SPLIT, (int32_t)(in_off < c->frames - p0 ? in_off : c->frames - p0), (int32_t)out_off,
+			        (int32_t)il, (int32_t)ol, ret);
+			p0 += il;
+		}
+		speex_resampler_set_input_stride(st, 1);
+	}
 	while (pos < c->frames && !stop) {
 		uint32_t in_off, out_off, in_len, out_len, i;
 		spx_uint32_t num, den;
@@ -224,7 +253,7 @@ static void run_interleaved(const rcase *c, SpeexResamplerState *st, hz_stream *
 		out_len = out_off;
 		{
 			spx_uint32_t il = in_len, ol = out_len;
-			if (c->mode == 'i') {
+			if (c->mode != 'f') {
 				spx_int16_t *buf = malloc(sizeof *buf * ((size_t)out_len * nch + 1));
 				if (!buf)
 					hz_die("out of memory");
@@ -343,7 +372,7 @@ static void run_case(const rcase *c)
 		         st->filt_len, st->oversample, direct, st->int_advance, st->frac_advance, cutoff_bits,
 		         st->num_rate, st->den_rate, st->mem_alloc_size, used);
 		put_state_rec(tr, T_INIT, err, st);
-		if (c->mode == 'i' || c->mode == 'f')
+		if (c->mode == 'i' || c->mode == 'f' || c->mode == 'm')
 			run_interleaved(c, st, out, tr);
 		else
 			run_split(c, st, out, tr);
@@ -466,6 +495,12 @@ static void build_cases(void)
 	add('i', 1, 5, 1, 4294967295u, 4294967294u, 4294967295u, 4294967294u, 4800, "initfail_q5_frac_4294967295_4294967294");
 	add('i', 1, 10, 1, 6300001, 3, 6300001, 3, 4800, "initfail_q10_frac_6300001_3");
 	add('i', 0, 0, 7000000, 48000, 48000, 48000, 48000, 1, "initfail_q0_48000_48000_7000000ch");
+	/* 16*den_rate wraps in uint32 and halves the oversampling at quality 0;
+	 * at quality 1 the filter length overflows multiply_frac. */
+	add('i', 1, 0, 1, 270000001u, 270000000u, 270000001u, 270000000u, 4800, "q0_frac_270000001_270000000");
+	add('i', 1, 1, 1, 270000001u, 270000000u, 270000001u, 270000000u, 4800, "initfail_q1_frac_270000001_270000000");
+	pair('m', 5, 2, 44100, 48000, 5292, "mixed_q5_44100_48000_2ch");
+	pair('m', 10, 3, 48000, 16000, 5760, "mixed_q10_48000_16000_3ch");
 	/* den_rate + frac_advance above 2^32: samp_frac_num wraps and the input
 	 * position stops advancing, so the case runs a fixed number of calls. */
 	for (q = 0; q <= 10; q += 10) {
@@ -496,18 +531,18 @@ static void build_cases(void)
 	/* 7. Events. */
 	for (q = 0; q <= 10; q += 5)
 		for (i = 0; i < 3; i++) {
-			c = pair('i', q, 1, ev3[i][0], ev3[i][1], ev3[i][0] / 5, "skip_q%d_%u_%u", q, ev3[i][0], ev3[i][1]);
+			c = pair('i', q, 1, ev3[i][0], ev3[i][1], EV_FRAMES, "skip_q%d_%u_%u", q, ev3[i][0], ev3[i][1]);
 			ev(c, 0, E_SKIP, 0, 0, 0, 0);
 		}
 	for (i = 0; i < 4; i++) {
 		static const uint32_t qc[4][3] = {{48000, 16000, 1}, {16000, 48000, 1}, {44100, 48000, 1}, {44100, 48000, 2}};
-		c = pair('i', 3, qc[i][2], qc[i][0], qc[i][1], qc[i][0] / 5, "qchange_%u_%u_%uch", qc[i][0], qc[i][1], qc[i][2]);
+		c = pair('i', 3, qc[i][2], qc[i][0], qc[i][1], EV_FRAMES, "qchange_%u_%u_%uch", qc[i][0], qc[i][1], qc[i][2]);
 		ev(c, 20, E_QUALITY, 10, 0, 0, 0);
 		ev(c, 40, E_QUALITY, 0, 0, 0, 0);
 		ev(c, 60, E_QUALITY, 7, 0, 0, 0);
 	}
 	for (ch = 1; ch <= 2; ch++) {
-		c = pair('i', 5, ch, 44100, 48000, 8820, "qburst_44100_48000_%uch", ch);
+		c = pair('i', 5, ch, 44100, 48000, EV_FRAMES, "qburst_44100_48000_%uch", ch);
 		ev(c, 15, E_QUALITY, 10, 0, 0, 0);
 		ev(c, 15, E_QUALITY, 0, 0, 0, 0);
 		ev(c, 15, E_QUALITY, 10, 0, 0, 0);
@@ -515,11 +550,14 @@ static void build_cases(void)
 		ev(c, 30, E_QUALITY, 3, 0, 0, 0);
 		ev(c, 45, E_QUALITY, 0, 0, 0, 0);
 		ev(c, 45, E_QUALITY, 9, 0, 0, 0);
+		ev(c, 60, E_QUALITY, 10, 0, 0, 0);
+		ev(c, 61, E_QUALITY, 5, 0, 0, 0);
+		ev(c, 61, E_QUALITY, 0, 0, 0, 0);
 	}
 	for (i = 0; i < 3; i++) {
 		q = i == 2 ? 10 : 5;
 		ch = i == 1 ? 2 : 1;
-		c = pair('i', q, ch, 48000, 16000, 9600, "rate_q%d_48000_16000_%uch", q, ch);
+		c = pair('i', q, ch, 48000, 16000, EV_FRAMES, "rate_q%d_48000_16000_%uch", q, ch);
 		ev(c, 20, E_RATE, 48000, 8000, 0, 0);
 		ev(c, 40, E_RATE, 48000, 32000, 0, 0);
 		ev(c, 60, E_RATE, 44100, 48000, 0, 0);
@@ -527,34 +565,37 @@ static void build_cases(void)
 		ev(c, 70, E_RATE_FRAC, 44100, 48000, 44100, 48000);
 		ev(c, 80, E_RATE, 48000, 16000, 0, 0);
 		ev(c, 90, E_RATE, 16000, 48000, 0, 0);
+		ev(c, 100, E_RATE, 48000, 8000, 0, 0);
+		ev(c, 101, E_RATE, 48000, 16000, 0, 0);
+		ev(c, 101, E_RATE, 48000, 32000, 0, 0);
 	}
 	for (i = 0; i < 3; i++) {
 		q = i == 2 ? 10 : 5;
 		ch = i == 1 ? 2 : 1;
-		c = pair('i', q, ch, 48000, 48000, 9600, "drift_q%d_48000_48000_%uch", q, ch);
+		c = pair('i', q, ch, 48000, 48000, EV_FRAMES, "drift_q%d_48000_48000_%uch", q, ch);
 		for (call = 5, j = 0; call <= 100; call += 5, j++) {
 			static const uint32_t num[3] = {48001, 47999, 48000};
 			ev(c, call, E_RATE_FRAC, num[j % 3], 48000, 48000, 48000);
 		}
 	}
-	c = pair('i', 5, 1, 48000, 16000, 9600, "reset_q5_48000_16000_1ch");
+	c = pair('i', 5, 1, 48000, 16000, EV_FRAMES, "reset_q5_48000_16000_1ch");
 	ev(c, 30, E_RESET, 0, 0, 0, 0);
-	c = pair('i', 5, 2, 48000, 16000, 9600, "reset_q5_48000_16000_2ch");
+	c = pair('i', 5, 2, 48000, 16000, EV_FRAMES, "reset_q5_48000_16000_2ch");
 	ev(c, 30, E_RESET, 0, 0, 0, 0);
-	c = pair('i', 10, 2, 16000, 48000, 3200, "reset_q10_16000_48000_2ch");
+	c = pair('i', 10, 2, 16000, 48000, EV_FRAMES, "reset_q10_16000_48000_2ch");
 	ev(c, 30, E_RESET, 0, 0, 0, 0);
-	c = pair('i', 3, 3, 44100, 48000, 8820, "reset_q3_44100_48000_3ch");
+	c = pair('i', 3, 3, 44100, 48000, EV_FRAMES, "reset_q3_44100_48000_3ch");
 	ev(c, 30, E_RESET, 0, 0, 0, 0);
-	c = pair('i', 5, 1, 48000, 16000, 9600, "resetq_q5_48000_16000_1ch");
+	c = pair('i', 5, 1, 48000, 16000, EV_FRAMES, "resetq_q5_48000_16000_1ch");
 	ev(c, 30, E_RESET, 0, 0, 0, 0);
 	ev(c, 30, E_QUALITY, 8, 0, 0, 0);
 	for (ch = 1; ch <= 2; ch++) {
-		c = pair('i', 10, ch, 44100, 48000, 8820, "fail_q10_44100_48000_%uch", ch);
+		c = pair('i', 10, ch, 44100, 48000, EV_FRAMES, "fail_q10_44100_48000_%uch", ch);
 		ev(c, 20, E_RATE_FRAC, 600000000u, 1, 44100, 48000);
 		ev(c, 30, E_RATE, 44100, 48000, 0, 0);
 	}
 	for (ch = 1; ch <= 2; ch++) {
-		c = add('i', 1, 5, ch, 1000003, 999983, 48000, 48000, 9600, "overflow_q5_frac_%uch", ch);
+		c = add('i', 1, 5, ch, 1000003, 999983, 48000, 48000, EV_FRAMES, "overflow_q5_frac_%uch", ch);
 		ev(c, 25, E_RATE_FRAC, 999983, 1000003, 48000, 48000);
 	}
 }

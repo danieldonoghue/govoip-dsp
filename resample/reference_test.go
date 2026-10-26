@@ -16,7 +16,8 @@ import (
 const fixtureDir = "../testdata/speexdsp/resample"
 
 const (
-	signalLen      = 65536
+	signalLen      = 262144
+	mixedCalls     = 3
 	maxCalls       = 200000
 	outCap         = 1 << 20
 	outStrideSplit = 3
@@ -242,7 +243,7 @@ func runReferenceCase(t *testing.T, m *testutil.Manifest, c *testutil.Case) {
 			}
 		}
 		tr.state(tInit, 0, r)
-		if p.Mode == "i" || p.Mode == "f" {
+		if p.Mode == "i" || p.Mode == "f" || p.Mode == "m" {
 			replayInterleaved(t, c.Name, &p, r, tr, sink)
 		} else {
 			replaySplit(t, c.Name, &p, r, tr, sink)
@@ -278,6 +279,25 @@ func replayInterleaved(t *testing.T, name string, p *caseParams, r *Resampler, t
 	if p.Frames*nch > signalLen {
 		t.Fatalf("signal too short for %d frames", p.Frames)
 	}
+	if p.Mode == "m" {
+		p0 := 0
+		for range mixedCalls {
+			num, den := r.Ratio()
+			inOff, outOff := drawCall(&rng, num, den)
+			inLen := min(int(inOff), p.Frames-p0)
+			start, end := p0*nch, p0*nch
+			if inLen > 0 {
+				end = start + (inLen-1)*nch + 1
+			}
+			buf := make([]int16, outOff)
+			il, ol, err := r.ProcessChannel(0, signal16[start:end], nch, buf, 1)
+			for _, v := range buf[:ol] {
+				sink.i16.Put(v)
+			}
+			tr.rec(tSplit, int32(inLen), int32(outOff), int32(il), int32(ol), errCode(err))
+			p0 += il
+		}
+	}
 	for pos < p.Frames {
 		stop := false
 		for ; ev < len(p.Events) && p.Events[ev][0] == int64(calls); ev++ {
@@ -298,7 +318,7 @@ func replayInterleaved(t *testing.T, name string, p *caseParams, r *Resampler, t
 		outLen := int(outOff)
 		var il, ol int
 		var err error
-		if p.Mode == "i" {
+		if p.Mode != "f" {
 			buf := make([]int16, outLen*nch)
 			il, ol, err = r.Process(signal16[pos*nch:(pos+inLen)*nch], buf)
 			for _, v := range buf[:ol*nch] {
@@ -321,6 +341,20 @@ func replayInterleaved(t *testing.T, name string, p *caseParams, r *Resampler, t
 			t.Fatalf("no progress after %d calls", maxCalls)
 		}
 	}
+	if ev < len(p.Events) && !overflowed(p) {
+		t.Errorf("only %d of %d events applied in %d calls", ev, len(p.Events), calls)
+	}
+}
+
+// overflowed reports whether the case contains an overflowing ratio change,
+// after which it ends early.
+func overflowed(p *caseParams) bool {
+	for _, e := range p.Events {
+		if e[1] == eRateFrac && e[2] == 999983 {
+			return true
+		}
+	}
+	return false
 }
 
 func replaySplit(t *testing.T, name string, p *caseParams, r *Resampler, tr tracer, sink outSink) {
@@ -460,11 +494,15 @@ func TestReferenceCoverage(t *testing.T) {
 			want(fmt.Sprintf("split_q%d_44100_48000_%dch", q, ch), "s", q, ch, 44100, 48000, false)
 		}
 	}
+	want("q0_frac_270000001_270000000", "i", 0, 1, 270000001, 270000000, true)
+	want("mixed_q5_44100_48000_2ch", "m", 5, 2, 44100, 48000, false)
+	want("mixed_q10_48000_16000_3ch", "m", 10, 3, 48000, 16000, false)
 	want("splitf_q5_44100_48000_2ch", "g", 5, 2, 44100, 48000, false)
 	want("splitf_q10_48000_16000_3ch", "g", 10, 3, 48000, 16000, false)
 	for _, name := range []string{"initfail_q0_frac_600000000_1", "initfail_q10_frac_600000000_1",
 		"initfail_q5_frac_2147483647_2147483646", "initfail_q5_frac_4294967295_4294967294",
-		"initfail_q10_frac_6300001_3", "initfail_q0_48000_48000_7000000ch"} {
+		"initfail_q10_frac_6300001_3", "initfail_q0_48000_48000_7000000ch",
+		"initfail_q1_frac_270000001_270000000"} {
 		if p, ok := have[name]; !ok || p.InitErr != 1 {
 			t.Errorf("case %s: missing or init_err %d, want 1", name, p.InitErr)
 		}
