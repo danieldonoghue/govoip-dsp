@@ -12,7 +12,7 @@
 // # Configuration
 //
 // A Canceller works on frames of Config.FrameSize samples, at
-// Config.SampleRate (8000 to 48000 Hz), with an adaptive filter of
+// Config.SampleRate, with an adaptive filter of
 // Config.FilterLength samples rounded up to whole frames. 10 or 20 ms
 // frames are typical; the frame size must make 2*FrameSize a supported FFT
 // size (every even size up to 4096 whose half has no prime factor above
@@ -20,10 +20,18 @@
 // length need a new Canceller; the sampling rate can change on the fly
 // with SetSampleRate, as SPEEX_ECHO_SET_SAMPLING_RATE does.
 //
-// The reference truncates the sampling rate to 16 bits where it derives
-// its adaptation constants (DIV32_16 in mdf.c:1233-1236). Rates above 32767
-// Hz (44.1 and 48 kHz) therefore give negative constants, and the
-// reference adapts differently there; this port does the same.
+// Supported rates: 8 and 16 kHz only. Resample higher rates down first.
+// New accepts rates up to 48 kHz and stays bit-exact there, but two
+// defects of the reference make it cancel poorly:
+//
+//   - DIV32_16 truncates the rate to 16 bits where the adaptation
+//     constants are derived (mdf.c:1233-1236), so above 32767 Hz (44.1
+//     and 48 kHz) spec_average, beta0 and beta_max are negative.
+//   - The 32-bit energy sums of mdf_inner_prod overflow on ordinary speech
+//     with 640- and 960-sample frames (20 ms at 32 and 48 kHz), so the
+//     reference resets itself every few seconds.
+//
+// docs/algorithms.md gives the measured effect.
 //
 // # Stream alignment
 //

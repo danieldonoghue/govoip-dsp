@@ -52,6 +52,8 @@ type Config struct {
 	FilterLength int
 	// SampleRate is the sampling rate in Hz, MinSampleRate to
 	// MaxSampleRate. It sets the adaptation constants and the DC notch.
+	// Only 8000 and 16000 are supported: higher rates are bit-exact with
+	// the reference but cancel poorly (see the package doc).
 	SampleRate int
 }
 
@@ -63,7 +65,9 @@ type Canceller struct {
 
 // New is speex_echo_state_init(FrameSize, FilterLength) followed by
 // SPEEX_ECHO_SET_SAMPLING_RATE. It returns an error wrapping ErrConfig for
-// an invalid configuration.
+// an invalid configuration. It accepts rates above 16 kHz, where the
+// reference truncates the rate to 16 bits and overflows its energy sums;
+// resample to 8 or 16 kHz instead (see the package doc).
 func New(cfg Config) (*Canceller, error) {
 	if cfg.FrameSize < 1 || cfg.FrameSize > MaxFrameSize || !fft.Supported(2*cfg.FrameSize) {
 		return nil, fmt.Errorf("%w: frame size %d (want 1 to %d, with 2*frame size supported by the FFT)",
