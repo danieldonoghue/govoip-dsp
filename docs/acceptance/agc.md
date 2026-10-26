@@ -242,4 +242,13 @@ per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
 
 ## Changes
 
-None yet.
+1. **N3, Q2, Q3: reference gain clarified** (before any test was written or
+   run). "Its value at the end of the speech" and "applied gain changes by 0
+   Q15 units" are measured as follows: the AGC gain (item 4) changes by 0
+   Q15 units during the noise, silence or dither, and the applied gain stays
+   at or below that AGC gain throughout. Reason: after the last gain change
+   in the speech, the limiter gain still approaches the AGC gain with its
+   20 ms release (item 5), so the applied gain can rise by a fraction of
+   that last step after the speech ends. That rise is part of the speech's
+   own gain change, not a response to the noise or silence, which is what
+   these criteria test.
