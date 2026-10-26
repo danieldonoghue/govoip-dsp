@@ -52,13 +52,14 @@ The project is not a CGO wrapper and does not reproduce the C API mechanically.
 | Noise suppression + VAD | `preprocess` | Bit-exact | Port of `preprocess.c` + `filterbank.c`, mono |
 | Acoustic echo canceller | `echo` | Bit-exact | Port of `mdf.c`, mono (1 mic, 1 speaker) |
 | Automatic gain control | `agc` | Behavioural only | Own fixed-point design (SpeexDSP 1.2.1 has no fixed-point AGC, see §4.4) |
+| Developer documentation | every public package, root package `govoipdsp`, `docs/` | n/a | §13; GitHub pages with Mermaid diagrams, plus text-only go doc with examples |
 
 ### Stretch (in priority order, after MVP is validated)
 
 1. Packet jitter buffer (`jitter`), reference `jitter.c`.
 2. Clock-drift ratio controller on top of the resampler (extension).
-3. Architecture-specific kernels (amd64 SSE2/AVX2, arm64 NEON) for profiled hot
-   spots.
+3. Performance work (WP9, after the developer documentation): portable gains,
+   then arm64 NEON and amd64 SSE2/AVX2 kernels for profiled hot spots.
 4. Multichannel AEC (`speex_echo_state_init_mc` equivalent).
 5. Dereverberation, as an extension only. SpeexDSP 1.2.1 has a dereverb enable
    flag, but its level and decay setters are commented out
@@ -549,6 +550,14 @@ as of October 2026); CI tests both supported releases.
 - **testing.md:** strategy, harness, fixture provenance, UB-sanitiser findings,
   libm findings, fuzzing, special requirements.
 - **ADRs** for significant decisions.
+- **Developer documentation (WP8):** GitHub is the primary form: Markdown
+  pages in `docs/` with Mermaid diagrams and flow charts, and a glossary that
+  defines every term the packages use. Go doc is a simpler, text-only
+  companion: every exported identifier has a doc comment and a runnable
+  example with checked output, package docs state the lifecycle, rules and
+  limitations, and they link to the GitHub pages (full URLs) for diagrams
+  and longer explanations. A root package, `govoipdsp`, gives go doc an
+  overview and the end-to-end examples.
 
 ---
 
