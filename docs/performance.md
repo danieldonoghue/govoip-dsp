@@ -156,3 +156,30 @@ Construction (`BenchmarkResamplerNew`), which builds the sinc table with
 `fixed.Mult16x32Q15`, `fixed.Saturate32PShr` and the other macro ports
 inlined in the kernels; `cubicCoef`, called once per output sample, is
 not inlined.
+
+## Preprocessor (`preprocess`, WP5)
+
+Mac (M1 Pro, macOS 27.0.1, Go 1.26.5), 2026-10-26:
+
+```sh
+go test ./preprocess -run '^$' -bench . -benchtime 1s -count 5
+```
+
+Medians of five runs, after 200 adapting frames of speech in noise, VAD on:
+
+| Configuration | `Run` µs/frame | `RunEcho` µs/frame | `Run` rt-fraction | allocs/op |
+|---|---|---|---|---|
+| 8 kHz, 80 | 22.6 | 20.5 | 0.0023 | 0 |
+| 8 kHz, 160 | 44.3 | 40.7 | 0.0022 | 0 |
+| 16 kHz, 160 | 43.0 | 39.7 | 0.0043 | 0 |
+| 16 kHz, 320 | 82.3 | 86.9 | 0.0041 | 0 |
+| 32 kHz, 320 | 71.5 | 79.0 | 0.0072 | 0 |
+| 32 kHz, 640 | 158.6 | 174.1 | 0.0079 | 0 |
+| 48 kHz, 480 | 120.9 | 114.0 | 0.0121 | 0 |
+| 48 kHz, 960 | 261.8 | 230.1 | 0.0131 | 0 |
+
+`New` at 48 kHz with `N` = 960: 178 µs, 35 allocations, 115 KiB.
+
+The machine was shared with other jobs during the run (load average 108 on
+10 cores), and single runs varied by up to 30%, so these are upper bounds.
+Cost follows the frame size, not the rate. No Linux VM numbers yet.

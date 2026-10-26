@@ -377,3 +377,102 @@ where f_N is the input Nyquist frequency.
 | 8 | -70.8 | -73.3 |
 | 9 | -68.4 | -72.6 |
 | 10 | -75.0 | -71.4 |
+
+## Preprocessor (`preprocess`, WP5)
+
+**Algorithm.** Per frame of `N` samples: a `2N` window with 50% overlap
+(square root of a raised-cosine, `conj_window`), a real FFT, the power
+spectrum, and its projection onto 24 Bark bands (`filterbank.c`). A
+minimum-statistics tracker (Cohen and Berdugo) decides per bin whether the
+noise estimate may update. The a posteriori and a priori SNR (Ephraim and
+Malah decision-directed) give a loudness-domain MMSE gain per band and per
+bin, bounded below by a gain floor that mixes the noise and residual-echo
+suppress levels. The per-frame speech probability `Pframe` comes from the
+mean smoothed a priori SNR over the bands; it weights the gain and drives
+the VAD. The output is the inverse FFT, windowed again and overlap-added.
+
+**Reference behaviour.** `speex_preprocess_state_init`,
+`speex_preprocess_run`, `speex_preprocess_estimate_update` and the
+FIXED_POINT `speex_preprocess_ctl` requests of `preprocess.c`, with
+`filterbank_new`, `filterbank_compute_bank32` and
+`filterbank_compute_psd16` of `filterbank.c`. `ps_size` equals
+`frame_size` (`preprocess.c:418`), so `N3 = N` and `N4 = 0`.
+
+**Parameters.** Rates 4 to 65535 Hz, frame sizes 1 to 2048 with no prime
+factor above 17. Defaults: denoise on, VAD off, `prob_start` 35%
+(Q15 11469), `prob_continue` 20% (6554), noise suppress -15 dB, echo
+suppress -40 dB, echo suppress while active -15 dB. The getters for the
+thresholds truncate: the default `prob_start` reads back as 34.
+
+**Floating point and libm.** None in the fixed-point build. `toBARK` uses
+the integer `spx_atan`; `toMEL` and the `exp` calls are in float-build
+branches only. Checked by compiling `preprocess.c` and `filterbank.c` with
+the reference flags: neither object references a libm symbol, and the only
+floating-point instructions are `fmov` moves between integer and vector
+registers. The window and filterbank tables are still compared entry by
+entry with the harness for every fixture configuration and a rate sweep.
+
+**Latency.** `N` samples: the output of a frame completes the overlap-add of
+the previous one.
+
+**Numerical notes.**
+
+- Loud inputs overflow 32-bit arithmetic inside the reference:
+  `SHL32(ps,NOISE_SHIFT)` (`preprocess.c:778`), the band sums in
+  `filterbank_compute_bank32` (`filterbank.c:144`) and `SHL32(a,15)` in
+  `DIV32_16_Q15` (`preprocess.c:139`). The port wraps as the reference does
+  with `-fwrapv`; the fixtures exercise all three.
+- `DIV32_16_Q8(a, b)` returns -32768 for `a = 128b - 1` with `b >= 512`
+  (the quotient 32768 truncates), so `post` and `prior` can become large and
+  negative from ordinary input. The port keeps this.
+- The filterbank divisor `PSHR32(mel_interval,15)` is rounded (773 at
+  8 kHz, 1138 at 48 kHz). Where it rounds down, the weight `val` can reach
+  32768 at a band edge and wrap to a negative `int16`: one bin each at
+  22050 and 44100 Hz with `N` = 2048, and at 463 of the supported rates
+  with `N` = 64 (measured with the port). The port keeps this; the table
+  tests and the rate sweep cover it.
+- The VAD is the reference's "kludge": on stationary noise the speech
+  probability stays above the 35% start threshold. Measured on 16 kHz,
+  20 ms frames: 0% speech frames on silence, 100% on white noise at -30
+  dBFS and on pink noise, with mean `SpeechProb` over the last 10 s of 40%
+  (white, 20 s), 63% (pink, 20 s) and 76% (pink, 120 s). The 120 s pink
+  noise case in the fixtures matches C, so this is the reference's
+  behaviour.
+
+**Divisions.** Contracts section 8 requires each divisor to be shown
+nonzero. Shown nonzero, with the test that covers the closest boundary:
+
+| Site | Divisor | Bound |
+|---|---|---|
+| `conj_window` | `2N` | at least 2 |
+| `filterbank_new` | `2*len`, `banks-1`, `mel_interval` | at least 2, 23, and 16384 or more for rates of 4 Hz and up |
+| `filterbank_new` (`filterbank.c:85`) | `EXTRACT16(PSHR32(mel_interval,15))` | nonzero exactly for rates of 4 Hz and up (`TestFilterbankDivisors`, every rate) |
+| `beta` (`preprocess.c:740`) | `nb_adapt` | 1 to 20000 |
+| `Pframe` | `nbands` | 24 |
+| `qcurve` | `MAX16(x,1)`; `512 + ...` | at least 1; 512 to 20172 |
+| `hypergeom_gain` | `SHR32(xx,3)` for `xx >= 20480`; `spx_sqrt(xx<<15 + 6711)` | 2560 to 32512 for every reachable `theta`; positive (`TestRunDivisors`, every reachable `theta`) |
+| `preprocess.c:861` | `Q15_ONE-q` = `MULT16_16_Q15(Pframe,P1)` | at least 882 (`TestRunDivisors`, from the exhaustive `qcurve` range) |
+
+Not shown nonzero, so the port uses `fixed.Div32x16OrZero` and
+`fixed.PDiv32x16OrZero` there, which give 0 for a zero divisor as AArch64
+`SDIV` does on the canonical reference (C is undefined):
+
+| Site | Divisor | How it could be zero |
+|---|---|---|
+| `DIV32_16_Q8` (`preprocess.c:114`) | `tot_noise`, range-reduced, as `spx_word16_t` | `tot_noise` is 0, or wraps to a multiple of 65536 below -2^15, with `ps` or `old_ps` negative |
+| `DIV32_16_Q15` (`preprocess.c:140`) | `old_ps + tot_noise`, or the gain-floor denominator | the same, with a negative dividend |
+| `prior_ratio` (`preprocess.c:846`, `:887`) | `ADD16(prior, 256)` | `prior` = -256 |
+| band `gain2` (`preprocess.c:862`) | `ADD16(256, tmp)` | `tmp` = -256, which needs `prior` < -256 |
+
+Each needs a value that is nonnegative in normal operation to go negative.
+That happens through the wraps above and the -32768 of `DIV32_16_Q8`, so a
+zero is plausible but has not been seen: the sanitizer reports no division
+by zero over the 294 fixture cases, and a counting build of the port found
+none in about 50 minutes of stress audio (edge signals, loud tones, bursts,
+random residuals) or in 528 000 fuzz executions. `docs/status.md` asks the
+owner to confirm this policy.
+
+**Deviations.** None in output. `New` returns an error where the reference
+would divide by zero (rates below 4 Hz), overflow (above 65535 Hz) or fail
+in `spx_fft_init` (unsupported frame sizes). `Reset` has no reference
+counterpart; it equals a new instance with the same settings.

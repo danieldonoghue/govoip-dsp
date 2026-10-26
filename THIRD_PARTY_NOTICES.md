@@ -26,6 +26,9 @@ test harness only.
 | `internal/fft/kissr.go` | `libspeexdsp/kiss_fftr.c` (Copyright (c) 2003-2004, Mark Borgerding) | KISS FFT BSD-3-Clause |
 | `internal/fft/fft.go` | `libspeexdsp/fftwrap.c` (Copyright (C) 2005-2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `resample/resample.go`, `resample/filter.go`, `resample/process.go` | `libspeexdsp/resample.c` (Copyright (C) 2007-2008 Jean-Marc Valin, Copyright (C) 2008 Thorvald Natvig) | SpeexDSP BSD-3-Clause |
+| `internal/fixed/divzero.go` | `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `preprocess/preprocess.go`, `preprocess/run.go`, `preprocess/ctl.go` | `libspeexdsp/preprocess.c` (Copyright (C) 2003 Epic Games (written by Jean-Marc Valin); Copyright (C) 2004-2006 Epic Games) | SpeexDSP BSD-3-Clause |
+| `preprocess/filterbank.go` | `libspeexdsp/filterbank.c` (Copyright (C) 2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 
 The reference harness (`reference/`) contains no upstream code; it includes
 upstream headers and sources from the fetched tree at build time.
