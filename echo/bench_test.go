@@ -29,12 +29,15 @@ func BenchmarkCancellerCancel(b *testing.B) {
 			}
 			out := make([]int16, fs)
 			frames := len(s.mic) / fs
-			// Warm up past the adaptation phase, which costs more per frame.
-			for i := 0; i < frames/2; i++ {
+			// Warm up, into the adapted state where the reference reaches it.
+			for k := 0; k < 4*frames && !(c.st.adapted && k >= frames/2); k++ {
+				i := k % frames
 				_ = c.Cancel(s.mic[i*fs:(i+1)*fs], s.far[i*fs:(i+1)*fs], out)
 			}
-			if !c.st.adapted {
-				b.Fatal("not adapted after warm-up")
+			// The adapted path adds mdf_adjust_prop; report which one ran.
+			adapted := 0.0
+			if c.st.adapted {
+				adapted = 1
 			}
 			i := frames / 2
 			b.ReportAllocs()
@@ -46,6 +49,7 @@ func BenchmarkCancellerCancel(b *testing.B) {
 				i++
 			}
 			testutil.ReportFrameMetrics(b, fs, float64(k.rate))
+			b.ReportMetric(adapted, "adapted")
 		})
 	}
 }

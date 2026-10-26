@@ -106,9 +106,55 @@ func TestReferenceEcho(t *testing.T) {
 	}
 }
 
-// runReferenceCase checks every stream of case c. With residual false it
-// skips the Residual calls and checks only out, which shows that Residual
-// does not change later output.
+// sink receives one stream of a case. In a full run it feeds a chunk-hash
+// checker; in a partial run it keeps the values to compare with the
+// committed prefix (testutil's partial checker needs a whole chunk).
+type sink[T testutil.Elem] struct {
+	t      *testing.T
+	m      *testutil.Manifest
+	s      *testutil.Stream
+	k      *testutil.StreamChecker[T]
+	prefix bool
+	got    []T
+}
+
+func newSink[T testutil.Elem](t *testing.T, m *testutil.Manifest, mc *testutil.Case, name string, partial bool) *sink[T] {
+	st := mc.Stream(t, name)
+	if !partial {
+		return &sink[T]{k: testutil.NewStreamChecker[T](t, m, mc, st, false)}
+	}
+	return &sink[T]{t: t, m: m, s: st, prefix: st.File != nil}
+}
+
+func (k *sink[T]) put(x ...T) {
+	if k.k != nil {
+		for _, v := range x {
+			k.k.Put(v)
+		}
+	} else if k.prefix {
+		k.got = append(k.got, x...)
+	}
+}
+
+func (k *sink[T]) done() {
+	if k.k != nil {
+		k.k.Done()
+		return
+	}
+	if !k.prefix {
+		return
+	}
+	want := testutil.ReadFile[T](k.t, k.m, k.s)
+	if len(k.got) < len(want) {
+		k.t.Fatalf("%s: partial run produced %d values, fewer than the committed prefix of %d", k.s.Name, len(k.got), len(want))
+	}
+	testutil.Compare(k.t, k.s.Name+" (committed prefix)", want, k.got[:len(want)])
+}
+
+// runReferenceCase checks every stream of case c: all chunk hashes in a
+// full run, the committed prefixes of out and residual in a partial run
+// (partialCheck). With residual false it skips the Residual calls and
+// checks only out, which shows that Residual does not change later output.
 func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bool) {
 	mc := m.Case(t, c.name)
 	s := inputs(c)
@@ -123,14 +169,14 @@ func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bo
 		limitOps = min(limitOps, opsForSamples(o, c.frame, sec(c.rate, shortSeconds)))
 	}
 
-	kOps := testutil.NewStreamChecker[int32](t, m, mc, mc.Stream(t, "ops"), partial)
-	kMic := testutil.NewStreamChecker[int16](t, m, mc, mc.Stream(t, "mic"), partial)
-	kFar := testutil.NewStreamChecker[int16](t, m, mc, mc.Stream(t, "far"), partial)
-	kOut := testutil.NewStreamChecker[int16](t, m, mc, mc.Stream(t, "out"), partial)
-	var kRes, kIR *testutil.StreamChecker[int32]
+	kOps := newSink[int32](t, m, mc, "ops", partial)
+	kMic := newSink[int16](t, m, mc, "mic", partial)
+	kFar := newSink[int16](t, m, mc, "far", partial)
+	kOut := newSink[int16](t, m, mc, "out", partial)
+	var kRes, kIR *sink[int32]
 	if residual {
-		kRes = testutil.NewStreamChecker[int32](t, m, mc, mc.Stream(t, "residual"), partial)
-		kIR = testutil.NewStreamChecker[int32](t, m, mc, mc.Stream(t, "ir"), partial)
+		kRes = newSink[int32](t, m, mc, "residual", partial)
+		kIR = newSink[int32](t, m, mc, "ir", partial)
 	}
 	tr := openTrace(t, c.name, ec)
 
@@ -138,32 +184,26 @@ func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bo
 	out := make([]int16, fs)
 	res := make([]int32, ec.ResidualLen())
 	mpos, fpos := 0, 0
-	put16 := func(k *testutil.StreamChecker[int16], x []int16) {
-		for _, v := range x {
-			k.Put(v)
-		}
-	}
 	for k := 0; k < limitOps; k++ {
 		op, arg := o[2*k], o[2*k+1]
-		kOps.Put(op)
-		kOps.Put(arg)
+		kOps.put(op, arg)
 		var err error
 		switch op {
 		case opCancel:
 			mic, far := s.mic[mpos:mpos+fs], s.far[fpos:fpos+fs]
-			put16(kMic, mic)
-			put16(kFar, far)
+			kMic.put(mic...)
+			kFar.put(far...)
 			err = ec.Cancel(mic, far, out)
 			mpos += fs
 			fpos += fs
 		case opPlayback:
 			far := s.far[fpos : fpos+fs]
-			put16(kFar, far)
+			kFar.put(far...)
 			err = ec.Playback(far)
 			fpos += fs
 		case opCapture:
 			mic := s.mic[mpos : mpos+fs]
-			put16(kMic, mic)
+			kMic.put(mic...)
 			err = ec.Capture(mic, out)
 			mpos += fs
 		case opReset:
@@ -175,14 +215,12 @@ func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bo
 			t.Fatalf("op %d: %v", k, err)
 		}
 		if op == opCancel || op == opCapture {
-			put16(kOut, out)
+			kOut.put(out...)
 			if residual {
 				if err := ec.Residual(res); err != nil {
 					t.Fatal(err)
 				}
-				for _, v := range res {
-					kRes.Put(v)
-				}
+				kRes.put(res...)
 			}
 		}
 		if tr != nil && !tr.check(k) {
@@ -194,18 +232,16 @@ func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bo
 		if err := ec.ImpulseResponse(ir); err != nil {
 			t.Fatal(err)
 		}
-		for _, v := range ir {
-			kIR.Put(v)
-		}
+		kIR.put(ir...)
 	}
-	for _, k := range []*testutil.StreamChecker[int16]{kMic, kFar, kOut} {
-		k.Done()
-	}
-	kOps.Done()
+	kOps.done()
+	kMic.done()
+	kFar.done()
+	kOut.done()
 	if residual {
-		kRes.Done()
+		kRes.done()
 		if limitOps == len(o)/2 {
-			kIR.Done()
+			kIR.done()
 		}
 	}
 	if tr != nil {
