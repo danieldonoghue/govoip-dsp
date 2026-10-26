@@ -497,7 +497,8 @@ not caught and equivalent, and 1 not caught as a test gap (the VAD start
 ### `agc` (WP4)
 
 Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
-`e12d763` without the LibriSpeech files (so P4 skips and the unmutated run
+the commit "agc: check the ceiling and exact gain limits in more acceptance
+tests", without the LibriSpeech files (so P4 skips and the unmutated run
 passes), restoring `agc.go` after each.
 
 | Mutation | Result |
@@ -643,8 +644,7 @@ ceiling or flips sign against its input, and that the first `Latency`
 samples are zero. `FuzzConfig` checks that `New` returns `ErrConfig` or a
 working AGC for any configuration. Run on 2026-10-26 with
 `go test ./agc -run '^$' -fuzz <target> -fuzztime 60s`: `FuzzChunksProcess`
-4,793,678 executions, `FuzzConfig` 1,415,919 executions, no failures (at
-commit `e12d763`). The
-seed corpora are the `f.Add` calls; the fuzzer found nothing to commit to
-`agc/testdata/fuzz/`.
+4,793,678 executions, `FuzzConfig` 1,415,919 executions, no failures (at the
+same commit). The seed corpora are the `f.Add` calls; the fuzzer found
+nothing to commit to `agc/testdata/fuzz/`.
 
