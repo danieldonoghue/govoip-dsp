@@ -774,6 +774,9 @@ func TestNoAllocsMagicAndErrors(t *testing.T) {
 	testutil.AssertNoAllocs(t, 100, func() { r.Process(in, out) })
 }
 
+// upTo returns v, or math.MaxInt where int is narrower.
+func upTo(v uint64) int { return int(min(v, uint64(math.MaxInt))) }
+
 // TestHugeRatioAfterFailedChange covers ratios of 2^31 and more, where the
 // zero kernel's position would overflow int32 (C is undefined there).
 func TestHugeRatioAfterFailedChange(t *testing.T) {
@@ -781,7 +784,7 @@ func TestHugeRatioAfterFailedChange(t *testing.T) {
 	fin := testutil.ToFloat32(in)
 	t.Run("int16", func(t *testing.T) {
 		r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 8000})
-		if err := r.SetRate(4000000000, 1); err != ErrAllocFailed {
+		if err := r.SetRate(upTo(4000000000), 1); err != ErrAllocFailed {
 			t.Fatalf("SetRate: %v", err)
 		}
 		for range 5 {
@@ -790,7 +793,7 @@ func TestHugeRatioAfterFailedChange(t *testing.T) {
 	})
 	t.Run("float32", func(t *testing.T) {
 		r := mustNew(t, Config{Channels: 2, InRate: 8000, OutRate: 8000})
-		if err := r.SetRateFrac(3000000000, 1, 8000, 8000); err != ErrAllocFailed {
+		if err := r.SetRateFrac(upTo(3000000000), 1, 8000, 8000); err != ErrAllocFailed {
 			t.Fatalf("SetRateFrac: %v", err)
 		}
 		for range 5 {
