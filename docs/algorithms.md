@@ -470,10 +470,11 @@ FIXED_POINT `speex_preprocess_ctl` requests of `preprocess.c`, with
 **Parameters.** Rates 4 to 65535 Hz, frame sizes 1 to 2048 with no prime
 factor above 17, at any rate. `SupportedFrameSize` reports whether `New`
 accepts a size, and `New` uses it; it accepts the 10 and 20 ms sizes at 8,
-16, 32 and 48 kHz (80, 160, 320, 480, 640, 960). Defaults: denoise on, VAD off, `prob_start` 35%
-(Q15 11469), `prob_continue` 20% (6554), noise suppress -15 dB, echo
-suppress -40 dB, echo suppress while active -15 dB. The getters for the
-thresholds truncate: the default `prob_start` reads back as 34.
+16, 32 and 48 kHz (80, 160, 320, 480, 640, 960). Defaults: denoise on,
+VAD off, `prob_start` 35% (Q15 11469), `prob_continue` 20% (6554), noise
+suppress -15 dB, echo suppress -40 dB, echo suppress while active -15 dB.
+The getters for the thresholds truncate: the default `prob_start` reads
+back as 34.
 
 **Floating point and libm.** None in the fixed-point build. `toBARK` uses
 the integer `spx_atan`; `toMEL` and the `exp` calls are in float-build
