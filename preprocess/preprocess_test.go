@@ -108,9 +108,8 @@ func TestFilterbankDivisors(t *testing.T) {
 	}
 }
 
-// Divisors shown nonzero in docs/algorithms.md: qcurve's output range
-// bounds Q15_ONE-q below by 882, and hypergeom_gain's divisors hold for
-// every reachable theta.
+// Divisors shown nonzero in docs/algorithms.md: Q15_ONE-q >= 882 from the
+// qcurve range, and hypergeom_gain's for every reachable theta.
 func TestRunDivisors(t *testing.T) {
 	lo, hi := int16(math.MaxInt16), int16(math.MinInt16)
 	for x := math.MinInt16; x <= math.MaxInt16; x++ {

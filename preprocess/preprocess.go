@@ -174,9 +174,8 @@ func New(cfg Config) (*Preprocessor, error) {
 	return p, nil
 }
 
-// Reset returns the adaptive state to what New leaves, keeping the
-// settings. The reference has no reset; this equals a new instance with the
-// same settings. It does not allocate.
+// Reset returns the adaptive state to what New leaves and keeps the settings
+// (the reference has no reset). It does not allocate.
 func (p *Preprocessor) Reset() {
 	for _, s := range [][]int16{p.frame, p.ft, p.gain2, p.gainFloor, p.zeta, p.inbuf, p.outbuf} {
 		clear(s)

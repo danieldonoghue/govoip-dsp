@@ -8,9 +8,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
 
-// The fixture case table (docs/acceptance/preprocess.md). TestHarnessInputs
-// writes it for reference/drivers/preprocess.c, so this file is the single
-// source of the matrix.
+// The fixture case table (docs/acceptance/preprocess.md); TestHarnessInputs
+// writes it for reference/drivers/preprocess.c, so it is the only copy.
 
 // unset leaves a probability threshold at its default: setting the default
 // percentage would not reproduce the default Q15 value.
@@ -241,9 +240,8 @@ func signal(name string, rate, n int) []int16 {
 	panic("unknown signal " + name)
 }
 
-// echoSignals returns the far-end and microphone inputs of an echo group:
-// the far end through a decaying 8 ms echo path, low noise, and near-end
-// speech from the middle of the recorded frames on (double talk).
+// echoSignals returns an echo group's far end, and the microphone: an 8 ms
+// echo, low noise, and near-end speech from mid-recording (double talk).
 func echoSignals(g echoGroup) (far, mic []int16) {
 	total := (echoWarmup + echoFrames) * g.n
 	seed := testutil.Seed(g.name)

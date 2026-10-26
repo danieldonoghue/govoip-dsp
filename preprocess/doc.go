@@ -40,7 +40,8 @@
 //
 // Run and RunEcho process exactly FrameSize samples in place and return
 // ErrBufferSize, changing nothing, for any other length or a residual
-// shorter than FrameSize. EstimateUpdate only reads its frame. No method
+// shorter than FrameSize; RunEcho ignores residual values past FrameSize.
+// EstimateUpdate only reads its frame, with the same length rule. No method
 // retains a caller slice. Reset clears the adaptive state and keeps the
 // settings; the reference has no reset, and Reset equals a new instance with
 // the same settings. On a zero Preprocessor (not made by New) the frame

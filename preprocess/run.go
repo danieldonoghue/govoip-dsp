@@ -12,10 +12,8 @@ package preprocess
 
 import "github.com/danieldonoghue/govoip-dsp/internal/fixed"
 
-// Run processes one frame in place with no echo residual: the reference
-// behaviour without SET_ECHO_STATE. It returns the VAD decision, which is
-// always true while VAD is off. A frame of the wrong length gives
-// ErrBufferSize and changes nothing.
+// Run processes one frame in place without echo residual (no SET_ECHO_STATE)
+// and returns the VAD decision, always true while VAD is off.
 func (p *Preprocessor) Run(frame []int16) (bool, error) {
 	if p.fft == nil {
 		return false, ErrConfig
@@ -26,11 +24,8 @@ func (p *Preprocessor) Run(frame []int16) (bool, error) {
 	return p.run(frame, nil), nil
 }
 
-// RunEcho processes one frame in place using residual[:FrameSize()], the
-// residual-echo power spectrum that echo.Canceller.Residual gives for the
-// same frame: the reference behaviour with SET_ECHO_STATE. Extra values are
-// ignored and residual is not retained. A wrong frame length or a short
-// residual gives ErrBufferSize and changes nothing.
+// RunEcho is Run with SET_ECHO_STATE, using residual[:FrameSize()], the
+// spectrum echo.Canceller.Residual gives for the same frame.
 func (p *Preprocessor) RunEcho(frame []int16, residual []int32) (bool, error) {
 	if p.fft == nil {
 		return false, ErrConfig
@@ -42,8 +37,7 @@ func (p *Preprocessor) RunEcho(frame []int16, residual []int32) (bool, error) {
 }
 
 // EstimateUpdate is speex_preprocess_estimate_update (preprocess.c:1009):
-// it updates the noise estimate from frame without producing output. frame
-// is only read. A frame of the wrong length gives ErrBufferSize.
+// it updates the noise estimate from frame, which it only reads.
 func (p *Preprocessor) EstimateUpdate(frame []int16) error {
 	if p.fft == nil {
 		return ErrConfig

@@ -9,8 +9,7 @@ import (
 )
 
 // A reachable zero divisor (reference/drivers/preprocess_zero.c): after
-// silence, a residual whose band sum wraps to -1 makes compute_gain_floor
-// divide -1 by 1 + 0 + (-1).
+// silence, a band echo sum wrapped to -1 makes the gain floor divide by 0.
 const (
 	zeroRate, zeroN = 16000, 160
 	zeroEchoFrame   = 300

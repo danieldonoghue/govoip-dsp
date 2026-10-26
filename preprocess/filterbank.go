@@ -4,8 +4,7 @@
 // Copyright (C) 2006 Jean-Marc Valin
 //
 // Use of this source is governed by the BSD-3-Clause licence in
-// LICENSES/SpeexDSP-COPYING. Changes: ported to Go, FIXED_POINT only;
-// init reports an undefined configuration instead of dividing by zero.
+// LICENSES/SpeexDSP-COPYING. Changes: ported to Go, FIXED_POINT only.
 
 package preprocess
 
@@ -33,9 +32,8 @@ func bankDivisor(sampling int32, banks int) int16 {
 	return fixed.Extract16(fixed.PShr32(melInterval, 15))
 }
 
-// newFilterbank is filterbank_new (filterbank.c:54) with type 1. The caller
-// has checked that bankDivisor(sampling, banks) is nonzero, len is 1 to
-// 2048 and sampling is 2 to 65535.
+// newFilterbank is filterbank_new (filterbank.c:54) with type 1, for len 1 to
+// 2048 and sampling 4 to 65535, where bankDivisor is nonzero.
 func newFilterbank(banks int, sampling int32, n int) *filterbank {
 	b := &filterbank{
 		left:        make([]int, n),

@@ -48,41 +48,36 @@ func (p *Preprocessor) SetProbContinue(percent int) { p.probContinue = probQ15(p
 func (p *Preprocessor) ProbContinue() int { return int(fixed.Mult16x16Q15(p.probContinue, 100)) }
 
 // SetNoiseSuppress is SPEEX_PREPROCESS_SET_NOISE_SUPPRESS: the maximum noise
-// attenuation in dB, stored as -|dB| (default -15). Values whose magnitude
-// does not fit int16 wrap in the arithmetic, as in the reference.
+// attenuation in dB, stored as -|dB| (default -15); large values wrap as in C.
 func (p *Preprocessor) SetNoiseSuppress(dB int32) { p.noiseSuppress = -fixed.Abs32(dB) }
 
 // NoiseSuppress is SPEEX_PREPROCESS_GET_NOISE_SUPPRESS.
 func (p *Preprocessor) NoiseSuppress() int32 { return p.noiseSuppress }
 
-// SetEchoSuppress is SPEEX_PREPROCESS_SET_ECHO_SUPPRESS: the maximum
-// residual-echo attenuation in dB while there is no near-end speech, stored
-// as -|dB| (default -40). It acts only in RunEcho.
+// SetEchoSuppress is SPEEX_PREPROCESS_SET_ECHO_SUPPRESS: residual-echo
+// attenuation in dB without near-end speech, stored as -|dB| (default -40).
 func (p *Preprocessor) SetEchoSuppress(dB int32) { p.echoSuppress = -fixed.Abs32(dB) }
 
 // EchoSuppress is SPEEX_PREPROCESS_GET_ECHO_SUPPRESS.
 func (p *Preprocessor) EchoSuppress() int32 { return p.echoSuppress }
 
 // SetEchoSuppressActive is SPEEX_PREPROCESS_SET_ECHO_SUPPRESS_ACTIVE: the
-// attenuation in dB while near-end speech is present, stored as -|dB|
-// (default -15).
+// same during near-end speech, stored as -|dB| (default -15).
 func (p *Preprocessor) SetEchoSuppressActive(dB int32) { p.echoSuppressActive = -fixed.Abs32(dB) }
 
 // EchoSuppressActive is SPEEX_PREPROCESS_GET_ECHO_SUPPRESS_ACTIVE.
 func (p *Preprocessor) EchoSuppressActive() int32 { return p.echoSuppressActive }
 
-// SpeechProb is SPEEX_PREPROCESS_GET_PROB: the reference's speech
-// probability estimate for the last frame, in percent. It drives the VAD;
-// it is a heuristic score, not a calibrated probability.
+// SpeechProb is SPEEX_PREPROCESS_GET_PROB: the last frame's speech score in
+// percent, which drives the VAD; a heuristic, not a calibrated probability.
 func (p *Preprocessor) SpeechProb() int { return int(fixed.Mult16x16Q15(p.speechProb, 100)) }
 
 // PSDLen is SPEEX_PREPROCESS_GET_PSD_SIZE and GET_NOISE_PSD_SIZE: the frame
 // size.
 func (p *Preprocessor) PSDLen() int { return p.frameSize }
 
-// PSD is SPEEX_PREPROCESS_GET_PSD: it writes the power spectrum of the last
-// analysed frame into dst[:PSDLen()], or returns ErrBufferSize if dst is
-// shorter.
+// PSD is SPEEX_PREPROCESS_GET_PSD: the last frame's power spectrum into
+// dst[:PSDLen()], or ErrBufferSize if dst is shorter.
 func (p *Preprocessor) PSD(dst []int32) error {
 	if len(dst) < p.frameSize {
 		return ErrBufferSize

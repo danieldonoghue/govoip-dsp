@@ -27,9 +27,8 @@ func writeFile(t *testing.T, name string, data []byte) {
 	}
 }
 
-// TestHarnessInputs writes the case table and the Go-generated inputs for
-// reference/drivers/preprocess.c. It runs only when reference/fixtures.sh
-// passes -harness-inputs.
+// TestHarnessInputs writes the case table and Go-generated inputs for the
+// drivers; it runs only when reference/fixtures.sh passes -harness-inputs.
 func TestHarnessInputs(t *testing.T) {
 	if *harnessInputs == "" {
 		t.Skip("writes harness inputs only when -harness-inputs is set (reference/fixtures.sh)")
