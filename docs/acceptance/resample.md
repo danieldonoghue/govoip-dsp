@@ -367,4 +367,16 @@ Targets:
       16 kHz, showing that `MaxOut` counts frames per channel and the
       buffer is `MaxOut(n) * channels` samples.
     The README install example stays the same in substance as the first.
+13. **Clarifications after the `MaxOut` review.** Justification: the
+    review found that two points were left implicit.
+    - Change 10 exempts every zero-output state from the tightness
+      criterion, not only those with a ratio of 2^31 or more as change 9
+      did. This is deliberate: after any rejected change the kernel
+      writes zeros with C's position arithmetic, and only soundness is
+      required there. The measured slack in those states is reported.
+    - The soundness guarantee holds while the bound is at most 2^31-1.
+      `MaxOut` clamps to 2^31-1, the largest length a call accepts; with
+      strong upsampling (for example 1:1000 with 3·10^6 input frames) the
+      true need is larger, and a call then cannot consume all its input.
+      Upstream has the same limit on one call.
 
