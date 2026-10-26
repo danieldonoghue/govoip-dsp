@@ -67,7 +67,7 @@ const (
 	blocksPerFrame = 10
 	unity          = 32768 // gain 1.0 in Q15
 	limiterRelease = 20 * time.Millisecond
-	riseFrames     = 3 // loud frames in a row that trigger an immediate cut
+	cutRatio       = 20 // energy ratio over L² of a loud frame (+13 dB)
 )
 
 // AGC is an automatic gain control for one mono stream. Gains are Q15 int32
@@ -81,10 +81,9 @@ type AGC struct {
 	ceiling  int32 // amplitude
 	minGain  int32
 	maxGain  int32
-	limCoef  int16 // Q15 limiter release coefficient
-	levCoef  int16 // Q15 level-estimate coefficient
-	levKeep  fixed.Float
-	levStep  fixed.Float
+	limCoef  int16   // Q15 limiter release coefficient
+	levCoef  int16   // Q15 level-estimate coefficient
+	riseRun  int     // loud frames in a row that trigger a cut: more than a 10 ms click can touch
 	up       int16   // Q15 gain increase per frame, minus 1
 	down     int16   // Q15 gain factor per frame
 	warm     int     // active frames until the level estimate is warmed up
@@ -104,7 +103,8 @@ type AGC struct {
 	quieter int         // consecutive active frames below -6 dB
 	runMin  int32       // smallest RMS of the current loud run
 	runMax  int32       // largest RMS of the current quiet run
-	gain    int32       // AGC gain
+	fine    int32       // AGC gain in Q22, so that small rate steps are exact
+	gain    int32       // AGC gain, fine >> 7
 	env     int32       // limiter gain of the last completed block
 	bound   int32       // gain at the start of the block being output
 	ramp    int32       // gain at sample 0 of the output block
@@ -132,8 +132,7 @@ func New(cfg Config) (*AGC, error) {
 		maxGain:  int32(math.Round(unity * dbToRatio(cfg.MaxGain))),
 		limCoef:  coefficient(k, cfg.SampleRate, limiterRelease),
 		levCoef:  lev,
-		levKeep:  q15Float(unity - int32(lev)),
-		levStep:  q15Float(int32(lev)),
+		riseRun:  clickFrames(frame, cfg.SampleRate) + 1,
 		up:       int16(math.Round(unity * (math.Pow(10, float64(cfg.RiseRate)*sec/20) - 1))),
 		down:     int16(math.Round(unity * math.Pow(10, -float64(cfg.FallRate)*sec/20))),
 		warm:     warm,
@@ -168,6 +167,13 @@ func validate(c Config) error {
 	return nil
 }
 
+// clickFrames returns the most frames of length frame that a 10 ms click
+// can touch.
+func clickFrames(frame, rate int) int {
+	click := (rate + 99) / 100
+	return (frame+click-2)/frame + 1
+}
+
 // q15Float returns c/32768 as a pseudo-float.
 func q15Float(c int32) fixed.Float { return fixed.FloatShl(fixed.PseudoFloat(c), -15) }
 
@@ -194,6 +200,7 @@ func (a *AGC) Reset() {
 	a.energy, a.peak, a.voiced = 0, 0, true
 	a.level, a.e4 = a.target, pow4(a.target)
 	a.seen, a.louder, a.quieter, a.runMin, a.runMax = 0, 0, 0, 0, 0
+	a.fine = unity << 7
 	a.gain, a.env, a.bound, a.ramp, a.step = unity, unity, unity, unity, 0
 }
 
@@ -259,14 +266,19 @@ func (a *AGC) endFrame() {
 	cut := active && a.track(r)
 	g := (int64(a.target) << 15) / int64(a.level) // level >= gate > 0
 	want := int32(min(max(g, int64(a.minGain)), int64(a.maxGain)))
+	if !active {
+		a.louder = 0 // the loud run must be consecutive in time
+	}
+	want <<= 7
 	switch {
 	case cut:
-		a.gain = min(a.gain, want)
-	case want > a.gain && active:
-		a.gain = min(want, a.gain+max(1, fixed.Mult16x32Q15(a.up, a.gain)))
-	case want < a.gain:
-		a.gain = max(want, fixed.Mult16x32Q15(a.down, a.gain))
+		a.fine = min(a.fine, want)
+	case want > a.fine && active:
+		a.fine = min(want, a.fine+max(1, fixed.Mult16x32Q15(a.up, a.fine)))
+	case want < a.fine:
+		a.fine = max(want, fixed.Mult16x32Q15(a.down, a.fine))
 	}
+	a.gain = a.fine >> 7
 	a.energy = 0
 	a.voiced = true
 }
@@ -275,7 +287,7 @@ func (a *AGC) endFrame() {
 // reports whether a sustained rise calls for an immediate gain cut.
 func (a *AGC) track(r int32) bool {
 	l := int64(a.level)
-	if int64(r)*int64(r) > 10*l*l {
+	if int64(r)*int64(r) > cutRatio*l*l {
 		if a.louder == 0 {
 			a.runMin = r
 		}
@@ -295,21 +307,26 @@ func (a *AGC) track(r int32) bool {
 	}
 	cut := false
 	switch {
-	case a.louder == riseFrames:
+	case a.louder == a.riseRun:
 		a.e4, a.louder, a.quieter, cut = pow4(a.runMin), 0, 0, true
 	case a.quieter == a.dropRun:
 		a.e4, a.louder, a.quieter = pow4(a.runMax), 0, 0
-	case a.seen == 0:
-		a.e4 = pow4(r)
 	default:
-		x := pow4(min(r, 2*a.level))
+		// Until warm, e4 is the plain mean of the frames seen so far; the
+		// first frame is clamped against the initial level, the target.
+		c := int32(a.levCoef)
 		if a.seen < a.warm {
-			// Until warm, e4 is the plain mean of the frames seen so far.
-			c := max(int32(a.levCoef), unity/int32(a.seen+1))
-			a.e4 = fixed.FloatAdd(fixed.FloatMult(q15Float(unity-c), a.e4), fixed.FloatMult(q15Float(c), x))
-		} else {
-			a.e4 = fixed.FloatAdd(fixed.FloatMult(a.levKeep, a.e4), fixed.FloatMult(a.levStep, x))
+			c = max(c, unity/int32(a.seen+1))
 		}
+		// e4 - c·e4 + c·x keeps FloatMult's truncation in the small terms,
+		// so the mean does not drift low.
+		x := pow4(min(r, 2*a.level))
+		if c >= unity {
+			a.e4 = x
+			break
+		}
+		cf := q15Float(c)
+		a.e4 = fixed.FloatAdd(fixed.FloatSub(a.e4, fixed.FloatMult(cf, a.e4)), fixed.FloatMult(cf, x))
 	}
 	a.seen = min(a.seen+1, a.warm)
 	a.level = max(a.gate, fixed.FloatExtract32(fixed.FloatSqrt(fixed.FloatSqrt(a.e4))))

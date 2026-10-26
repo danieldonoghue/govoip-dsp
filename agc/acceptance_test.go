@@ -69,9 +69,9 @@ func TestAcceptanceConvergence(t *testing.T) {
 			r, f0 := runStep(t, c)
 			cfg := c.cfg
 			// Registered numbers (design v2, test-structure change 1).
-			up, down, over := 1.0, 5.8, 0.45
+			up, down, over6 := 1.0, 5.8, 0.45
 			if cfg == fastConfig() {
-				up, down, over = 0.28, 1.24, 0.13
+				up, down, over6 = 0.28, 1.24, 0.13
 			}
 			limit := up
 			if c.to < c.from {
@@ -87,7 +87,6 @@ func TestAcceptanceConvergence(t *testing.T) {
 			if got > limit {
 				t.Errorf("convergence %.3f s > %.3f s", got, limit)
 			}
-			over6 := over
 			if c.to > c.from {
 				over := 0
 				for f := f0; f < r.frames(); f++ {
@@ -307,7 +306,7 @@ func TestAcceptanceTransients(t *testing.T) {
 			cuts := checkRates(t, r, "T1 suite", cfg)
 			cf := click / r.frameLen()
 			for _, f := range cuts {
-				if f >= cf-1 && f <= cf+riseFrames+1 {
+				if f >= cf-1 && f <= cf+r.a.riseRun+1 {
 					t.Errorf("R5: cut at frame %d near the 10 ms click at frame %d", f, cf)
 				}
 			}
@@ -380,6 +379,40 @@ func TestAcceptanceClick(t *testing.T) {
 			checkCeiling(t, r, name, false)
 		})
 	}
+}
+
+// TestAcceptanceClickRuns covers R5 for clicks in pauses and for a click
+// at a rate whose frames are shorter than 10 ms.
+func TestAcceptanceClickRuns(t *testing.T) {
+	t.Run("pauses", func(t *testing.T) {
+		cfg := DefaultConfig(16000)
+		r := newRecorder(t, cfg)
+		r.feed(t, speechLike(10, cfg.SampleRate, -44, "agc-r5", cfg), true)
+		for i := range 3 {
+			// 1 s of zeros, then a 10 ms click straddling two frames.
+			r.feed(t, make([]int16, cfg.SampleRate+80*i), true)
+			r.feed(t, testutil.WhiteNoise(160, 32767, testutil.Seed(fmt.Sprint("agc-r5-", i))), true)
+		}
+		r.feed(t, make([]int16, cfg.SampleRate), true)
+		cuts := checkRates(t, r, "R5 pauses", cfg)
+		t.Logf("R5 clicks in pauses: cuts %v, AGC gain %.2f dB", cuts, q15dB(r.a.gain))
+		if len(cuts) != 0 {
+			t.Errorf("R5: cuts at frames %v", cuts)
+		}
+	})
+	t.Run("9999Hz", func(t *testing.T) {
+		cfg := DefaultConfig(9999)
+		r := newRecorder(t, cfg)
+		F := r.frameLen()
+		r.feed(t, sine(1500*F-5, cfg.SampleRate, -44), true) // the click touches 3 frames
+		r.feed(t, testutil.WhiteNoise((cfg.SampleRate+99)/100, 32767, testutil.Seed("agc-r5-odd")), true)
+		r.feed(t, sine(100*F, cfg.SampleRate, -44), true)
+		cuts := checkRates(t, r, "R5 9999 Hz", cfg)
+		t.Logf("R5 9999 Hz click over 3 frames: run %d frames, cuts %v", r.a.riseRun, cuts)
+		if len(cuts) != 0 {
+			t.Errorf("R5: cuts at frames %v", cuts)
+		}
+	})
 }
 
 // TestAcceptanceNoise covers N1 to N3.
@@ -553,8 +586,11 @@ func TestAcceptanceCautiousStart(t *testing.T) {
 		if r.frameActive(f) {
 			n++
 		}
-		margin := q15dB(r.agcGain[(f+1)*F-1]) - (float64(n)*step + 0.01)
-		worst = max(worst, margin)
+		if n == 0 {
+			continue // the bound is trivial before the first active frame
+		}
+		g := 20 * math.Log10(float64(r.fine[(f+1)*F-1])/(unity<<7))
+		worst = max(worst, g-(float64(n)*step+0.01))
 	}
 	g := q15dB(r.agcGain[len(r.agcGain)-1])
 	t.Logf("R3: %d active frames, final gain %.2f dB, largest excess over n·RiseRate·F/R %.4f dB (threshold 0)", n, g, worst)

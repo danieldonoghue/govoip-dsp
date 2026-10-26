@@ -20,10 +20,11 @@
 //     been seen. Loud frames dominate it, so it follows the peaks of speech
 //     rather than the dips between syllables. Inactive frames leave it
 //     unchanged.
-//  3. Three active frames in a row more than 10 dB above L reset L to
-//     their level and cut the gain at once. A click (one or two frames)
-//     cannot do this. Active frames more than 6 dB below L for LevelTime/3
-//     in a row reset L to their level.
+//  3. Consecutive active frames more than 13 dB above L, one more than a
+//     10 ms click can touch (3 at rates that are multiples of 1000), reset
+//     L to their level and cut the gain at once; an inactive frame ends the
+//     run. Active frames more than 6 dB below L for LevelTime/3 in a row
+//     reset L to their level.
 //  4. The target gain is TargetLevel/L, clamped to [MinGain, MaxGain]. The
 //     AGC gain starts at 0 dB and moves towards it by at most RiseRate dB/s
 //     up, on active frames only, and FallRate dB/s down, on any frame. So
@@ -44,8 +45,8 @@
 // Noise protection is the gate and the speech flag. Noise above GateLevel
 // passed with speech true is treated as speech and raised towards the
 // target; pass the VAD decision (for example from preprocess) to prevent
-// that. In pauses the gain holds, so background noise in a pause gets the
-// same gain as the speech around it.
+// that. In pauses the gain cannot rise, but it may finish falling, so
+// background noise in a pause gets at most the gain of the speech before it.
 //
 // # Rates, chunking and latency
 //

@@ -15,6 +15,7 @@ type recorder struct {
 	in, out []int16
 	applied []int32
 	agcGain []int32
+	fine    []int32 // AGC gain in Q22 after each input sample
 	levels  []int32 // level estimate after each input sample
 	speech  []bool  // per input sample
 }
@@ -37,6 +38,7 @@ func (r *recorder) feed(t testing.TB, x []int16, speech bool) {
 			t.Fatal(err)
 		}
 		r.agcGain = append(r.agcGain, r.a.gain)
+		r.fine = append(r.fine, r.a.fine)
 		r.levels = append(r.levels, r.a.level)
 		r.out = append(r.out, y[0])
 		r.in = append(r.in, x[i])
@@ -230,7 +232,8 @@ func (r *recorder) frameActive(f int) bool {
 }
 
 // checkRates checks R1 and R2 on every frame and returns the frames where
-// the gain fell faster than FallRate (immediate cuts).
+// the gain fell faster than FallRate (immediate cuts). Loudness is judged
+// from a float RMS of the input, not from the AGC's own rms.
 func checkRates(t testing.TB, r *recorder, name string, cfg Config) []int {
 	t.Helper()
 	F := r.frameLen()
@@ -238,29 +241,32 @@ func checkRates(t testing.TB, r *recorder, name string, cfg Config) []int {
 	riseMax := float64(cfg.RiseRate)*sec + 0.01
 	fallMax := float64(cfg.FallRate)*sec + 0.01
 	var cuts []int
-	prevGain, prevLevel := int32(unity), r.a.target
-	var levels []int32 // level before each frame
+	prevGain, prevLevel := int32(unity<<7), r.a.target
+	var levels []float64 // level before each frame, Q12
 	for f := 0; (f+1)*F <= len(r.in); f++ {
-		levels = append(levels, prevLevel)
-		g := r.agcGain[(f+1)*F-1]
+		levels = append(levels, float64(prevLevel))
+		g := r.fine[(f+1)*F-1]
 		d := 20 * math.Log10(float64(g)/float64(prevGain))
 		active := r.frameActive(f)
 		if g > prevGain && !active {
-			t.Errorf("%s R1: gain rose %.4f dB (%d to %d) on inactive frame %d", name, d, prevGain, g, f)
+			t.Errorf("%s R1: gain rose %.4f dB on inactive frame %d", name, d, f)
 		}
 		if g > prevGain && d > riseMax {
 			t.Errorf("%s R1: gain rose %.4f dB on frame %d (limit %.4f)", name, d, f, riseMax)
 		}
 		if g < prevGain && -d > fallMax {
-			// R2: only after riseFrames loud active frames in a row.
-			ok := f >= riseFrames-1
-			for k := f - riseFrames + 1; ok && k <= f; k++ {
-				e := frameRMS(r.inFrame(k))
-				l := int64(levels[k])
-				ok = r.frameActive(k) && int64(e)*int64(e) > 10*l*l
+			// R2: only after riseRun loud active frames in a row...
+			ok := f >= r.a.riseRun-1
+			for k := f - r.a.riseRun + 1; ok && k <= f; k++ {
+				e := testutil.RMS(r.inFrame(k)) * 4096
+				ok = r.frameActive(k) && e*e > cutRatio*levels[k]*levels[k]
 			}
-			if !ok {
-				t.Errorf("%s R2: gain fell %.4f dB on frame %d without a sustained rise", name, -d, f)
+			// ...and exactly to the target gain of the new level.
+			lvl := int64(r.levels[(f+1)*F-1])
+			want := int32(min(max((int64(r.a.target)<<15)/lvl, int64(r.a.minGain)), int64(r.a.maxGain))) << 7
+			if !ok || g != min(prevGain, want) {
+				t.Errorf("%s R2: gain fell %.4f dB on frame %d (sustained rise %v, gain %d, want %d)",
+					name, -d, f, ok, g, min(prevGain, want))
 			}
 			cuts = append(cuts, f)
 		}

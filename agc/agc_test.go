@@ -490,9 +490,9 @@ func TestConfigEdgeAccuracy(t *testing.T) {
 			if d := got - float64(c.cfg.TargetLevel); d > 0.25 || d < -0.25 {
 				t.Errorf("output %.3f dBFS, want %d ±0.25", got, c.cfg.TargetLevel)
 			}
-			// The closest the level divisor comes to zero is the gate.
-			if minLevel < a.gate {
-				t.Errorf("level %d fell below the gate %d", minLevel, a.gate)
+			// The level divisor must come close to its bound, the gate.
+			if c.to < -79 && float64(minLevel) > 1.1*float64(a.gate) {
+				t.Errorf("lowest level %d is not within 10 %% of the gate %d", minLevel, a.gate)
 			}
 		})
 	}
