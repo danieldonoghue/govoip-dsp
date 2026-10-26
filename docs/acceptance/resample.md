@@ -346,4 +346,14 @@ Targets:
       `inFrames` > 0 and exactly 0 when `inFrames` = 0. The fuzz target
       checks the same. Soundness, the mutation checks and the other
       criteria of change 9 are unchanged.
+11. **Correction to change 10, still before the implementation commit.**
+    Justification: the event test failed with `ProcessFloat` offered no
+    input while magic samples were pending: it wrote 0 frames where
+    `MaxOut(0)` was 88. Upstream `speex_resampler_process_float` processes
+    magic samples only inside its `while (ilen && olen)` loop, so with no
+    input it writes nothing, while `speex_resampler_process_int` processes
+    them first. The tightness criterion for `inFrames` = 0 therefore holds
+    for the `int16` methods only: there the slack is exactly 0. For the
+    `float32` methods with `inFrames` = 0, a call writes nothing, and the
+    bound (still sound) is reported but not required to be tight.
 
