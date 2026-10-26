@@ -710,7 +710,6 @@ working AGC for any configuration. Runs on 2026-10-26 with
 `go test ./agc -run '^$' -fuzz <target> -fuzztime 60s`, no failures:
 design v1 `FuzzChunksProcess` 4,793,678 and `FuzzConfig` 1,415,919
 executions; design v2 (after its review corrections) 587,550 and 4,437,804
-executions. The seed corpora
-are the `f.Add` calls; the fuzzer found nothing to commit to
-`agc/testdata/fuzz/`.
+executions. The seed corpora are the `f.Add` calls; the fuzzer found
+nothing to commit to `agc/testdata/fuzz/`.
 
