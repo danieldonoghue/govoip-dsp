@@ -31,7 +31,7 @@ scope.
 
 | Format | Work | Notes |
 |---|---|---|
-| slin | None | Raw signed 16-bit PCM, the native `int16` format of this library. At most byte order and rate, and rate is `resample`'s job. |
+| slin | Very small | Raw signed 16-bit PCM, the native `int16` format of this library. The codec repository provides zero-allocation little-endian `[]byte` to `[]int16` conversion both ways (AudioSocket delivers slin as bytes); rate is `resample`'s job. |
 | G.711 (PCMA, PCMU) | Very small | Table-based companding. Test against ITU-T G.191 reference software. First candidate. |
 | G.722 | Moderate | 16 kHz sub-band ADPCM. ITU-T reference code and test vectors; patents expired. Second candidate. |
 | G.726 | Small to moderate | Narrowband ADPCM; less common now. |
