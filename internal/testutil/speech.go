@@ -34,9 +34,8 @@ func RepoRoot(t testing.TB) string {
 	}
 }
 
-// SpeechFiles returns the paths of the downloaded speech files (16 kHz mono
-// little-endian int16 raw), sorted. It skips the test, saying why, when
-// there are none.
+// SpeechFiles returns the sorted paths of the downloaded 16 kHz int16 raw
+// speech files, and skips the test when there are none.
 func SpeechFiles(t testing.TB) []string {
 	t.Helper()
 	paths, err := filepath.Glob(filepath.Join(RepoRoot(t), SpeechDir, "*.raw"))

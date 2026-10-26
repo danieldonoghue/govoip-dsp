@@ -13,9 +13,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
 
-// This file mirrors reference/drivers/fixed.c: the case table, the edge
-// lists and the input generators must stay identical, which the input
-// stream hashes check.
+// Mirrors reference/drivers/fixed.c: case table, edges and generators must
+// stay identical, which the input stream hashes check.
 
 const fixtureDir = "../../testdata/speexdsp/fixed"
 
@@ -155,10 +154,7 @@ var refCases = []refCase{
 	{"float_sqrt", mEdgesRandom, []kind{i16, pfe}, 2, func(a []int64, o []int32) { putPF(FloatSqrt(pf(a, 0)), o) }, nil},
 }
 
-const (
-	randomCount   = 10000000
-	exhaustiveMax = 1 << 24
-)
+const randomCount = 10000000
 
 var (
 	edges16 = []int64{
@@ -458,9 +454,8 @@ func checkCase(t *testing.T, m *testutil.Manifest, rc refCase) {
 	out.Done()
 }
 
-// float32Inputs and float64Inputs are the WORD2INT inputs: boundaries with
-// their neighbours, special values, values spread over [-40000, 40000], and
-// random bit patterns. NaN is excluded (C is undefined there).
+// float32Inputs and float64Inputs are the WORD2INT inputs: boundaries and
+// neighbours, specials, spread and random values. NaN is excluded.
 func float32Inputs() []float32 {
 	v := []float32{0, float32(math.Copysign(0, -1)), float32(math.Inf(1)), float32(math.Inf(-1)),
 		math.MaxFloat32, -math.MaxFloat32, math.SmallestNonzeroFloat32, -math.SmallestNonzeroFloat32,

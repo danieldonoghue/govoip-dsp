@@ -21,17 +21,15 @@ func DBFS(level float64) float64 {
 	return 20 * math.Log10(level/32768)
 }
 
-// SNR returns 10*log10(sum(ref^2) / sum((test-ref)^2)) in dB over the common
-// length. It is +Inf when test equals a non-silent ref, -Inf when ref is
-// silent and test is not, and NaN when both are silent.
+// SNR returns 10*log10(sum(ref^2)/sum((test-ref)^2)) in dB over the common
+// length: +Inf if test equals a non-silent ref, NaN if both are silent.
 func SNR(ref, test []int16) float64 {
 	n := min(len(ref), len(test))
 	return ratioDB(energy(ref[:n]), errEnergy(ref[:n], test[:n]))
 }
 
-// SegmentalSNR returns the mean of per-frame SNRs, each clamped to
-// [-10, 35] dB, over frames of the given length. Frames where ref is silent
-// are skipped; with no usable frame the result is NaN.
+// SegmentalSNR is the mean per-frame SNR, each clamped to [-10, 35] dB.
+// Silent reference frames are skipped; with none left the result is NaN.
 func SegmentalSNR(ref, test []int16, frame int) float64 {
 	n := min(len(ref), len(test))
 	sum, count := 0.0, 0
@@ -50,20 +48,15 @@ func SegmentalSNR(ref, test []int16, frame int) float64 {
 	return sum / float64(count)
 }
 
-// ERLE returns the echo return loss enhancement 10*log10(sum(echo^2) /
-// sum(residual^2)) in dB over the common length, where echo is the echo
-// signal before cancellation and residual what remains after it. The
-// infinities and NaN follow SNR.
+// ERLE returns 10*log10(sum(echo^2)/sum(residual^2)) in dB: echo before
+// cancellation against what remains after it.
 func ERLE(echo, residual []int16) float64 {
 	n := min(len(echo), len(residual))
 	return ratioDB(energy(echo[:n]), energy(residual[:n]))
 }
 
-// SpectralFlatness returns the mean, over Hann-windowed frames of the given
-// power-of-two length, of the geometric mean of the power spectrum divided
-// by its arithmetic mean (bins 1 to frame/2-1). It is near 1 for white noise
-// and near 0 for a pure tone; a frame with an empty bin counts as 0. Silent
-// frames are skipped; with no usable frame the result is NaN.
+// SpectralFlatness is the mean over Hann-windowed power-of-two frames of
+// geometric over arithmetic mean power (1 for white noise, 0 for a tone).
 func SpectralFlatness(x []int16, frame int) float64 {
 	if frame < 4 || frame&(frame-1) != 0 {
 		return math.NaN()

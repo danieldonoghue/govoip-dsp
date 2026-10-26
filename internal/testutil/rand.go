@@ -1,9 +1,7 @@
 package testutil
 
-// SplitMix64 is the SplitMix64 generator (Steele, Lea and Flood, 2014). The
-// reference harness has the same generator as hz_next in
-// reference/common/harness.c, so both sides can draw identical integer inputs
-// from a seed.
+// SplitMix64 (Steele, Lea and Flood, 2014) is identical to hz_next in
+// reference/common/harness.c, so Go and C draw the same inputs from a seed.
 type SplitMix64 struct {
 	State uint64
 }

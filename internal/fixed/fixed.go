@@ -51,9 +51,8 @@ func Word2Int(x int32) int16 {
 	return int16(x)
 }
 
-// Word2IntFloat32 is WORD2INT on a float followed by the conversion to
-// spx_word16_t (resample.c:1003): saturation, then truncation toward zero.
-// NaN gives 0, a documented deviation: the C behaviour is undefined.
+// Word2IntFloat32 is WORD2INT on a float then the cast to spx_word16_t
+// (resample.c:1003). NaN gives 0, where C is undefined.
 func Word2IntFloat32(x float32) int16 {
 	if x != x {
 		return 0
@@ -81,11 +80,8 @@ func Word2IntFloat64(x float64) int16 {
 	return int16(x)
 }
 
-// QConst16 is QCONST16: x in Q(bits), computed in double and truncated
-// toward zero. For an upstream literal with an f suffix, pass
-// float64(float32(c)). C is undefined when the result does not fit in int16;
-// QConst16 saturates, which is what the harness compilers' constant folding
-// gives for QCONST16(4.f,13) at preprocess.c:260 (docs/testing.md).
+// QConst16 is QCONST16; pass float64(float32(c)) for an f-suffixed literal.
+// Out-of-range results, undefined in C, saturate (a Go-only choice).
 func QConst16(x float64, bits uint) int16 {
 	v := 0.5 + float64(x*float64(int32(1)<<bits))
 	if v >= 32768 {

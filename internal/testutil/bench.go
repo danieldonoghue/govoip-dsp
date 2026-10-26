@@ -2,10 +2,8 @@ package testutil
 
 import "testing"
 
-// ReportFrameMetrics adds two metrics to a benchmark whose every iteration
-// processes samples samples (per channel) of audio at rate Hz: "samples/s",
-// the throughput, and "rt-fraction", the processing time divided by the
-// duration of that audio. Call it after the b.Loop loop.
+// ReportFrameMetrics, called after b.Loop, reports "samples/s" and
+// "rt-fraction" (time over audio duration) for samples per iteration at rate.
 func ReportFrameMetrics(b *testing.B, samples int, rate float64) {
 	if b.N == 0 || samples <= 0 || rate <= 0 {
 		return

@@ -35,7 +35,7 @@ static inline void speex_warning_int(const char *str, int val)
 
 #define RANDOM 10000000
 #define PREFIX 4096
-#define EXHAUSTIVE_MAX (1 << 24)
+#define EXHAUSTIVE_MAX 16777216
 
 enum { T_I16, T_I32, T_U32, T_PFE };
 typedef struct {

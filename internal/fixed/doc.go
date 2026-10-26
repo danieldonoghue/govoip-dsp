@@ -75,11 +75,11 @@
 //
 //   - Division by zero panics: Div32x16, PDiv32x16, Div32 and PDiv32 with
 //     b = 0, FloatDiv32Float with b.M = 0 and FloatDiv32 with b = 0.
-//     -2^31 / -1 gives -2^31. Components must keep divisors non-zero, as
-//     upstream does.
+//     -2^31 / -1 gives -2^31. Components must show that each divisor
+//     cannot be zero (docs/contracts.md section 8).
 //   - A shift count at or above the operand width gives 0 or -1 in Go.
-//   - QConst16 and QConst32 saturate a result that does not fit, as the
-//     harness compilers fold upstream's one such literal.
+//   - QConst16 and QConst32 saturate a result that does not fit. No literal
+//     compiled in the fixed-point build is out of range (docs/testing.md).
 //   - Word2IntFloat32 and Word2IntFloat64 map NaN to 0 (requirements §3).
 //
 // Signed overflow wraps in both, since the harness builds with -fwrapv, and

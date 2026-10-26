@@ -59,9 +59,8 @@ func WhiteNoise(n int, amp int16, seed uint64) []int16 {
 	return x
 }
 
-// PinkNoise returns n samples of approximately 1/f noise (Voss-McCartney with
-// 16 rows of uniform noise), scaled so that no sample exceeds amp in
-// magnitude.
+// PinkNoise returns n samples of about 1/f noise (Voss-McCartney, 16 rows),
+// scaled so that no sample exceeds amp in magnitude.
 func PinkNoise(n int, amp int16, seed uint64) []int16 {
 	const rows = 16
 	r := SplitMix64{State: seed}
@@ -96,9 +95,8 @@ func Clip(x []int16, limit int16) []int16 {
 	return y
 }
 
-// Scale returns a copy of x multiplied by num/den, rounded to nearest (halves
-// away from zero) and saturated. It produces low-level signals without
-// floating point.
+// Scale returns x times num/den, rounded half away from zero and saturated,
+// in integer arithmetic.
 func Scale(x []int16, num, den int) []int16 {
 	y := make([]int16, len(x))
 	for i, v := range x {
@@ -131,11 +129,8 @@ func ToFloat32(x []int16) []float32 {
 	return y
 }
 
-// SpeechLike returns n samples of a synthetic speech-like signal at the given
-// rate: voiced segments (harmonics of a gliding 90 to 230 Hz pitch with a
-// falling spectrum and three formant peaks), unvoiced noise bursts and
-// pauses, each under a raised-cosine envelope, scaled to peak amp. It is a
-// deterministic stand-in for speech, not a speech model.
+// SpeechLike returns a deterministic speech-like stand-in at peak amp: voiced
+// formant-shaped harmonics, noise bursts and pauses. It is not a speech model.
 func SpeechLike(n int, rate float64, amp int16, seed uint64) []int16 {
 	r := SplitMix64{State: seed}
 	acc := make([]float64, n)
@@ -216,10 +211,8 @@ func hann(u float64) float64 {
 	return 0.5 - float64(0.5*dsin(float64(2*math.Pi*u)+math.Pi/2))
 }
 
-// dsin is a sine that gives the same bits on every platform: argument
-// reduction and a degree-19 Taylor polynomial using only IEEE basic
-// operations, with each product rounded explicitly. TestDsinAccuracy bounds
-// its error; argument reduction dominates for large arguments.
+// dsin is a platform-identical sine: a degree-19 Taylor polynomial in IEEE
+// basic operations with explicit rounding. TestDsinAccuracy bounds its error.
 func dsin(x float64) float64 {
 	const twoPi = 2 * math.Pi
 	k := math.Round(float64(x * (1 / twoPi)))

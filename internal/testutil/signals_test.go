@@ -28,9 +28,8 @@ func TestDsinAccuracy(t *testing.T) {
 	}
 }
 
-// The generators must give the same bits on every platform, because tests
-// regenerate harness inputs from seeds. These hashes were recorded on
-// darwin/arm64; CI checks them on the other runners.
+// Hashes recorded on darwin/arm64; tests regenerate harness inputs from
+// seeds, so every platform must reproduce them.
 func TestGeneratorsAreDeterministic(t *testing.T) {
 	for _, tc := range []struct {
 		name string

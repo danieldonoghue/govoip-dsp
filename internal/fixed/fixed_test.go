@@ -9,9 +9,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
 
-// The harness defines correctness (reference_test.go). These tests add the
-// Go-only policies and sanity checks that would catch a driver and a port
-// that agree on the wrong macro.
+// Go-only policies, plus sanity checks that catch a driver and a port that
+// agree on the wrong macro; the harness tests are in reference_test.go.
 
 func TestWord2IntFloatNonFinite(t *testing.T) {
 	nan32, nan64 := float32(math.NaN()), math.NaN()
