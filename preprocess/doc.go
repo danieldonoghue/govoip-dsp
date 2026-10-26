@@ -14,8 +14,9 @@
 // divides by zero, above 65535 Hz it overflows). Config.FrameSize is 1 to
 // MaxFrameSize (2048) samples with no prime factor above 17, as the FFT of
 // 2*FrameSize requires; SupportedFrameSize checks a size before New. Typical
-// use is 10 ms or 20 ms frames at 8, 16, 32 or 48 kHz. Processing uses a 2*FrameSize window with 50% overlap, so the
-// output is delayed by FrameSize samples.
+// use is 10 ms or 20 ms frames at 8, 16, 32 or 48 kHz. Processing uses a
+// 2*FrameSize window with 50% overlap, so the output is delayed by FrameSize
+// samples.
 //
 // # Settings
 //
@@ -59,5 +60,5 @@
 //
 // A Preprocessor is not safe for concurrent use. Use one per stream. New
 // allocates; no other method allocates. Work per frame is proportional to
-// FrameSize times the FFT cost of 2*FrameSize (internal/fft).
+// FrameSize times the FFT cost of 2*FrameSize samples.
 package preprocess

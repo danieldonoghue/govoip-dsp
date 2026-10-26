@@ -83,9 +83,8 @@ const (
 type Config struct {
 	// SampleRate is the sampling rate in Hz, MinSampleRate to MaxSampleRate.
 	SampleRate int
-	// FrameSize is the number of samples per frame; SupportedFrameSize tells
-	// which New accepts. 10 and 20 ms at 8, 16, 32 and 48 kHz (80, 160,
-	// 320, 640, 480, 960) are.
+	// FrameSize is samples per frame, as SupportedFrameSize accepts: 10 and 20
+	// ms at 8, 16, 32 and 48 kHz (80, 160, 320, 480, 640, 960) qualify.
 	FrameSize int
 }
 
