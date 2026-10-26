@@ -168,4 +168,20 @@ Targets:
 
 ## Changes
 
-(none)
+1. **More input for the event cases, and four more cases** (after the first
+   implementation commit). Justification: a check that every listed event
+   is applied showed that the event cases ended, for lack of input, before
+   their later events, and mutation checks showed three reachable paths
+   that no case reached. Nothing is removed or loosened:
+   - Every event case gets 48000 input frames (the signal grows to 262144
+     samples), and the Go test fails unless every listed event is applied
+     (except after an overflow, which ends the case).
+   - Two quality and rate changes in a row that both shorten the filter
+     while magic samples are pending.
+   - 270000001:270000000 at quality 0, where `16*den_rate` wraps in
+     `uint32` and halves the oversampling; at quality 1 the same ratio is a
+     constructor failure.
+   - A mixed mode: a few per-channel calls on channel 0, then interleaved
+     calls, so that the channels' states differ and the interleaved call
+     reports the last channel's counts (2 channels at quality 5, 44.1k→48k;
+     3 channels at quality 10, 48k→16k).
