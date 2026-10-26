@@ -577,9 +577,10 @@ counterpart; it equals a new instance with the same settings.
 
 ## Automatic gain control (`agc`, WP4)
 
-**Algorithm.** Own design; no SpeexDSP code (SpeexDSP 1.2.1 has an AGC only
-in its floating-point build). A feed-forward AGC with a lookahead limiter,
-in integer arithmetic:
+**Algorithm (design v2).** Own design; no SpeexDSP code. The ideas of the
+level estimate and the gain limits come from the floating-point AGC of
+SpeexDSP 1.2.1 (`preprocess.c:565-611`), reimplemented in integer
+fixed-point arithmetic. A feed-forward AGC with a lookahead limiter:
 
 1. The input is split into blocks of `K = SampleRate/1000` samples and
    frames of `10K` samples, counted from the start of the stream.
@@ -588,26 +589,60 @@ in integer arithmetic:
    `fixed.Sqrt`, in Q12 (at most 0.23 % error from −102 dBFS up,
    `TestRMS`).
 3. A frame is active when `r` is at or above `GateLevel` and every sample
-   in it was passed with `speech = true`. An active frame moves the level
-   estimate `L` by `c · (min(r, 4L) − L)`, with the attack coefficient when
-   `r > L` and the release coefficient otherwise. Inactive frames leave `L`
-   unchanged.
-4. The AGC gain is `TargetLevel / L` in Q15, clamped to
-   `[MinGain, MaxGain]`. `L` starts at the target, so the gain starts at
-   0 dB.
-5. For each block, the limiter gain is the smallest of the AGC gain,
+   in it was passed with `speech = true`. Inactive frames do not change
+   the level estimate and cannot raise the gain.
+4. The level estimate `L` is a power mean of order 4: `E` is an
+   exponential mean, over active frames, of `min(r, 2L)⁴`, with time
+   constant `LevelTime`, and `L = E^(1/4)`. During the first `LevelTime` of
+   active frames the weight is `1/n` for the `n`-th frame, so `E` is the
+   plain mean of what has been heard. `E` is a `fixed.Float`, and the
+   fourth root is two `fixed.FloatSqrt` calls.
+5. Three active frames in a row with energy above `10·L²` (+10 dB) set `E`
+   to the 4th power of the smallest of their `r` and cut the gain at once.
+   `LevelTime/3` of active frames in a row below `L/2` (−6 dB) set `E` to
+   the 4th power of the largest of their `r`.
+6. The target gain is `TargetLevel / L`, clamped to `[MinGain, MaxGain]`.
+   The AGC gain starts at 0 dB and moves towards the target gain by at most
+   `RiseRate` dB/s up, on active frames only, and `FallRate` dB/s down, on
+   any frame, except for the cut in item 5.
+7. For each block, the limiter gain is the smallest of the AGC gain,
    `ceiling / peak` and the previous limiter gain released towards the AGC
    gain (20 ms time constant). The gain applied to block `j` ramps linearly
    between `min(e[j−1], e[j])` and `min(e[j], e[j+1])`, which needs one
    block of lookahead.
 
+**Design choices.**
+
+- **Order 4 instead of Speex's 5.** Order 4 needs only squarings and two
+  square roots, which `internal/fixed` has; a fifth root does not exist
+  there. Measured: order 2 instead of 4 raises P4 (LibriSpeech pumping)
+  from 2.24 dB to 7.99 dB, so the peak weighting is what keeps the gain
+  steady.
+- **Persistence before a cut.** Speex cuts after one jump of 10 times the
+  loudness. With 2 frames instead of 3, a 10 ms click that straddles two
+  frames cuts the gain by 32 dB (prototype measurement; mutation check:
+  caught by T4). Three frames costs 30 ms on a genuine step: T3 is 0.03 s.
+- **Warm-up.** Without it, `E` starts at the target level, and for speech
+  10 dB below the target an order-4 mean takes about 9·`LevelTime` to come
+  down; P3 then fails (mutation check: caught).
+- **Sustained drop.** An order-4 mean needs about 18·`LevelTime` to fall
+  20 dB. The reset after `LevelTime/3` of quieter frames gives C2 2.45 s.
+  It fired 0 times on the P3 and P4 signals (counted in a probe).
+- **Cautious start.** Speex grows a maximum gain as speech is confirmed.
+  Here the gain starts at 0 dB and rises only on active frames, at most
+  `RiseRate` dB/s, which gives the same bound; a separate cap could never
+  bind (R3).
+
 **Parameters.** `DefaultConfig`: target −24 dBFS, ceiling −1 dBFS, gate
-−50 dBFS, gain −12 to +24 dB, attack 500 ms, release 1500 ms. "Target
-level" is the output RMS that a stationary signal above the gate converges
-to. For speech, the AGC holds the attack- and release-weighted mean of
-active frame RMS at the target. Measured on LibriSpeech, this puts the
-active-speech RMS of the output 0.8 dB below the target
-(`docs/acceptance/agc.md`, S1).
+−50 dBFS, gain −12 to +24 dB, rise 12 dB/s, fall 40 dB/s (Speex's
+defaults), `LevelTime` 3 s. On a prototype with the warm-up, P4 measured
+3.91, 3.16, 2.81, 2.24 and 1.93 dB for `LevelTime` 1, 1.5, 2, 3 and 4 s
+(2 and 4 s with a longer drop window), and C2 1.78, 1.94 and 2.44 s for
+1, 1.5 and 3 s; 3 s leaves margin on both. "Target level" is the output
+RMS that a stationary signal above the gate converges to. For speech, the
+AGC holds the order-4 power mean of active frame RMS at the target,
+which lies above the active-speech RMS: measured on LibriSpeech, the
+output's active-speech RMS is 1.6 dB below the target (S1).
 
 **Latency.** `2K` samples: 2 ms at rates that are multiples of 1000. The
 first `2K` output samples of a stream are zero.
@@ -621,11 +656,14 @@ first `2K` output samples of a stream are zero.
   unreachable (mutation check: removing it is not caught).
 - Every division has a non-zero divisor: the block length (at least 8), the
   frame length (at least 80), the block peak (the zero case is a separate
-  branch), and `L`, which stays at or above `min(target, gate) > 0` because
-  each update lands between the old `L` and a value at or above the gate.
-  `TestConfigEdgeAccuracy` drives `L` to just above a −80 dBFS gate.
-- Each one-pole step (level estimate, limiter release) is rounded towards
-  its target, so it never stalls short of the target and never overshoots.
+  branch), and `L`, which is clamped to at least the gate (at least 13421
+  in Q12). `TestConfigEdgeAccuracy` drives `L` to just above a −80 dBFS
+  gate.
+- The 4th power and its root use `fixed.Float` (16-bit mantissa), so `L`
+  has about 13 bits of precision; C5 measures at most 0.05 dB of
+  steady-state error on a sine.
+- The rise step is at least one Q15 unit, so the gain cannot stall below
+  its target. The limiter release rounds towards its target.
 - `New` derives the constants with `math.Pow` and `math.Expm1`, rounded to
   integers; `TestConstants` pins them for one configuration.
 
@@ -634,17 +672,21 @@ first `2K` output samples of a stream are zero.
 - A level gate cannot tell noise from speech. Noise whose 10 ms frames reach
   the gate, passed with `speech = true`, is raised towards the target. For
   example, `testutil.PinkNoise` at −55 dBFS long-term RMS has 3 % of its
-  frames above a −50 dBFS gate, and the gain rises by 10 dB. Pass the VAD
-  decision to prevent this.
+  frames above a −50 dBFS gate, and the gain rises by 23 dB (design v1:
+  10 dB, because its release was slower). Pass the VAD decision to prevent
+  this.
 - In pauses the gain holds, so the noise in a pause gets the speech's gain.
-- Levels and gains are whole dB.
+- A downward level step smaller than 6 dB does not trigger the reset, so
+  only the slow order-4 mean follows it. Measured on a sine: a −5 dB step
+  takes 5.16 s to come within 2 dB of the target and 7.82 s to come within
+  1 dB, against 1.62 s and 1.70 s for −10 dB.
+- Levels and gains are whole dB, rates whole dB/s.
 - The limiter can hold a stationary signal below the target when its peaks
   at the target gain would exceed the ceiling (a sine needs
   `LimitLevel − TargetLevel ≥ 3 dB`).
-- Pumping on real speech (LibriSpeech) is a 3.64 dB spread of frame gain
-  (5 % to 95 %), above the 3 dB that was pre-registered. A slower attack and
-  release reduces it, but also slows convergence: 1 s attack and 2 s
-  release give 2.86 dB, 2 s and 2 s give 2.32 dB (measured before the fixes
-  in the commit "agc: fix rounding stalls and low-level RMS precision",
-  which leave P4 unchanged at 3.641 dB). The choice is an open question in
-  `docs/status.md`.
+
+**Design v1 (fallback).** The first design used a one-pole mean of frame
+RMS with attack and release time constants (500 ms and 1500 ms), and no
+rate limits. It met every criterion except P4 (3.64 dB). Its last code
+state is the commit "agc: check the ceiling and exact gain limits in more
+acceptance tests"; its measurements are in `docs/acceptance/agc.md`.

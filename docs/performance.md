@@ -209,27 +209,33 @@ Cost follows the frame size, not the rate. No Linux VM numbers yet.
 
 ## Automatic gain control (`agc`, WP4)
 
-Mac, 2026-10-26, at the commit "agc: check the ceiling and exact gain
-limits in more acceptance tests":
+Mac, 2026-10-26, design v2 against design v1 (the commit "agc: check the
+ceiling and exact gain limits in more acceptance tests"), alternating five
+runs of each:
 
 ```sh
-CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./agc
+CGO_ENABLED=0 go test -run '^$' -bench 'AGCProcess|AGCNew' -benchmem -count 1 ./agc
 ```
 
 `DefaultConfig` at each rate, on full-scale `SpeechLike` input, so the
 limiter and the level estimate both run. Other agents were running at the
-same time (load average 86 on 10 cores), so these are upper bounds; an
-independent run under load measured 3.7 µs for `48k_480`.
+same time (load average 40 to 70 on 10 cores), so these are upper bounds,
+and the v1 to v2 differences are within the noise: a second back-to-back
+run of `16k_160` gave 446 to 525 ns for v1 and 454 to 470 ns for v2.
 
-| Benchmark | ns/op | rt-fraction | samples/s | allocs/op |
-|---|---|---|---|---|
-| `AGCProcess/8k_80` | 254.8 | 0.0000255 | 314 M | 0 |
-| `AGCProcess/16k_160` | 439.2 | 0.0000439 | 364 M | 0 |
-| `AGCProcess/32k_320` | 857.3 | 0.0000857 | 373 M | 0 |
-| `AGCProcess/48k_480` | 1257 | 0.0001257 | 382 M | 0 |
-| `AGCProcess/16k_320` (20 ms) | 856.6 | 0.0000428 | 374 M | 0 |
-| `AGCProcess/16k_37` | 108.8 | 0.0000471 | 340 M | 0 |
-| `AGCNew` (48 kHz) | 266.7 | | | 2 (400 B) |
+| Benchmark | v1 median ns/op | v2 median ns/op | allocs/op |
+|---|---|---|---|
+| `AGCProcess/8k_80` | 322.7 | 529.6 | 0 |
+| `AGCProcess/16k_160` | 435.6 | 750.2 | 0 |
+| `AGCProcess/32k_320` | 871.9 | 1345 | 0 |
+| `AGCProcess/48k_480` | 1326 | 2002 | 0 |
+| `AGCProcess/16k_320` (20 ms) | 870.9 | 1578 | 0 |
+| `AGCProcess/16k_37` | 152.4 | 180.6 | 0 |
+| `AGCNew` (48 kHz) | 806.3 | 923.0 | 2 (v1 400 B, v2 480 B) |
+
+A CPU profile of v2 `16k_160` puts 6 % of the time in the per-frame level
+estimate (`endFrame` and `track`) and the rest in the per-sample loop,
+which is the same code in both designs.
 
 Target (`docs/acceptance/agc.md`): at most 10 µs per 10 ms frame at 48 kHz,
-0 allocs/op. Measured 1.26 µs. Not measured on the Linux VM.
+0 allocs/op. Measured at most 2.0 µs. Not measured on the Linux VM.

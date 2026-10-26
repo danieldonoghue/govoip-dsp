@@ -496,6 +496,40 @@ not caught and equivalent, and 1 not caught as a test gap (the VAD start
 
 ### `agc` (WP4)
 
+#### Design v2
+
+Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
+the commit "agc: redesign the level estimator (design v2)", with the
+LibriSpeech files present (the unmutated run passes, P4 included),
+restoring `agc.go` after each.
+
+| Mutation | Result |
+|---|---|
+| Limiter removed (block peak ignored) | caught (T1/T2 suite, T4, C1, C3, C4, Q4, long run, boundary configs) |
+| Limiter ceiling one LSB high | caught (same tests except Q4) |
+| Ramp end not bounded by the previous block's limiter gain | caught (T1/T2 suite, T4, C1 at 44.1 kHz, C4, Q4, long run, boundary configs) |
+| Limiter never releases | caught (C2, C3, C4, C5, C6, P3, P4, edge configs) |
+| Gate removed | caught (N1, N3, P3, P4, Q2 to Q4, R3, T1/T2 suite) |
+| Speech flag ignored | caught (N2, `TestSpeechFlag`) |
+| Speech flag not reset at the frame end | caught (`TestSpeechFlag`) |
+| Innovation clamp `min(r, 2L)` removed | caught (T4, C1 fast) |
+| Gain rises on inactive frames | caught (R1 on N3, P3, P4, Q2 to Q4, T1/T2 suite; R3) |
+| Rise limit removed | caught (R1, R3, C1, C2, T4 and more) |
+| Fall limit removed | caught (R2 on C3 down) |
+| Immediate cut after 2 loud frames instead of 3 | caught (T4 straddling, R5 at 44.1 kHz, P4) |
+| Immediate cut removed | caught (R4, C1) |
+| Sustained-drop reset removed | caught (C2, C3, C4) |
+| Warm-up removed | caught (P3, `TestSpeechFlag`) |
+| Power mean of order 2 instead of 4 | caught (P4: 7.99 dB; edge configs) |
+| Gain not clamped to MaxGain | caught (C6) |
+| Gain not clamped to MinGain | caught (C6, T1/T2 suite) |
+| `Reset` keeps the delay line | caught (`TestResetProcess`) |
+| Input read after the output is written (breaks aliasing) | caught (`TestAliasingProcess`) |
+| Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
+| Rise step without the one-unit minimum | not caught: equivalent unless the step rounds to zero, which needs a gain below about −31 dB with `RiseRate` below about 4 dB/s |
+
+#### Design v1 (fallback)
+
 Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
 the commit "agc: check the ceiling and exact gain limits in more acceptance
 tests", without the LibriSpeech files (so P4 skips and the unmutated run
@@ -642,9 +676,10 @@ committed.
 (with speech flags) gives bit-identical output, that no sample exceeds the
 ceiling or flips sign against its input, and that the first `Latency`
 samples are zero. `FuzzConfig` checks that `New` returns `ErrConfig` or a
-working AGC for any configuration. Run on 2026-10-26 with
-`go test ./agc -run '^$' -fuzz <target> -fuzztime 60s`: `FuzzChunksProcess`
-4,793,678 executions, `FuzzConfig` 1,415,919 executions, no failures (at the
-same commit). The seed corpora are the `f.Add` calls; the fuzzer found
-nothing to commit to `agc/testdata/fuzz/`.
+working AGC for any configuration. Runs on 2026-10-26 with
+`go test ./agc -run '^$' -fuzz <target> -fuzztime 60s`, no failures:
+design v1 `FuzzChunksProcess` 4,793,678 and `FuzzConfig` 1,415,919
+executions; design v2 1,098,871 and 3,624,232 executions. The seed corpora
+are the `f.Add` calls; the fuzzer found nothing to commit to
+`agc/testdata/fuzz/`.
 

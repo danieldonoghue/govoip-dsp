@@ -385,6 +385,8 @@ frame of alignment. R5 is the condition the 3-frame rule was chosen for.
 
 ## Results
 
+### Design v1
+
 Measured on the Mac (`docs/performance.md`), 2026-10-26, with
 `go test -count=1 -v ./agc` at the commit "agc: check the ceiling and
 exact gain limits in more acceptance tests" (LibriSpeech present).
@@ -411,4 +413,37 @@ exact gain limits in more acceptance tests" (LibriSpeech present).
 | N3 | 0 change, ≤ −36 dBFS | 0 change, applied = AGC gain, −41.83 dBFS | pass |
 | Q1 to Q4 | as stated | exact holds; −20.04 dBFS after vs −20.62 before | pass |
 | Benchmark | ≤ 10 µs, 0 allocs | 1.26 µs, 0 allocs | pass |
+
+### Design v2
+
+Measured on the Mac, 2026-10-26, with `go test -count=1 -v ./agc` at the
+commit "agc: redesign the level estimator (design v2)" (LibriSpeech
+present). Thresholds are the registered numbers, with changes 2 and 3.
+
+| ID | Threshold | v1 | v2 | v2 result |
+|---|---|---|---|---|
+| C1 | ≤ 1.0 s; ≤ 0.28 s (`fast`) | 0.81 s; 0.17 s | 0.03 s at all four rates; 0.03 s | pass |
+| C2 | ≤ 5.8 s; ≤ 1.24 s | 5.34 to 5.37 s; 1.09 s | 2.45 s at all four rates; 0.50 s | pass |
+| C3 | as C1, C2 | 0.81 s, 5.34 s | 0.03 s, 2.45 s | pass |
+| C4 | as C1, C2 (change 2) | 0.81 s, 5.37 s | 0.03 s, 2.45 s (output frame level: 0.03 s, 2.45 s) | pass |
+| C5 | ±0.25 dB sine, ±0.5 dB noise | worst 0.010, 0.127 dB | worst 0.046, 0.084 dB | pass |
+| C6 | ±0.25 dB of −25 and −18 dBFS | −25.007, −18.000 | −25.007, −18.000 | pass |
+| P1 | ≤ 0.1 dB | 0.008 dB | 0.000 dB | pass |
+| P2 | ≤ 0.5 dB | 0.073 dB | 0.030 dB | pass |
+| P3 | ≤ 3 dB | 2.212 dB | 1.022 dB | pass |
+| P4 | ≤ 3 dB | 3.641 dB (fail) | 2.236 dB | pass |
+| S1 | ±3 dB | −0.84, −0.77 dB | −1.35, −1.55 dB | pass |
+| T1, T2 | 0 samples | 0 | 0; peak 29205 = ceiling | pass |
+| T2b | no −32768, no wrap | 0 | 0; peak 32767 | pass |
+| T3 | ≤ 0.45 s; ≤ 0.13 s | 0.37 s; 0.08 s | 0.03 s; 0.03 s | pass |
+| T4 | ≤ 1.25 dB, ≤ 100 ms | 1.003 dB, 54.5 ms | 0.212 dB, 37.5 ms | pass |
+| N1 | 0 dB, ≤ +0.1 dB | 0 dB, +0.000 | 0 dB, +0.000 (reported pink at −55 dBFS: +23.15 dB; v1 +9.99 dB) | pass |
+| N2 | 0 dB, ≤ +0.1 dB | 0 dB, +0.000 | 0 dB, +0.000 | pass |
+| N3 | 0 change, ≤ −36 dBFS | 0, −41.83 dBFS | 0, −40.82 dBFS | pass |
+| Q1 to Q4 | exact holds, burst ≤ +1 dB | +0.58 dB | −0.17 dB | pass |
+| R1, R2 | rate limits | n/a | no violation; cuts only after 3 loud frames | pass |
+| R3 | ≤ n·RiseRate·F/R | n/a | largest excess −0.010 dB | pass |
+| R4 | one cut within 50 ms | n/a | one cut, 30 ms after the step, all rates and `fast` | pass |
+| R5 | no cut on clicks | n/a | none | pass |
+| Benchmark | ≤ 10 µs, 0 allocs | 1.33 µs | 2.00 µs (loaded machine), 0 allocs | pass |
 
