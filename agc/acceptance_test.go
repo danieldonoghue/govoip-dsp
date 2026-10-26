@@ -246,6 +246,19 @@ func TestAcceptanceLibriSpeech(t *testing.T) {
 	}
 	t.Logf("P4: %d utterances, %.1f s", len(paths), float64(len(x))/testutil.SpeechRate)
 	pumping(t, "P4 LibriSpeech", cfg, x, 3, true)
+
+	// Reported only, without a threshold: the same signal at other levels.
+	for _, lvl := range []float64{-38, -30, -24, -20} {
+		var y []int16
+		for _, p := range paths {
+			y = append(y, toActive(testutil.LoadSpeech(t, p), 10*(testutil.SpeechRate/1000), cfg.GateLevel, lvl)...)
+		}
+		r := newRecorder(t, cfg)
+		r.feed(t, y, true)
+		r.feed(t, make([]int16, r.a.Latency()), true)
+		g := r.gainsDB(int(10/r.frameSeconds(cfg)), r.frames(), cfg.GateLevel)
+		t.Logf("P4 at %v dBFS (reported only): p95-p5 %.3f dB", lvl, percentile(g, 95)-percentile(g, 5))
+	}
 }
 
 // transientSuite returns the T1 suite at rate: speech, then each event

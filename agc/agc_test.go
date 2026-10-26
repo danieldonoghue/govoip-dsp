@@ -513,3 +513,68 @@ func TestRMS(t *testing.T) {
 		t.Errorf("worst relative error %.5f, rms(0) = %d", worst, rms(0, 160))
 	}
 }
+
+// TestLevelBias checks that the level mean does not drift low with a long
+// LevelTime (pseudo-float truncation).
+func TestLevelBias(t *testing.T) {
+	cfg := DefaultConfig(16000)
+	cfg.LevelTime = 10 * time.Second
+	a := mustNew(t, cfg)
+	x := sine(60*cfg.SampleRate, cfg.SampleRate, -44)
+	if err := a.Process(x, make([]int16, len(x)), true); err != nil {
+		t.Fatal(err)
+	}
+	got := 20 * math.Log10(float64(a.level)/4096/32768)
+	want := testutil.DBFS(testutil.RMS(x[len(x)-cfg.SampleRate:]))
+	t.Logf("level %.3f dBFS, input %.3f dBFS", got, want)
+	if math.Abs(got-want) > 0.05 {
+		t.Errorf("level error %.3f dB, want within 0.05 dB", got-want)
+	}
+}
+
+// TestLowGainRates checks the fall and rise limits at gains near -40 dB,
+// where one Q15 unit is larger than the per-frame step.
+func TestLowGainRates(t *testing.T) {
+	cfg := DefaultConfig(16000)
+	cfg.TargetLevel, cfg.MaxGain, cfg.MinGain, cfg.RiseRate, cfg.FallRate = -40, 0, -40, 1, 1
+	a := mustNew(t, cfg)
+	var x []int16
+	// +9 dB steps stay under the cut threshold, so the gain falls at 1 dB/s
+	// to -36 dB, then rises again after a step down.
+	for _, l := range []float64{-40, -31, -22, -13, -4, -12} {
+		x = slices.Concat(x, sine(12*cfg.SampleRate, cfg.SampleRate, l))
+	}
+	sec := 0.01
+	prev, worstUp, worstDown := a.fine, 0.0, 0.0
+	for i := 0; i < len(x); i += 160 {
+		if err := a.Process(x[i:i+160], make([]int16, 160), true); err != nil {
+			t.Fatal(err)
+		}
+		d := 20 * math.Log10(float64(a.fine)/float64(prev)) / sec
+		worstUp, worstDown, prev = max(worstUp, d), min(worstDown, d), a.fine
+	}
+	t.Logf("worst rise %.3f dB/s, worst fall %.3f dB/s, final gain %.2f dB", worstUp, worstDown, q15dB(a.gain))
+	if worstUp > 1.05 || worstDown < -1.05 || q15dB(a.gain) > -20 {
+		t.Errorf("rates %.3f and %.3f dB/s, limit 1 dB/s; final gain %.2f dB", worstUp, worstDown, q15dB(a.gain))
+	}
+}
+
+// TestFirstFrameClick checks that a click as the first active frame raises
+// the level estimate by at most 6 dB over its initial value, the target.
+func TestFirstFrameClick(t *testing.T) {
+	cfg := DefaultConfig(16000)
+	a := mustNew(t, cfg)
+	x := slices.Concat(testutil.WhiteNoise(160, 32767, 71), sine(16000, 16000, -44))
+	y := make([]int16, len(x))
+	if err := a.Process(x[:160], y[:160], true); err != nil {
+		t.Fatal(err)
+	}
+	// 0.5 % covers the pseudo-float rounding of the fourth power and root.
+	if limit := 2 * int64(a.target) * 1005 / 1000; int64(a.level) > limit {
+		t.Errorf("level %d after a first-frame click, want at most %d", a.level, limit)
+	}
+	if err := a.Process(x[160:], y[160:], true); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("gain after the click and 1 s of speech: %.2f dB", q15dB(a.gain))
+}
