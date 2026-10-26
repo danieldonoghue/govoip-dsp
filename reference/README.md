@@ -30,9 +30,11 @@ HARNESS_MODE=host reference/fixtures.sh fixed
 ```
 
 Each run builds every driver twice: with `-O2 -fwrapv -ffp-contract=off`,
-which writes the fixtures, and with `-fsanitize=undefined` added, which writes
-to `build/<mode>/ubsan/`. The script fails if the two builds give different
-outputs. The sanitizer log is `build/<mode>/ubsan/<component>.log`.
+which writes the fixtures, and with `-O2 -ffp-contract=off
+-fsanitize=undefined`, which writes to `build/<mode>/ubsan/`. The sanitizer
+build leaves out `-fwrapv`, because with it clang reports no signed overflow
+and no shift of a negative value. The script fails if the two builds give
+different outputs. The sanitizer log is `build/<mode>/ubsan/<component>.log`.
 
 ## Adding a driver
 

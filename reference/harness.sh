@@ -6,7 +6,9 @@ set -eu
 : "${HARNESS_MODE:?}" "${HARNESS_CHECK:?}"
 CC=${CC:-clang}
 CFLAGS="-O2 -fwrapv -ffp-contract=off"
-UBSAN_CFLAGS="$CFLAGS -fsanitize=undefined"
+# No -fwrapv here: with it clang does not report signed overflow or shift
+# undefined behaviour, which is what this build is for (docs/testing.md).
+UBSAN_CFLAGS="-O2 -ffp-contract=off -fsanitize=undefined"
 SPX=reference/speexdsp/libspeexdsp
 INCLUDES="-DHAVE_CONFIG_H -Ireference -Ireference/common -Ireference/include -Ireference/speexdsp/include -I$SPX"
 build=reference/build/$HARNESS_MODE
