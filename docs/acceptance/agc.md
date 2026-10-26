@@ -376,6 +376,25 @@ The risk is that a stationary signal is also at its own floor: the sine
 and white-noise signals of C2, C5, C6, P1 and P2 need the gain to rise
 with no pauses, so they may fail. That is measured, not assumed.
 
+### Stationary noise with the speech flag set (N5)
+
+Registered on 2026-10-26 at the owner's request, **after** measuring design
+v2. WP5 found that the SpeexDSP 1.2.1 fixed-point VAD reports speech on
+every frame of stationary noise, so `speech` from `preprocess` does not
+protect the AGC against steady background noise.
+
+| ID | Test | Threshold |
+|---|---|---|
+| N5 | White and pink noise at −60, −52, −45, −35 and −24 dBFS, 120 s each, `speech = true` throughout, fresh instance | if every 10 ms frame is below the gate: applied gain never above **0 dB**; otherwise: output RMS over the last 10 s at most **TargetLevel + 0.5 dB**, and applied gain never above MaxGain |
+
+**Reasoning.** "Gain near 0 dB on stationary noise" cannot be met together
+with the registered criteria: P2, C4 and C5 require white noise at −44 and
+−34 dBFS, passed with `speech = true`, to be raised to the target. A
+level-based AGC cannot tell that signal from background noise. The bound
+above is what design v2 meets: measured before registration, noise below
+the gate keeps 0 dB, and noise above it is driven to −23.98 to
+−28.22 dBFS (the target is −24 dBFS) with gains up to +23.86 dB.
+
 ## Changes
 
 1. **N3, Q2, Q3: reference gain clarified** (before any test was written or
@@ -462,6 +481,18 @@ with no pauses, so they may fail. That is measured, not assumed.
    - **First frame clamped.** The first active frame is clamped to twice
      the initial level (the target), like every later frame, so a click as
      the first frame raises the level by at most 6 dB.
+7. **Noise-floor safeguard trial: failed, reverted** (2026-10-26). The
+   rule registered under "Noise-floor safeguard (NF), trial" was
+   implemented exactly as written and measured against every criterion.
+   It failed C2 (all rates and `fast`), C3 down, C4 down, C5 at −44 and
+   −34 dBFS (sine and white noise), C6 at −49 dBFS and both
+   `TestConfigEdgeAccuracy` cases: a stationary signal is at its own
+   floor, so the gain could not rise. N4 also failed, at +23.16 dB,
+   unchanged: all 193 frames of the pink noise that reach the gate were
+   more than 10 dB above its 1.5 s floor, because the noise wanders over
+   seconds. As registered, the safeguard was reverted and is not part of
+   design v2. The limit stands as documented in `agc/doc.go` and
+   `docs/algorithms.md`; N4 is kept as a reported measurement.
 
 ## Results
 
