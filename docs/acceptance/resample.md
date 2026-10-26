@@ -185,3 +185,9 @@ Targets:
      calls, so that the channels' states differ and the interleaved call
      reports the last channel's counts (2 channels at quality 5, 44.1k→48k;
      3 channels at quality 10, 48k→16k).
+2. **Two `float32` event cases** (after change 1). Justification: a
+   coverage profile of the reference replay showed that the `float32` path
+   never processed magic samples or ran the zero kernel, and a mutation
+   there was not caught. Added: 1:100 at quality 10 with quality drops to
+   0 (magic samples worth more than the 8192-sample output chunk), and
+   44.1k→48k at quality 10 with the rejected rate change and recovery of 7.
