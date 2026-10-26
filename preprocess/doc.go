@@ -13,8 +13,8 @@
 // range in which the reference's filterbank init is defined (below 4 Hz it
 // divides by zero, above 65535 Hz it overflows). Config.FrameSize is 1 to
 // MaxFrameSize (2048) samples with no prime factor above 17, as the FFT of
-// 2*FrameSize requires. Typical use is 10 ms or 20 ms frames at 8, 16, 32 or
-// 48 kHz. Processing uses a 2*FrameSize window with 50% overlap, so the
+// 2*FrameSize requires; SupportedFrameSize checks a size before New. Typical
+// use is 10 ms or 20 ms frames at 8, 16, 32 or 48 kHz. Processing uses a 2*FrameSize window with 50% overlap, so the
 // output is delayed by FrameSize samples.
 //
 // # Settings

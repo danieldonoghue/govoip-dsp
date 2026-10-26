@@ -83,8 +83,9 @@ const (
 type Config struct {
 	// SampleRate is the sampling rate in Hz, MinSampleRate to MaxSampleRate.
 	SampleRate int
-	// FrameSize is the number of samples per frame, 1 to MaxFrameSize, such
-	// that fft.Supported(2*FrameSize) holds.
+	// FrameSize is the number of samples per frame; SupportedFrameSize tells
+	// which New accepts. 10 and 20 ms at 8, 16, 32 and 48 kHz (80, 160,
+	// 320, 640, 480, 960) are.
 	FrameSize int
 }
 
@@ -118,10 +119,16 @@ type Preprocessor struct {
 	frameShift int
 }
 
+// SupportedFrameSize reports whether New accepts frame size n, at any
+// supported rate: 1 to MaxFrameSize, with an FFT of 2*n samples available.
+func SupportedFrameSize(n int) bool {
+	return n >= 1 && n <= MaxFrameSize && fft.Supported(2*n)
+}
+
 // New is speex_preprocess_state_init (preprocess.c:391). It returns an
 // error wrapping ErrConfig for an unsupported configuration.
 func New(cfg Config) (*Preprocessor, error) {
-	if cfg.FrameSize < 1 || cfg.FrameSize > MaxFrameSize || !fft.Supported(2*cfg.FrameSize) {
+	if !SupportedFrameSize(cfg.FrameSize) {
 		return nil, fmt.Errorf("%w: frame size %d (want 1 to %d with no prime factor above 17)",
 			ErrConfig, cfg.FrameSize, MaxFrameSize)
 	}
