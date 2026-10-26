@@ -134,7 +134,10 @@ func TestAcceptanceSteadyState(t *testing.T) {
 // TestAcceptanceGainLimits covers C6.
 func TestAcceptanceGainLimits(t *testing.T) {
 	cfg := DefaultConfig(16000)
-	for _, c := range []struct{ in, want float64 }{{-49, -25}, {-6, -18}} {
+	for _, c := range []struct {
+		in, want float64
+		atMax    bool
+	}{{-49, -25, true}, {-6, -18, false}} {
 		name := fmt.Sprintf("in%v", c.in)
 		t.Run(name, func(t *testing.T) {
 			r := newRecorder(t, cfg)
@@ -150,10 +153,14 @@ func TestAcceptanceGainLimits(t *testing.T) {
 			if math.Abs(got-c.want) > 0.25 {
 				t.Errorf("output %.3f dBFS, want %v", got, c.want)
 			}
-			g := r.agcGain[len(r.agcGain)-1]
-			if g != r.a.maxGain && g != r.a.minGain {
-				t.Errorf("final AGC gain %d is neither MaxGain %d nor MinGain %d", g, r.a.maxGain, r.a.minGain)
+			g, want := r.agcGain[len(r.agcGain)-1], r.a.minGain
+			if c.atMax {
+				want = r.a.maxGain
 			}
+			if g != want {
+				t.Errorf("final AGC gain %d, want %d", g, want)
+			}
+			checkCeiling(t, r, name, false)
 			checkGainBounds(t, r, name)
 		})
 	}
@@ -387,6 +394,7 @@ func TestAcceptanceNoise(t *testing.T) {
 			if ratio > 0.1 {
 				t.Errorf("output %+.4f dB above input", ratio)
 			}
+			checkCeiling(t, r, c.name, false)
 		})
 	}
 	t.Run("N3", func(t *testing.T) {
@@ -412,6 +420,8 @@ func TestAcceptanceNoise(t *testing.T) {
 		if lvl > -36 {
 			t.Errorf("noise output %.2f dBFS above -36", lvl)
 		}
+		checkCeiling(t, r, "N3", false)
+		checkGainBounds(t, r, "N3")
 	})
 }
 
@@ -435,6 +445,7 @@ func TestAcceptanceSilence(t *testing.T) {
 				t.Fatalf("sample %d: output %d, applied gain %d", n, r.out[n], r.applied[n])
 			}
 		}
+		checkCeiling(t, r, "Q1", false)
 		t.Logf("Q1: output all zero, applied gain %d throughout", unity)
 	})
 	gap := 60 * cfg.SampleRate

@@ -47,7 +47,6 @@ func (r *recorder) now() int { return len(r.in) }
 
 func (r *recorder) frameLen() int { return int(r.a.frameLen) }
 
-// frameSeconds is the duration of one frame.
 func (r *recorder) frameSeconds(cfg Config) float64 {
 	return float64(r.frameLen()) / float64(cfg.SampleRate)
 }
