@@ -196,10 +196,12 @@ The traps are:
   and so on is ported to a function in `internal/fixed` with exactly the generic
   (`fixed_generic.h`) semantics, including rounding and saturation. Use small
   inlinable functions and confirm inlining with `-gcflags=-m` on hot paths.
-- **Float in initialisation code:** the fixed-point build still uses C
+- **Float in initialisation code:** parts of the fixed-point build still use C
   `float`/`double` and libm during setup (for example the resampler sinc table,
-  `resample.c:284`; `QCONST16` with runtime arguments, `fixed_generic.h:38`;
-  `filterbank.c` Bark/Mel mapping; several `exp` calls in `preprocess.c`).
+  `resample.c:284`, and `QCONST16` with runtime arguments,
+  `fixed_generic.h:38`). The fixed-point `filterbank.c`, `preprocess.c` and
+  KISS FFT twiddles use integer approximations instead (`spx_atan`,
+  `spx_exp`, `kf_cexp2`); check each source rather than assuming.
   Replicate C's expression types exactly: `float` vs `double`, literal suffixes,
   implicit promotions, truncating casts. Prevent Go's fused multiply-add on
   arm64 by wrapping intermediate products in explicit

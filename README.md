@@ -4,9 +4,9 @@ Pure-Go real-time audio DSP for VoIP, WebRTC-style communication and
 streaming media: resampling, echo cancellation, noise suppression with voice
 activity detection, and automatic gain control.
 
-**Status: under construction.** The resampler (`resample`) and the ring
-buffers (`buffer`) are usable; the echo canceller, noise suppression and AGC
-are still in progress. See the table below and
+**Status: under construction.** The resampler (`resample`), the ring
+buffers (`buffer`) and noise suppression with VAD (`preprocess`) are usable;
+the echo canceller and AGC are still in progress. See the table below and
 [docs/status.md](docs/status.md).
 
 ## Design
@@ -17,8 +17,9 @@ are still in progress. See the table below and
 - **SpeexDSP compatibility (goal).** The resampler, echo canceller and
   preprocessor are to be bit-exact ports of SpeexDSP 1.2.1, fixed-point build
   (commit `1b28a0f6`), checked against fixtures from a C reference harness.
-  Today the resampler, the shared fixed-point arithmetic (`internal/fixed`)
-  and the FFT (`internal/fft`) exist, and all three are bit-exact. The ring
+  Today the resampler, the preprocessor, the shared fixed-point arithmetic
+  (`internal/fixed`) and the FFT (`internal/fft`) exist, and all four are
+  bit-exact. The ring
   buffers are an own design, and so will be the AGC.
 - **Real-time safety (requirement).** No allocation, locking or blocking on
   the per-frame path, each to be verified by tests
@@ -36,7 +37,7 @@ are still in progress. See the table below and
 | Ring buffer | `buffer` | Validated (own design; lock-free SPSC variant) |
 | FFT | `internal/fft` | Validated (bit-exact with the harness) |
 | AGC | `agc` | Planned |
-| Noise suppression and VAD | `preprocess` | Planned |
+| Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Echo canceller | `echo` | Planned |
 
 Status levels are defined in
