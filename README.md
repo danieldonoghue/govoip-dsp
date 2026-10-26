@@ -62,14 +62,16 @@ Requires Go 1.26 or later. Converting one 20 ms frame of 8 kHz telephony
 audio to 16 kHz:
 
 ```go
+const inRate, outRate, frameMs = 8000, 16000, 20
+
 r, err := resample.New(resample.Config{
-	Channels: 1, InRate: 8000, OutRate: 16000, Quality: 5,
+	Channels: 1, InRate: inRate, OutRate: outRate, Quality: 5,
 })
 if err != nil {
 	log.Fatal(err)
 }
-in := make([]int16, 160)  // one 20 ms frame at 8 kHz
-out := make([]int16, 320) // room for 20 ms at 16 kHz
+in := make([]int16, inRate*frameMs/1000) // one 20 ms frame
+out := make([]int16, r.MaxOut(len(in)))  // always large enough for one call
 read, written, err := r.Process(in, out)
 ```
 
