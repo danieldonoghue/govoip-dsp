@@ -438,7 +438,8 @@ func TestAcceptanceNoise(t *testing.T) {
 	n := 60 * cfg.SampleRate
 	pink := toRMS(testutil.PinkNoise(n, 20000, testutil.Seed("agc-n1-pink")), -55)
 	t.Run("N1/pink-55-reported", func(t *testing.T) {
-		// Change 3: frames of this signal cross the gate; reported only.
+		// Changes 3 and 7: frames of this signal cross the gate; reported
+		// only, as N1's original pink case and as N4.
 		r := newRecorder(t, cfg)
 		r.feed(t, pink, true)
 		maxApplied := int32(0)
@@ -616,7 +617,7 @@ func TestAcceptanceCautiousStart(t *testing.T) {
 	}
 }
 
-// TestAcceptanceStationaryNoise covers N5, and reports N4.
+// TestAcceptanceStationaryNoise covers N5.
 func TestAcceptanceStationaryNoise(t *testing.T) {
 	cfg := DefaultConfig(16000)
 	n := 120 * cfg.SampleRate
@@ -624,9 +625,11 @@ func TestAcceptanceStationaryNoise(t *testing.T) {
 		for _, lvl := range []float64{-60, -52, -45, -35, -24} {
 			name := fmt.Sprintf("%s/%v", kind, lvl)
 			t.Run(name, func(t *testing.T) {
-				x := white(n, lvl, testutil.Seed("agc-n5-w"))
+				var x []int16
 				if kind == "pink" {
 					x = toRMS(testutil.PinkNoise(n, 20000, testutil.Seed("agc-n5-p")), lvl)
+				} else {
+					x = white(n, lvl, testutil.Seed("agc-n5-w"))
 				}
 				r := newRecorder(t, cfg)
 				r.feed(t, x, true)
@@ -648,13 +651,4 @@ func TestAcceptanceStationaryNoise(t *testing.T) {
 			})
 		}
 	}
-	// N4 (noise-floor trial, change 7): reported only.
-	x := toRMS(testutil.PinkNoise(60*cfg.SampleRate, 20000, testutil.Seed("agc-n1-pink")), -55)
-	r := newRecorder(t, cfg)
-	r.feed(t, x, true)
-	maxApplied := int32(0)
-	for _, g := range r.applied {
-		maxApplied = max(maxApplied, g)
-	}
-	t.Logf("N4 (reported only): max applied gain %.2f dB", q15dB(maxApplied))
 }
