@@ -286,4 +286,46 @@ Targets:
    1 s backstop, so only the allocation bound catches it without the cap.
    Each setter case now gets its own resampler, so that no case can reuse
    buffers that an earlier case grew.
+9. **Extension: `MaxOut` (WP1c, owner-approved; pre-registered before its
+   implementation).** Justification: callers should not have to guess
+   output buffer sizes. `(*Resampler).MaxOut(inFrames int) int` returns
+   an upper bound on the output frames per channel that one process call
+   can write when offered `inFrames` input frames per channel, in the
+   current state. It is an extension; SpeexDSP has no equivalent. It must
+   not allocate and must not change state; negative input gives 0.
+   Criteria:
+   - **Soundness (the tested property).** Before each call, for each
+     channel the test offers `inFrames` frames and an output of exactly
+     `MaxOut(inFrames)` frames per channel (times the channel count for
+     the interleaved methods). After the call: (a) every channel wrote at
+     most `MaxOut(inFrames)` frames, and (b) the call consumed all
+     `inFrames` input frames. So a call never stops because the output
+     filled up. This is checked for `Process`, `ProcessFloat`,
+     `ProcessChannel` and `ProcessChannelFloat`, over every quality and
+     rate pair of the matrix in 1, every fractional ratio of 2 except
+     those of the next item, stereo and three channels, chunk sequences
+     with sizes from 0 to 1160 frames, after rate and quality changes
+     with magic samples pending, after `Reset` and `SkipZeros`, and in
+     the zero-output state after a rejected change.
+   - **Ratios where the fractional position can wrap** (`den_rate - 1 +
+     (num_rate mod den_rate)` at least 2^32, for example
+     4294967294:4294967295): the output per call is not bounded by the
+     input there, so `MaxOut` returns 2^31-1, the largest length a call
+     accepts. Tested on its own; such a buffer is not allocated.
+   - **Tightness.** For a mono stream, and for interleaved channels whose
+     states are equal, a call offered `MaxOut(inFrames)` output frames
+     writes exactly `MaxOut(inFrames)` frames: the slack is 0. The one
+     expected exception is the zero-output state after a rejected change
+     with a ratio of 2^31 or more, where the saturated input position can
+     only make the call write fewer frames; there the slack is measured
+     and reported, not bounded. The worst slack over the matrix is
+     reported.
+   - **Fuzzing.** `FuzzMaxOut` draws configurations, events (quality and
+     rate changes, including rejected ones, `Reset`, `SkipZeros`) and
+     chunk sequences, and checks soundness on every call, and tightness
+     for mono streams outside the zero-output state.
+   - **Mutation checks:** an off-by-one in the bound in each direction,
+     and ignoring pending magic samples, must each be caught.
+   - **No allocation** (`TestNoAllocsMaxOut`), and no change to existing
+     outputs: all 816 reference cases still pass.
 
