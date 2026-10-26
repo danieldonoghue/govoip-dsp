@@ -583,8 +583,10 @@ in integer arithmetic:
 
 1. The input is split into blocks of `K = SampleRate/1000` samples and
    frames of `10K` samples, counted from the start of the stream.
-2. Each frame's RMS `r` comes from the sum of squares (`int64`) and
-   `fixed.Sqrt`, in Q12.
+2. Each frame's RMS `r` comes from the sum of squares (`int64`), divided
+   into a Q20 mean square, normalised to [2^26, 2^28) and passed to
+   `fixed.Sqrt`, in Q12 (at most 0.23 % error from −102 dBFS up,
+   `TestRMS`).
 3. A frame is active when `r` is at or above `GateLevel` and every sample
    in it was passed with `speech = true`. An active frame moves the level
    estimate `L` by `c · (min(r, 4L) − L)`, with the attack coefficient when
@@ -618,11 +620,12 @@ first `2K` output samples of a stream are zero.
   `fixed.Saturate32` to ±32767 is a guard that the limiter makes
   unreachable (mutation check: removing it is not caught).
 - Every division has a non-zero divisor: the block length (at least 8), the
-  block peak (the zero case is a separate branch), and `L`, which stays at or
-  above `min(target, gate) > 0` because each update lands between the old
-  `L` and a value at or above the gate.
-- The limiter release floors its increment, so the limiter gain can settle
-  up to about 20 Q15 units (0.06 % of unity) below the AGC gain.
+  frame length (at least 80), the block peak (the zero case is a separate
+  branch), and `L`, which stays at or above `min(target, gate) > 0` because
+  each update lands between the old `L` and a value at or above the gate.
+  `TestConfigEdgeAccuracy` drives `L` to just above a −80 dBFS gate.
+- Each one-pole step (level estimate, limiter release) is rounded towards
+  its target, so it never stalls short of the target and never overshoots.
 - `New` derives the constants with `math.Pow` and `math.Expm1`, rounded to
   integers; `TestConstants` pins them for one configuration.
 
@@ -634,7 +637,13 @@ first `2K` output samples of a stream are zero.
   frames above a −50 dBFS gate, and the gain rises by 10 dB. Pass the VAD
   decision to prevent this.
 - In pauses the gain holds, so the noise in a pause gets the speech's gain.
+- Levels and gains are whole dB.
+- The limiter can hold a stationary signal below the target when its peaks
+  at the target gain would exceed the ceiling (a sine needs
+  `LimitLevel − TargetLevel ≥ 3 dB`).
 - Pumping on real speech (LibriSpeech) is a 3.64 dB spread of frame gain
   (5 % to 95 %), above the 3 dB that was pre-registered. A slower attack and
-  release reduces it, but also slows convergence (`docs/status.md`, open
-  questions).
+  release reduces it, but also slows convergence: 1 s attack and 2 s
+  release give 2.86 dB, 2 s and 2 s give 2.32 dB (measured before the fixes
+  in commit `2a0ee3f`, which leave P4 unchanged at 3.641 dB). The choice is
+  an open question in `docs/status.md`.

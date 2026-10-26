@@ -276,3 +276,43 @@ per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
    and the limitation it shows (noise whose frames cross the gate is
    amplified unless the caller passes `speech = false`) is documented in the
    package and in `docs/algorithms.md`.
+4. **Correction to change 2** (after the independent review). The reason
+   given in change 2 is inaccurate. No input frame leaves the ±2 dB band:
+   the measured frames lie within ±1.2 dB of −44 dBFS. The cause is that,
+   late in the downward step, the remaining gain error (close to 2 dB) adds
+   to the frame-to-frame spread of the input. Change 2 therefore makes C4
+   less strict than the output-level measure it replaces: 5.37 s measured
+   on the gain, against 6.08 s on the output frame level. Change 2 also
+   drops a rule without saying so. For C4, `G_f` is taken on every frame,
+   because the −44 dBFS segment is only 6 dB above the gate, so the
+   "10 dB above the gate" rule in "Measurement" would leave no frame to
+   measure. Both changes 2 and 3 are put to the owner in `docs/status.md`.
+
+## Results
+
+Measured on the Mac (`docs/performance.md`), 2026-10-26, with
+`go test -count=1 -v ./agc` at commit `f59701d` (LibriSpeech present).
+
+| ID | Threshold | Measured | Result |
+|---|---|---|---|
+| C1 | ≤ 1.0 s (`default`), ≤ 0.28 s (`fast`) | 0.808 to 0.810 s at all four rates; 0.170 s | pass |
+| C2 | ≤ 5.8 s, ≤ 1.24 s | 5.340 to 5.368 s; 1.090 s | pass |
+| C3 | as C1, C2 | 0.810 s, 5.340 s | pass |
+| C4 | as C1, C2 (change 2) | 0.810 s, 5.370 s (output frame level: 0.880 s, 6.080 s) | pass as changed; down fails as registered |
+| C5 | ±0.25 dB sine, ±0.5 dB noise | −0.010 to +0.007 dB; −0.127 to −0.118 dB | pass |
+| C6 | ±0.25 dB of −25 and −18 dBFS | −25.007, −18.000 dBFS; gain exactly MaxGain, MinGain | pass |
+| P1 | ≤ 0.1 dB | 0.008 dB | pass |
+| P2 | ≤ 0.5 dB | 0.073 dB | pass |
+| P3 | ≤ 3 dB | 2.212 dB | pass |
+| P4 | ≤ 3 dB | 3.641 dB | **fail** |
+| S1 | ±3 dB | −0.844 dB (SpeechLike), −0.765 dB (LibriSpeech) | pass |
+| T1, T2 | 0 samples | 0 at all four rates; output peak 29205 = ceiling | pass |
+| T2b | 0 at −32768, no wrap | 0; peak 32767 | pass |
+| T3 | ≤ 0.45 s, ≤ 0.13 s | 0.369 to 0.370 s; 0.080 s | pass |
+| T4 | ≤ 1.25 dB drop, ≤ 100 ms | 0.501, 1.003 dB; 42.1, 54.5 ms | pass |
+| N1 | 0 dB, +0.1 dB | 0 dB and +0.000 dB (white; pink as changed). Pink at −55 dBFS as registered: +9.99 dB | pass as changed; pink fails as registered |
+| N2 | 0 dB, +0.1 dB | 0 dB, +0.000 dB | pass |
+| N3 | 0 change, ≤ −36 dBFS | 0 change, applied = AGC gain, −41.83 dBFS | pass |
+| Q1 to Q4 | as stated | exact holds; −20.04 dBFS after vs −20.62 before | pass |
+| Benchmark | ≤ 10 µs, 0 allocs | 1.26 µs, 0 allocs | pass |
+

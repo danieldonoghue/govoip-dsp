@@ -496,9 +496,9 @@ not caught and equivalent, and 1 not caught as a test gap (the VAD start
 
 ### `agc` (WP4)
 
-Run on the worktree with `go test -count=1 ./agc` per mutation, restoring
-`agc.go` after each. "Caught" names failing tests other than P4, which
-fails without any mutation (`docs/status.md`).
+Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
+`f59701d` without the LibriSpeech files (so P4 skips and the unmutated run
+passes), restoring `agc.go` after each.
 
 | Mutation | Result |
 |---|---|
@@ -506,6 +506,8 @@ fails without any mutation (`docs/status.md`).
 | Limiter ceiling one LSB high | caught (same tests) |
 | Ramp end not bounded by the previous block's limiter gain | caught (T1/T2 suite, T4, Q4, long run) |
 | Limiter never releases | caught (C2, C5, C6, P3) |
+| One-pole steps floored instead of rounded towards the target | caught (`TestConfigEdgeAccuracy`) |
+| Mean square without fractional bits | caught (`TestRMS`) |
 | Gate removed | caught (N1, P3, Q1) |
 | Speech flag ignored | caught (N2, `TestSpeechFlag`) |
 | Speech flag not reset at the frame end | caught (`TestSpeechFlag`) |
@@ -515,7 +517,7 @@ fails without any mutation (`docs/status.md`).
 | Level estimate starts at the gate (gain still starts at 0 dB) | caught (`TestSpeechFlag`) |
 | Gain not clamped to MaxGain | caught (C6) |
 | Gain not clamped to MinGain | caught (C6, T1/T2 suite) |
-| RMS scale Q12 → Q11 in the loud branch | caught (C1, C3, C4, C5, C6) |
+| RMS result one bit low (Q12 → Q11) | caught (C1 to C6) |
 | `Reset` keeps the delay line | caught (`TestResetProcess`) |
 | Input read after the output is written (breaks aliasing) | caught (`TestAliasingProcess`) |
 | Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
@@ -641,7 +643,8 @@ ceiling or flips sign against its input, and that the first `Latency`
 samples are zero. `FuzzConfig` checks that `New` returns `ErrConfig` or a
 working AGC for any configuration. Run on 2026-10-26 with
 `go test ./agc -run '^$' -fuzz <target> -fuzztime 60s`: `FuzzChunksProcess`
-436,799 executions, `FuzzConfig` 5,240,765 executions, no failures. The
+4,793,678 executions, `FuzzConfig` 1,415,919 executions, no failures (at
+commit `f59701d`). The
 seed corpora are the `f.Add` calls; the fuzzer found nothing to commit to
 `agc/testdata/fuzz/`.
 

@@ -209,24 +209,26 @@ Cost follows the frame size, not the rate. No Linux VM numbers yet.
 
 ## Automatic gain control (`agc`, WP4)
 
-Mac, 2026-10-26:
+Mac, 2026-10-26, commit `f59701d`:
 
 ```sh
 CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./agc
 ```
 
 `DefaultConfig` at each rate, on full-scale `SpeechLike` input, so the
-limiter and the level estimate both run.
+limiter and the level estimate both run. Other agents were running at the
+same time (load average 86 on 10 cores), so these are upper bounds; an
+independent run under load measured 3.7 µs for `48k_480`.
 
 | Benchmark | ns/op | rt-fraction | samples/s | allocs/op |
 |---|---|---|---|---|
-| `AGCProcess/8k_80` | 253.0 | 0.0000253 | 316 M | 0 |
-| `AGCProcess/16k_160` | 447.1 | 0.0000447 | 358 M | 0 |
-| `AGCProcess/32k_320` | 864.4 | 0.0000864 | 370 M | 0 |
-| `AGCProcess/48k_480` | 1219 | 0.0001219 | 394 M | 0 |
-| `AGCProcess/16k_320` (20 ms) | 873.3 | 0.0000437 | 366 M | 0 |
-| `AGCProcess/16k_37` | 108.9 | 0.0000471 | 340 M | 0 |
-| `AGCNew` (48 kHz) | 304.8 | | | 2 (400 B) |
+| `AGCProcess/8k_80` | 254.8 | 0.0000255 | 314 M | 0 |
+| `AGCProcess/16k_160` | 439.2 | 0.0000439 | 364 M | 0 |
+| `AGCProcess/32k_320` | 857.3 | 0.0000857 | 373 M | 0 |
+| `AGCProcess/48k_480` | 1257 | 0.0001257 | 382 M | 0 |
+| `AGCProcess/16k_320` (20 ms) | 856.6 | 0.0000428 | 374 M | 0 |
+| `AGCProcess/16k_37` | 108.8 | 0.0000471 | 340 M | 0 |
+| `AGCNew` (48 kHz) | 266.7 | | | 2 (400 B) |
 
 Target (`docs/acceptance/agc.md`): at most 10 µs per 10 ms frame at 48 kHz,
-0 allocs/op. Measured 1.2 µs. Not measured on the Linux VM.
+0 allocs/op. Measured 1.26 µs. Not measured on the Linux VM.
