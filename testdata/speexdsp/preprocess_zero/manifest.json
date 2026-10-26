@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "component": "preprocess_zero",
+  "driver": "reference/drivers/preprocess_zero.c",
+  "reference": {
+    "repository": "https://github.com/xiph/speexdsp",
+    "tag": "SpeexDSP-1.2.1",
+    "commit": "1b28a0f61bc31162979e1f26f3981fc3637095c8"
+  },
+  "build": {
+    "mode": "container",
+    "image": "debian:trixie-slim@sha256:a66b19aa552f595b4ab276c6b4f9b24fa4546632c5ecd88cccdced4a6866323a + clang-19=1:19.1.7-3+b1 (linux/arm64)",
+    "compiler": "Debian clang version 19.1.7 (3+b1)",
+    "cflags": "-O2 -fwrapv -ffp-contract=off",
+    "os": "Linux",
+    "arch": "aarch64",
+    "config_h_sha256": "233a3ef7452cddf91e8e7f00b21ce0fc734ef9f4b1ff88d1a4023062438d09ee"
+  },
+  "cases": [
+    {
+      "name": "zero_divisor_16000_160",
+      "params": {"rate": 16000, "frame_size": 160, "frames": 351, "echo_frame": 300, "band": 18},
+      "streams": [
+        {
+          "name": "in",
+          "type": "int16",
+          "count": 56160,
+          "chunk": 1048576,
+          "chunks": ["9e2dd66615a7c2dc65c013f3c43a6e50ed76cbd1ae40e694b74cba174422b0db"]
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 160,
+          "chunk": 1048576,
+          "chunks": ["da137653194884a5834a2fa717005aef1d5718dc9ef76f2e358638ac51014aa8"],
+          "file": {"path": "zero_divisor_16000_160.residual.raw", "count": 160, "sha256": "da137653194884a5834a2fa717005aef1d5718dc9ef76f2e358638ac51014aa8"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 56160,
+          "chunk": 1048576,
+          "chunks": ["787768ffb6e6a38937865979cb92d41b4066573a3eca804a06981f8949ae45c7"],
+          "file": {"path": "zero_divisor_16000_160.out.raw", "count": 56160, "sha256": "787768ffb6e6a38937865979cb92d41b4066573a3eca804a06981f8949ae45c7"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 351,
+          "chunk": 1048576,
+          "chunks": ["ec0892bc71a580adec4898bf790dd178af8c63b84473201a6ffdf15d05ccb307"],
+          "file": {"path": "zero_divisor_16000_160.vad.raw", "count": 351, "sha256": "ec0892bc71a580adec4898bf790dd178af8c63b84473201a6ffdf15d05ccb307"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 351,
+          "chunk": 1048576,
+          "chunks": ["a84726d66d5f44cff1814d1e683d9765437e3fc88cb4e3317b94c1e87f35adff"],
+          "file": {"path": "zero_divisor_16000_160.prob.raw", "count": 351, "sha256": "a84726d66d5f44cff1814d1e683d9765437e3fc88cb4e3317b94c1e87f35adff"}
+        },
+        {
+          "name": "band",
+          "type": "int32",
+          "count": 4,
+          "chunk": 1048576,
+          "chunks": ["d96ae899ea88facf7fec045a72592167d3f21dea43e606bcdecdaa646f1c1f43"],
+          "file": {"path": "zero_divisor_16000_160.band.raw", "count": 4, "sha256": "d96ae899ea88facf7fec045a72592167d3f21dea43e606bcdecdaa646f1c1f43"}
+        }
+      ]
+    }
+  ]
+}

@@ -59,6 +59,8 @@ func TestHarnessInputs(t *testing.T) {
 		writeFile(t, "mic_"+g.name+".raw", testutil.EncodeLE(nil, mic))
 	}
 	writeFile(t, "groups.txt", []byte(b.String()))
+	writeFile(t, "zero_input.raw", testutil.EncodeLE(nil, zeroInput()))
+	writeFile(t, "zero_residual.raw", testutil.EncodeLE(nil, zeroResidual(t)))
 	done := map[string]bool{}
 	for _, c := range cs {
 		if c.signal == "echo" {
