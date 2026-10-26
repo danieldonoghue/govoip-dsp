@@ -112,4 +112,21 @@ information.
 
 ## Changes
 
-None yet.
+### Criterion 5 narrowed (before any test or implementation commit)
+
+Criterion 5 as first registered required every pseudo-float operation
+without a loop to inline. The first `-gcflags=-m=2` build showed that the Go
+inliner budget (80) admits every `fixed_generic.h` and `arch.h` port and
+`FloatLT`, `FloatMult`, `FloatAMult`, `FloatShl`, `FloatExtract16`,
+`FloatExtract32` and `FloatMul32`, but not `FloatAdd`, `FloatSub` (cost 156),
+`FloatGT` (83), `FloatMul32U` (147), `FloatDiv32` (189), `FloatDiv32Float`
+(138), `FloatSqrt` (101) or `PseudoFloat` (94). Getting them under the budget
+would mean restructuring them away from the line-by-line correspondence with
+`pseudofloat.h`, which is what makes the port reviewable. `mdf.c` calls them
+a few times per frequency bin per frame, next to two FFTs per frame, so a
+call costs little. Criterion 5 now reads:
+
+5. Every port of a `fixed_generic.h` or `arch.h` macro inlines, and so do
+   `FloatLT`, `FloatMult`, `FloatAMult`, `FloatShl`, `FloatExtract16`,
+   `FloatExtract32` and `FloatMul32` (`-gcflags=-m`), checked by a test. The
+   other pseudo-float operations are benchmarked (see "Benchmark targets").
