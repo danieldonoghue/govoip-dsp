@@ -524,6 +524,16 @@ the gate keeps 0 dB, and noise above it is driven to −23.98 to
    more than 10 dB above the raw minimum. As registered, the safeguard was
    reverted and is not part of design v2. The limit stands as documented in
    `agc/doc.go` and `docs/algorithms.md`; N4 is kept as a reported measurement.
+8. **G6 reasoning corrected** (after its independent review, 2026-10-26;
+   no threshold changes). The +10 dB step takes 1.71 s at 8, 16 and
+   48 kHz but 1.716 s at 44.1 kHz, so the margin on the 1.76 s limit is
+   0.044 s there, not 0.05 s; the other seven limits are the largest
+   measured value plus 0.05 s. The claim that the margin covers a
+   one-unit change of a rounded constant was measured by the review:
+   `levCoef` − 1 lengthens the +10 dB time at 44.1 kHz to 1.736 s (and
+   the time above target+6 dB by 0.01 s), `levCoef` + 1 shortens the
+   times by 0.01 to 0.02 s, and `target` + 1 changes nothing; G6 passes in
+   all three. The tightest case then keeps 0.024 s of headroom.
 
 ## Results
 

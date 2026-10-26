@@ -535,7 +535,9 @@ included), restoring `agc.go` after each.
 | Rise step without the one-unit minimum | not caught: equivalent, in Q22 the step rounds to zero only below −80 dB of gain, which no configuration allows |
 
 Checks of the regression guards (G1 to G6) and N5, each on a copy of the
-branch:
+branch. G1 to G4 skip without the LibriSpeech files, so the protection
+against a lower cut threshold (G3, G4) runs only where `make speech` has
+run:
 
 | Mutation | Result |
 |---|---|
@@ -548,6 +550,7 @@ branch:
 | Innovation clamp 2L → 1.5L | caught by G6 (all steps, all rates) |
 | Innovation clamp 2L → 3L | caught by G5 (the +14 dB step no longer cuts) and `TestFirstFrameClick` |
 | Default `LevelTime` 3 s → 4 s | caught by G6 (all steps, all rates) and `TestConstants` |
+| Cut threshold +13 → +12 dB (`cutRatio` 16) | caught by G4 only (3.60 dB), so only with the LibriSpeech files present |
 | Loud run one frame longer | not caught: the cut comes 10 ms later, still within R4's 50 ms |
 | Default `FallRate` 40 → 20 dB/s | not caught by G5 or G6 (these steps follow the level estimate, not the fall limit); caught by `TestConstants` |
 
