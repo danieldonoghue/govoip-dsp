@@ -293,7 +293,8 @@ rounded up to a multiple of 8.
   channels, returns `ErrAllocFailed` with no state change. The largest
   supported need (96k→8k, quality 10, 32 channels) is 106464 entries, so
   the cap is about 158 times that. C accepts filters up to about 10^9
-  entries.
+  entries. A filter length that wraps to 0 in `uint32` (quality 0, for
+  example 1073741823:2; undefined in C) is rejected the same way.
 - NaN `float32` input becomes 0; there is no `NULL`-input form.
 
 **Measurements.** From the Go implementation, which is bit-exact with the

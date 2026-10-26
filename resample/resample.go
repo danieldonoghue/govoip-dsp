@@ -32,10 +32,11 @@ var (
 	ErrConfig = errors.New("resample: invalid argument")
 	// ErrAllocFailed reports that the filter for the requested
 	// configuration exceeds the size limits (RESAMPLER_ERR_ALLOC_FAILED).
-	// Above the Go-only cap (see the package doc) nothing changes. Where
-	// the reference's own limits reject a rate or quality change, the
-	// resampler outputs zeros, and every process call returns it, until a
-	// later change succeeds.
+	// Above the Go-only cap, or for a filter length that wraps to 0 (see
+	// the package doc), nothing changes. Where the reference's ratio or
+	// table limits reject a rate or quality change, the resampler outputs
+	// zeros, and every process call returns it, until a later change
+	// succeeds.
 	ErrAllocFailed = errors.New("resample: filter exceeds the size limits")
 	// ErrOverflow reports that a ratio change would overflow the fractional
 	// position (RESAMPLER_ERR_OVERFLOW). The resampler is left unchanged.
@@ -112,7 +113,8 @@ func checkU32(v int) bool { return v >= 0 && uint64(v) <= math.MaxUint32 }
 
 // New validates cfg and builds the filter (speex_resampler_init_frac). It
 // returns an error wrapping ErrConfig for an invalid configuration, and
-// ErrAllocFailed where the reference's size limits reject the filter.
+// ErrAllocFailed above the resource cap or where the reference's size
+// limits reject the filter.
 func New(cfg Config) (*Resampler, error) {
 	num, den := cfg.RatioNum, cfg.RatioDen
 	if num == 0 && den == 0 {
@@ -189,8 +191,8 @@ func (r *Resampler) SetRate(inRate, outRate int) error {
 // SetRateFrac sets the ratio num/den and the reported rates
 // (speex_resampler_set_rate_frac). The stream position is kept, and the
 // filter is rebuilt for the new ratio, keeping the history; this may
-// allocate. Unlike C, an ErrOverflow leaves the resampler unchanged. An
-// ErrAllocFailed leaves it outputting zeros (see ErrAllocFailed).
+// allocate. Unlike C, an ErrOverflow leaves the resampler unchanged. For
+// ErrAllocFailed, see ErrAllocFailed.
 func (r *Resampler) SetRateFrac(num, den, inRate, outRate int) error {
 	if num < 1 || den < 1 || !checkU32(num) || !checkU32(den) || !checkU32(inRate) || !checkU32(outRate) {
 		return ErrConfig

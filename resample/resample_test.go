@@ -914,3 +914,33 @@ func TestResourceCapLeavesStateUnchanged(t *testing.T) {
 		t.Errorf("Process after rejected changes: %v, want nil", err)
 	}
 }
+
+// TestFilterLengthWrap covers ratios where rounding the filter length up to
+// a multiple of 8 wraps it to 0 in uint32 (C is undefined there).
+func TestFilterLengthWrap(t *testing.T) {
+	if _, err := New(Config{Channels: 1, RatioNum: 1073741823, RatioDen: 2, Quality: 0}); !errors.Is(err, ErrAllocFailed) {
+		t.Errorf("New(1073741823:2): %v, want ErrAllocFailed", err)
+	}
+	r := mustNew(t, Config{Channels: 1, InRate: 8000, OutRate: 8000})
+	if err := r.SetRateFrac(1610612734, 3, 1, 1); err != ErrAllocFailed {
+		t.Errorf("SetRateFrac(1610612734, 3): %v, want ErrAllocFailed", err)
+	}
+	in := testutil.WhiteNoise(100, 30000, 1)
+	if _, _, err := r.Process(in, make([]int16, 100)); err != nil {
+		t.Errorf("Process: %v", err)
+	}
+}
+
+// TestCapBoundary pins the comparison: a need of exactly maxEntries fits.
+// No real configuration needs exactly that, so the history length is set
+// here: 65024 + 256*(65023+259) = 16 * 1024 * 1024.
+func TestCapBoundary(t *testing.T) {
+	r := &Resampler{nbChannels: 256, bufferSize: 259}
+	if err := r.checkCap(10, 254, 1); err != nil {
+		t.Errorf("need of exactly maxEntries: %v", err)
+	}
+	r.bufferSize = 260
+	if err := r.checkCap(10, 254, 1); err != ErrAllocFailed {
+		t.Errorf("need of maxEntries+256: %v, want ErrAllocFailed", err)
+	}
+}

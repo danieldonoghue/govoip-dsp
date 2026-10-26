@@ -26,12 +26,15 @@
 // of all channels may hold at most 16 * 1024 * 1024 entries (32 MiB), and
 // there may be at most 256 channels. That is about 158 times the largest
 // need of any pairing of 8 to 96 kHz at any quality with 32 channels.
-// Above the cap, New, SetRate, SetRateFrac and SetQuality return
-// ErrAllocFailed and change nothing. They also return it where the
-// reference's own limits reject the filter; that case follows C (see
-// ErrAllocFailed). A filter is roughly 8 to 256
-// taps times the downsampling factor, so the cap allows downsampling by up
-// to about 30000 (mono, quality 10). Frames may be any length; a call
+// Above the cap, and where the filter length would wrap to 0 (undefined in
+// C), New, SetRate, SetRateFrac and SetQuality return ErrAllocFailed and
+// change nothing. Where the reference's ratio or table limits reject the
+// filter, they return it and follow C (see ErrAllocFailed); the
+// reference's memory limit is always above the cap. A filter is roughly 8
+// to 256 taps times the downsampling factor, so the cap allows
+// downsampling by about 21000 to 32000 (mono, quality 10). The cap bounds
+// each configuration; since buffers only grow, a sequence of changes can
+// hold somewhat more (measured: 1.14 times the cap). Frames may be any length; a call
 // may consume and produce nothing.
 //
 // # Chunking and output exhaustion
@@ -76,8 +79,9 @@
 // SetRate, SetRateFrac and SetQuality change the filter on the fly with the
 // reference semantics (update_filter): the stream position and history are
 // kept. A setting equal to the current one does nothing. They may allocate.
-// If a change returns ErrAllocFailed, the resampler outputs zeros until a
-// later change succeeds. If SetRateFrac returns ErrOverflow, nothing
+// An ErrAllocFailed from the cap changes nothing; one from the reference's
+// ratio or table limits leaves the resampler outputting zeros until a
+// later change succeeds (see ErrAllocFailed). If SetRateFrac returns ErrOverflow, nothing
 // changes; C changes part of its state there, after which its behaviour is
 // undefined. The channel count needs a new Resampler.
 //

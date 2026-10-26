@@ -217,13 +217,16 @@ const (
 )
 
 // checkCap returns ErrAllocFailed if the filter for quality and the reduced
-// ratio num/den needs more than maxEntries table and history entries. It
-// returns nil where C rejects the filter itself, so that C's failure path
-// runs.
+// ratio num/den needs more than maxEntries table and history entries, or if
+// its length wraps to 0 (C is undefined there). It returns nil where C's
+// ratio and table limits reject the filter, so that C's failure path runs.
 func (r *Resampler) checkCap(quality int, num, den uint32) error {
 	p, ok := planFilter(quality, num, den)
 	if !ok {
 		return nil
+	}
+	if p.filtLen == 0 {
+		return ErrAllocFailed
 	}
 	need := uint64(p.tableLen) + uint64(r.nbChannels)*uint64(p.filtLen-1+r.bufferSize)
 	if need > maxEntries {
