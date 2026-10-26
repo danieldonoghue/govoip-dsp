@@ -382,6 +382,40 @@ frame of alignment. R5 is the condition the 3-frame rule was chosen for.
    corrected by change 4) and change 3 (N1 pink noise scaled so that every
    frame is below the gate). The limitation that the original N1 pink
    signal shows stays documented in `agc/doc.go` and `docs/algorithms.md`.
+6. **Design v2 corrections after its independent review** (2026-10-26).
+   No threshold or test signal changes. The design text in "Design v2"
+   changes as follows, for the reasons measured by the review and
+   rechecked on a scratch copy:
+   - **Loud run consecutive in time.** An inactive frame now ends the run.
+     Before, clicks in pauses added up: three clicks a second apart cut
+     the gain from +19.4 dB to −12 dB. Now: 19.23 → 18.71 dB.
+   - **Run length from duration.** The run is one frame more than a 10 ms
+     click can touch, `(F + c − 2)/F + 2` frames with `c` the samples in
+     10 ms: 3 frames at rates that are multiples of 1000, 4 at 9999 and
+     15999 Hz. Before, one click at 9999 Hz cut the gain from +20.0 to
+     −2.8 dB. Now the lowest gain is 19.71 dB.
+   - **Cut threshold +13 dB (energy ratio 20) instead of +10 dB.** With
+     +10 dB, ordinary speech louder than the registered P4 level met the
+     rule: P4 on the same 20 utterances at active levels −38, −34, −30,
+     −27, −24 and −20 dBFS was 2.05, 2.19, 2.34, 3.41, 3.50 and 5.39 dB,
+     with 0, 0, 0, 1, 1 and 3 cuts. With ratio 20 it is 2.05, 2.19, 2.34,
+     2.38, 2.42 and 2.55 dB, with no cuts; ratios 32 and 50 gave the same.
+     The +20 dB steps of C1, C3, C4 and T3 still cut at 30 ms. This choice
+     used the P4 files at other levels, so it is not an out-of-sample
+     result.
+   - **Mean update without drift.** `E` is updated as `E − c·E + c·x`
+     instead of `(1 − c)·E + c·x`, so `FloatMult` truncation no longer
+     biases the level low. The worst steady-state level error on a sine
+     (8000, 44100 and 48000 Hz, −79 to −3 dBFS) was −0.02 to −0.20 dB
+     depending on `LevelTime`, and is now −0.024 dB for 100 ms, 3 s and
+     10 s.
+   - **Gain in Q22.** The gain is kept with 7 more fractional bits, so the
+     rate limits hold at low gains: at MinGain −40 dB with 1 dB/s, the worst
+     rise was 2.65 dB/s and is now 1.007 dB/s, the worst fall 1.020 dB/s
+     (Q15 rounding of the per-frame factor).
+   - **First frame clamped.** The first active frame is clamped to twice
+     the initial level (the target), like every later frame, so a click as
+     the first frame raises the level by at most 6 dB.
 
 ## Results
 
