@@ -287,6 +287,11 @@ per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
    because the −44 dBFS segment is only 6 dB above the gate, so the
    "10 dB above the gate" rule in "Measurement" would leave no frame to
    measure. Both changes 2 and 3 are put to the owner in `docs/status.md`.
+5. **Owner decision on changes 2 and 3** (2026-10-26, relayed by the
+   coordinator). The owner confirmed change 2 (C4 measured on the gain, as
+   corrected by change 4) and change 3 (N1 pink noise scaled so that every
+   frame is below the gate). The limitation that the original N1 pink
+   signal shows stays documented in `agc/doc.go` and `docs/algorithms.md`.
 
 ## Results
 
