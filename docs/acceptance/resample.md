@@ -356,4 +356,15 @@ Targets:
     for the `int16` methods only: there the slack is exactly 0. For the
     `float32` methods with `inFrames` = 0, a call writes nothing, and the
     bound (still sound) is reported but not required to be tight.
+12. **Testable examples (WP1c, owner-approved addition; pre-registered
+    before they are written).** `resample/example_test.go`, package
+    `resample_test`, with deterministic `// Output:` comments that
+    `go test` checks:
+    - `ExampleResampler_Process`: the README case, 8 kHz to 16 kHz mono,
+      one 20 ms frame, with named constants and `out` sized by `MaxOut`;
+      it prints the frames read and written.
+    - `ExampleResampler_Process_stereo`: interleaved stereo 48 kHz to
+      16 kHz, showing that `MaxOut` counts frames per channel and the
+      buffer is `MaxOut(n) * channels` samples.
+    The README install example stays the same in substance as the first.
 
