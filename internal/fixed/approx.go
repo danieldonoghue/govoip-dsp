@@ -28,6 +28,7 @@ func ilog4(x uint32) int16 {
 
 // Sqrt is spx_sqrt (math_approx.h:142): the square root of a Q(2n) value in
 // Q(n), by a cubic polynomial after normalisation.
+// Within 40 units of the true root for x in [0, 1073709056]; larger x overflow.
 func Sqrt(x int32) int16 {
 	const c0, c1, c2, c3 = 3634, 21173, -12627, 4204
 	k := int(ilog4(uint32(x))) - 6
@@ -41,6 +42,7 @@ func Sqrt(x int32) int16 {
 
 // Cos is spx_cos (math_approx.h:188): cosine of a Q13 angle in radians,
 // in Q13, for angles in [0, pi].
+// Within 9 units of the true value on [0, pi]; not a substitute for math.Cos.
 func Cos(x int16) int16 {
 	const k1, k2, k3, k4 = 8192, -4096, 340, -10
 	if x < 12868 {
@@ -69,6 +71,7 @@ func cosPi2(x int16) int16 {
 
 // CosNorm is spx_cos_norm (math_approx.h:216): cos(pi/2 * x/2^15) in Q15 for
 // any x, the period being 2^17.
+// Within 2 units of the true value for every x; not a substitute for math.Cos.
 func CosNorm(x int32) int16 {
 	x &= 0x0001ffff
 	if x > 1<<16 {
@@ -109,6 +112,7 @@ func exp2(x int16) int32 {
 
 // Exp is spx_exp (math_approx.h:265): e^x for x in Q11, in Q16, saturating
 // to 0x7fffffff.
+// Within 39 units for x < 0, and 0.122% of the true value for x >= 0.
 func Exp(x int16) int32 {
 	if x > 21290 {
 		return 0x7fffffff
@@ -130,6 +134,7 @@ func atan01(x int16) int16 {
 
 // Atan is spx_atan (math_approx.h:290): arctangent of a non-negative Q15
 // value, in Q14. Negative inputs give what upstream gives, not atan.
+// Within 5 units of the true value for x >= 0; not a substitute for math.Atan.
 func Atan(x int32) int16 {
 	if x <= 32767 {
 		return shr16(atan01(int16(x)), 1)
