@@ -46,8 +46,8 @@ Status levels are defined in
 | Platform | Status |
 |---|---|
 | macOS arm64 | Tested locally: all tests |
-| Linux amd64, Linux arm64, macOS arm64, Windows amd64 | CI runners configured in `.github/workflows/ci.yml`; CI has not run yet |
-| linux/386, linux/arm, linux/riscv64, linux/ppc64le, linux/s390x, linux/mips64le, freebsd/amd64, darwin/amd64, windows/arm64, wasip1/wasm | Build-only: cross-compiled with `make cross`, never run |
+| Linux amd64, Linux arm64, macOS arm64, Windows amd64 | CI runs all tests on every push with Go 1.26 and 1.27, plus race tests on Linux amd64 and macOS arm64 ([results](https://github.com/danieldonoghue/govoip-dsp/actions/workflows/ci.yml)) |
+| linux/arm, linux/riscv64, linux/ppc64le, linux/s390x, linux/mips64le, freebsd/amd64, darwin/amd64, windows/arm64, wasip1/wasm | Build-only: cross-compiled with `make cross`, never run |
 
 ## Install
 

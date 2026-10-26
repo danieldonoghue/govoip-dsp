@@ -445,15 +445,19 @@ the same commit that makes a failing test pass.
 
 ## 10. CI
 
-GitHub Actions, using native runners where available: `ubuntu-latest` (amd64),
-`ubuntu-24.04-arm` (arm64), `macos-latest` (arm64), `windows-latest` (amd64).
+GitHub Actions, using native runners where available: `ubuntu-24.04` (amd64),
+`ubuntu-24.04-arm` (arm64), `macos-15` (arm64), `windows-2025` (amd64).
+
+Runner labels name an explicit image version, never `-latest`, so a runner
+image changes only by a deliberate commit that updates this list and
+`.github/workflows/ci.yml` together.
 
 - gofmt check, vet, staticcheck, `CGO_ENABLED=0 go test ./...` on every runner.
 - Race tests on Linux amd64 and macOS.
 - `-tags purego` test run, to prove the portable paths build and pass on their
   own.
 - Cross-compile GOOS/GOARCH combinations that have no runner (for example
-  `linux/386`, `linux/riscv64`) and report them as **build-only**.
+  `linux/arm`, `linux/riscv64`) and report them as **build-only**.
 - Native-dependency guard: build with `CGO_ENABLED=0` and fail if any package
   imports `C` or `go list -deps` shows unexpected modules.
 - Allocation tests run in CI; benchmarks run in short mode as a smoke test only

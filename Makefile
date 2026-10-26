@@ -4,7 +4,7 @@ GO ?= go
 STATICCHECK ?= $(shell command -v staticcheck 2>/dev/null)
 
 # GOOS/GOARCH pairs that have no CI runner. They are build-only, never tested.
-CROSS_TARGETS ?= linux/386 linux/arm linux/riscv64 linux/ppc64le linux/s390x \
+CROSS_TARGETS ?= linux/arm linux/riscv64 linux/ppc64le linux/s390x \
 	linux/mips64le freebsd/amd64 darwin/amd64 windows/arm64 wasip1/wasm
 
 .PHONY: check fmt-check vet test test-purego staticcheck deps-guard race bench \
