@@ -139,10 +139,10 @@ type caseParams struct {
 	Frac     int        `json:"frac"`
 	Q        int        `json:"q"`
 	Ch       int        `json:"ch"`
-	Num      int        `json:"num"`
-	Den      int        `json:"den"`
-	InRate   int        `json:"in_rate"`
-	OutRate  int        `json:"out_rate"`
+	Num      int64      `json:"num"`
+	Den      int64      `json:"den"`
+	InRate   int64      `json:"in_rate"`
+	OutRate  int64      `json:"out_rate"`
 	Frames   int        `json:"frames"`
 	MaxCalls int        `json:"max_calls"`
 	Events   [][6]int64 `json:"events"`
@@ -150,11 +150,19 @@ type caseParams struct {
 	State    *caseState `json:"state"`
 }
 
-func (p *caseParams) config() Config {
-	if p.Frac == 1 {
-		return Config{Channels: p.Ch, InRate: p.InRate, OutRate: p.OutRate, RatioNum: p.Num, RatioDen: p.Den, Quality: p.Q}
+// config returns the configuration, or false if a value does not fit in
+// int on this platform (ratios above 2^31-1 on 32-bit platforms).
+func (p *caseParams) config() (Config, bool) {
+	for _, v := range []int64{p.Num, p.Den, p.InRate, p.OutRate} {
+		if v > math.MaxInt {
+			return Config{}, false
+		}
 	}
-	return Config{Channels: p.Ch, InRate: p.InRate, OutRate: p.OutRate, Quality: p.Q}
+	if p.Frac == 1 {
+		return Config{Channels: p.Ch, InRate: int(p.InRate), OutRate: int(p.OutRate), RatioNum: int(p.Num),
+			RatioDen: int(p.Den), Quality: p.Q}, true
+	}
+	return Config{Channels: p.Ch, InRate: int(p.InRate), OutRate: int(p.OutRate), Quality: p.Q}, true
 }
 
 // errCode maps an error to the C return code.
@@ -214,6 +222,10 @@ type outSink struct {
 func runReferenceCase(t *testing.T, m *testutil.Manifest, c *testutil.Case) {
 	var p caseParams
 	c.DecodeParams(t, &p)
+	cfg, ok := p.config()
+	if !ok {
+		t.Skip("the ratio does not fit in int on this platform")
+	}
 	tr := tracer{testutil.NewStreamChecker[int32](t, m, c, c.Stream(t, "trace"), false)}
 	isFloat := p.Mode == "f" || p.Mode == "g"
 	var sink outSink
@@ -222,7 +234,7 @@ func runReferenceCase(t *testing.T, m *testutil.Manifest, c *testutil.Case) {
 	} else {
 		sink.i16 = testutil.NewStreamChecker[int16](t, m, c, c.Stream(t, "out"), false)
 	}
-	r, err := New(p.config())
+	r, err := New(cfg)
 	if err != nil {
 		if p.State != nil {
 			t.Fatalf("New: %v, the reference succeeded", err)
@@ -451,7 +463,7 @@ func TestReferenceCoverage(t *testing.T) {
 		have[m.Cases[i].Name] = p
 	}
 	rates := []int{8000, 16000, 24000, 32000, 44100, 48000, 96000}
-	want := func(name, mode string, q, ch, num, den int, table bool) {
+	want := func(name, mode string, q, ch int, num, den int64, table bool) {
 		t.Helper()
 		p, ok := have[name]
 		if !ok {
@@ -465,26 +477,26 @@ func TestReferenceCoverage(t *testing.T) {
 			t.Errorf("case %s: table stream %v, want %v", name, hasTable, table)
 		}
 	}
-	fracs := [][2]int{{48000, 47999}, {47999, 48000}, {44101, 44100}, {1000003, 999983}, {7, 5}, {5, 7},
+	fracs := [][2]int64{{48000, 47999}, {47999, 48000}, {44101, 44100}, {1000003, 999983}, {7, 5}, {5, 7},
 		{1, 100}, {100, 1}, {2147483646, 2147483647}, {1000000007, 3000000019}}
 	pairs2 := [][2]int{{8000, 16000}, {16000, 8000}, {16000, 48000}, {48000, 16000}, {44100, 48000},
 		{48000, 44100}, {48000, 8000}, {96000, 44100}}
 	for q := 0; q <= 10; q++ {
 		for _, a := range rates {
 			for _, b := range rates {
-				want(fmt.Sprintf("q%d_%d_%d", q, a, b), "i", q, 1, a, b, true)
+				want(fmt.Sprintf("q%d_%d_%d", q, a, b), "i", q, 1, int64(a), int64(b), true)
 			}
 		}
 		for _, f := range fracs {
 			want(fmt.Sprintf("q%d_frac_%d_%d", q, f[0], f[1]), "i", q, 1, f[0], f[1], true)
 		}
 		for _, pr := range pairs2 {
-			want(fmt.Sprintf("q%d_%d_%d_2ch", q, pr[0], pr[1]), "i", q, 2, pr[0], pr[1], false)
+			want(fmt.Sprintf("q%d_%d_%d_2ch", q, pr[0], pr[1]), "i", q, 2, int64(pr[0]), int64(pr[1]), false)
 		}
 	}
 	for _, q := range []int{0, 3, 5, 8, 10} {
 		for _, pr := range [][2]int{{8000, 96000}, {48000, 16000}, {44100, 48000}, {16000, 48000}} {
-			want(fmt.Sprintf("f_q%d_%d_%d", q, pr[0], pr[1]), "f", q, 1, pr[0], pr[1], false)
+			want(fmt.Sprintf("f_q%d_%d_%d", q, pr[0], pr[1]), "f", q, 1, int64(pr[0]), int64(pr[1]), false)
 		}
 		want(fmt.Sprintf("f_q%d_44100_48000_2ch", q), "f", q, 2, 44100, 48000, false)
 	}

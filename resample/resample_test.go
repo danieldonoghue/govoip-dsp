@@ -18,6 +18,12 @@ func mustNew(t testing.TB, cfg Config) *Resampler {
 	return r
 }
 
+// beyondUint32 returns 2^33 where int is 64 bits wide.
+func beyondUint32() (int, bool) {
+	v := uint64(1) << 33
+	return int(v), math.MaxInt > math.MaxUint32
+}
+
 func TestNewInvalid(t *testing.T) {
 	for _, cfg := range []Config{
 		{Channels: 0, InRate: 48000, OutRate: 16000},
@@ -30,12 +36,20 @@ func TestNewInvalid(t *testing.T) {
 		{Channels: 1, InRate: 48000, OutRate: 16000, RatioNum: 3},
 		{Channels: 1, InRate: 48000, OutRate: 16000, RatioDen: 1},
 		{Channels: 1, RatioNum: -3, RatioDen: 1},
-		{Channels: 1, InRate: 1 << 33, OutRate: 16000},
-		{Channels: 1, RatioNum: 1 << 33, RatioDen: 1},
-		{Channels: 1 << 33, InRate: 48000, OutRate: 16000},
 	} {
 		if r, err := New(cfg); !errors.Is(err, ErrConfig) || r != nil {
 			t.Errorf("New(%+v) = %v, %v; want nil, ErrConfig", cfg, r, err)
+		}
+	}
+	if big, ok := beyondUint32(); ok {
+		for _, cfg := range []Config{
+			{Channels: 1, InRate: big, OutRate: 16000},
+			{Channels: 1, RatioNum: big, RatioDen: 1},
+			{Channels: big, InRate: 48000, OutRate: 16000},
+		} {
+			if _, err := New(cfg); !errors.Is(err, ErrConfig) {
+				t.Errorf("New(%+v): %v, want ErrConfig", cfg, err)
+			}
 		}
 	}
 	if _, err := New(Config{Channels: 1, RatioNum: 600000000, RatioDen: 1}); !errors.Is(err, ErrAllocFailed) {
@@ -47,10 +61,15 @@ func TestSettersInvalid(t *testing.T) {
 	r := mustNew(t, Config{Channels: 2, InRate: 48000, OutRate: 16000, Quality: 5})
 	for _, err := range []error{
 		r.SetQuality(-1), r.SetQuality(11), r.SetRate(0, 16000), r.SetRate(48000, -1),
-		r.SetRateFrac(1, 0, 1, 1), r.SetRateFrac(1, 1, -1, 1), r.SetRateFrac(1<<33, 1, 1, 1),
+		r.SetRateFrac(1, 0, 1, 1), r.SetRateFrac(1, 1, -1, 1),
 	} {
 		if !errors.Is(err, ErrConfig) {
 			t.Errorf("got %v, want ErrConfig", err)
+		}
+	}
+	if big, ok := beyondUint32(); ok {
+		if err := r.SetRateFrac(big, 1, 1, 1); !errors.Is(err, ErrConfig) {
+			t.Errorf("ratio %d:1: %v, want ErrConfig", big, err)
 		}
 	}
 	if q := r.Quality(); q != 5 {
@@ -118,8 +137,8 @@ func TestFramesClamp(t *testing.T) {
 		want      uint32
 	}
 	cases := []tc{{0, 1, 0}, {1, 1, 1}, {5, 2, 3}, {6, 2, 3}, {7, 3, 3}, {math.MaxInt32, 1, math.MaxInt32}}
-	if math.MaxInt > math.MaxInt32 {
-		cases = append(cases, tc{math.MaxInt32 + 1, 1, math.MaxInt32}, tc{1 << 40, 1, math.MaxInt32})
+	if big, ok := beyondUint32(); ok {
+		cases = append(cases, tc{big, 1, math.MaxInt32}, tc{big / 4, 1, math.MaxInt32})
 	}
 	for _, c := range cases {
 		if got := frames(c.n, c.stride); got != c.want {

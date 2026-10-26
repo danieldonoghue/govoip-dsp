@@ -21,7 +21,8 @@
 // # Rates, ratios and frames
 //
 // Any ratio num/den with 1 <= num, den <= 2^32-1 is accepted where the
-// reference accepts it; New and SetRateFrac return ErrAllocFailed where the
+// reference accepts it (where int is 32 bits wide, values are limited to
+// 2^31-1); New and SetRateFrac return ErrAllocFailed where the
 // filter would exceed the reference's size limits (about 2^30 table or
 // memory entries). Large ratios make large filters: a filter is roughly
 // 8 to 256 taps times the downsampling factor, so extreme downsampling
