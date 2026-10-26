@@ -264,4 +264,18 @@ Targets:
      of accepted changes can hold more: measured 1.14 times the cap.
    - Added `TestCapBoundary`, which pins that a need of exactly the cap
      fits.
+7. **Deterministic rejection check** (WP1b, owner-approved; pre-registered
+   before the test change). Justification: CI run 40386500404 failed on
+   windows-2025 with Go 1.26, where `TestResourceCap` reported a rejection
+   of 256 channels, 100000:1, quality 10 after 64.57 ms against the 10 ms
+   bound of change 5. Locally the same rejection takes 2.3 µs and
+   allocates 18.6 KB in 4 allocations, so the wall-clock bound measures
+   the shared runner, not the code. New criterion:
+   - A rejected `New` over the cap, and a rejected `SetRate`,
+     `SetRateFrac` or `SetQuality` over the cap, allocates less than
+     1 MiB, measured with `runtime.MemStats.TotalAlloc` around the one
+     call. A built filter at those sizes needs far more (above 32 MiB).
+   - A loose wall-clock backstop remains: each rejection takes under 1 s.
+     Without the cap these cases took about 14 s.
+   - The 10 ms bound of change 5 is dropped.
 
