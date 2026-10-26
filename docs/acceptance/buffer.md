@@ -52,8 +52,9 @@ the model slice, checked after every operation.
 7. **Views.** The read view (two segments) holds exactly the readable
    samples in order; the write view (two segments) has total length `Free`.
    Each segment's capacity equals its length, so `append` on a view cannot
-   write into the ring. `Commit(n)` and `Consume(n)` clip n to [0, `Free`]
-   and [0, `Len`] and return the clipped count.
+   write into the ring. `Commit(n)` clips n to [0, length of the current
+   write view] (0 when no write view is live), `Consume(n)` clips n to
+   [0, `Len`], and both return the clipped count.
 8. **View expiry.** Each view's documented lifetime holds: while a view is
    live, the buffer writes no sample of a read view and reads no sample of a
    write view. Tested for `Ring` by holding a read view across `Reject`
@@ -139,4 +140,12 @@ Targets:
 
 ## Changes
 
-None.
+1. **Criterion 7, `Commit` clipping** (changed after the first
+   implementation commit, in a commit of its own). The original text clipped
+   `Commit(n)` to [0, `Free`]. The independent review showed that `Free` can
+   grow after `WriteSlices` returns (the consumer reads, or the owner calls
+   `Read`), so `Commit(n)` with n above the view length published slots the
+   caller never wrote: stale samples from an earlier lap, silently. The view
+   is what the caller filled, so `Commit` now clips to it. No test passed or
+   failed because of the old wording; the change makes the API safer and
+   adds a requirement that the tests must check.
