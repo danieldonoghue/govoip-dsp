@@ -40,7 +40,7 @@ documentation (WP8) is next. See the table below and the
 | AGC | `agc` | Validated (own design, behavioural criteria) |
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Echo canceller | `echo` | Validated (bit-exact with SpeexDSP 1.2.1; supported at 8 and 16 kHz) |
-| Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz, and recipe B of [docs/usage.md](docs/usage.md) fails U6 with a 32 ms echo ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
+| Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz, and both recipes of [docs/usage.md](docs/usage.md) fail U6, a 32 ms echo with up to 30 ms of jitter ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
 | Developer documentation | root package `govoipdsp`, `docs/` | Planned (WP8); [docs/usage.md](docs/usage.md) is a tested wiring recipe |
 
 Status levels are defined in
@@ -107,10 +107,11 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   the input are raised by 16 to 23 dB after noise suppression; set
   `GateLevel` above the residual noise
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
-- Recipe B of [docs/usage.md](docs/usage.md) sends one frame per
-  received frame and cancels with `Playback` and `Capture`, one frame
-  late. In simulated calls with up to 30 ms of jitter it cancelled echo
-  delays of 40 to 200 ms; with a 32 ms echo it did not (U6 fails).
+- The recipes of [docs/usage.md](docs/usage.md) cancel echo within the
+  delays measured in simulated calls with up to 30 ms of jitter: 40 to
+  200 ms for recipe A (paced sending, `Cancel`), 60 to 200 ms for recipe
+  B (separate callbacks, `Playback` and `Capture`, one frame late). With
+  a 32 ms echo and that jitter neither does (U6 fails).
 - Go is not a hard real-time platform; tail latencies are measured and
   reported ([docs/performance.md](docs/performance.md)), not guaranteed.
   The Linux amd64 reference environment has not been measured yet.
