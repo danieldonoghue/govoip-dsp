@@ -368,11 +368,28 @@ Does not fit:
   behind its received frame, rounded up to whole frames. A sender pause
   followed by a burst adds the length of the pause. The shift is bounded
   by the sent SPSC (200 ms); beyond that `onPacket` drops sent frames.
-- **Echo delay.** The canceller models echo delays from that lag to about
-  200 ms after it (the `echo` package doc, "Stream alignment"). With a
-  100 ms echo the measured echo stage is 24.7 to 26.2 dB at 8 kHz and
-  19.1 to 20.3 dB at 16 kHz for any jitter from 0 to 30 ms; with a 32 ms
-  echo it is 0.3 to 7.6 dB (`docs/testing.md`, "Recipe B").
+- **Echo delay.** The canceller models echo delays from that lag to
+  the end of its filter (the `echo` package doc, "Stream alignment"). So
+  the echo must return later than about one frame plus the jitter after
+  the frame was sent: with a 32 ms echo and up to 30 ms of jitter the
+  echo stage is 0.3 to 0.7 dB (U6, a reported finding). With delays of
+  100 and 200 ms it is 19.2 to 25.6 dB (U11, `docs/testing.md`).
+- **Filter length.** `filterMs` must cover the largest echo delay
+  expected plus the echo's tail. U11 uses 256 ms, the longest length the
+  `echo` fixtures test, for a 200 ms delay with a 48 ms tail. A longer
+  filter costs more per frame (`docs/performance.md`).
+- **Changing echo delay.** The delay differs between calls and can change
+  within one, for example when a jitter buffer resizes, a route changes,
+  clocks drift or the caller moves. The canceller does not estimate the
+  delay; after each sudden change it re-converges, and cancellation is
+  lost for a while: after a step from 100 to 140 ms, 3.5 s at 8 kHz and
+  3.0 s at 16 kHz before the echo stage was at 10 dB again (U11).
+- **Typical delays.** Vendor and trade sources (not standards) put the
+  delay that VoIP adds at 50 to 80 ms or more, size network echo
+  cancellers for 64 ms, up to 128 ms on long paths, and note that the
+  network or the phone often removes much of the echo already. These are
+  typical figures, not guarantees; measure the calls the application
+  handles.
 - **Silence when there is nothing to send.** The silence that `drain`
   queues also keeps the echo tail of the last real audio cancelled after
   the sender stops (criterion U7, `TestBufferedIdleSender`). Captures
@@ -401,7 +418,7 @@ SPSC. The processing goroutine drains both on its own clock.
 ### B1. Make the processors and the hand-offs
 
 ```go
-func newBufferedCall(rate, frameMs int) (*bufferedCall, error) {
+func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 	if rate != 8000 && rate != 16000 {
 		return nil, fmt.Errorf("call: %d Hz; the echo canceller supports 8 and 16 kHz only", rate)
 	}
@@ -410,7 +427,7 @@ func newBufferedCall(rate, frameMs int) (*bufferedCall, error) {
 		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", b.frame)
 	}
 	var err error
-	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate / 5, SampleRate: rate})
+	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate * filterMs / 1000, SampleRate: rate})
 	if err != nil {
 		return nil, err
 	}
@@ -499,6 +516,9 @@ Tests:
   late, independently; the echo stage must reach 15 dB (U6), and does not
   with the scenario's 32 ms echo (a reported finding). It also reports a
   100 ms sender pause followed by a burst.
+- `TestBufferedLongDelay`: echo delays of 100 and 200 ms with the same
+  jitter and a 256 ms filter must reach 15 dB (U11); it also reports the
+  recovery after a step from 100 to 140 ms.
 - `TestBufferedLagAndDelay`: the echo stage against the far end's lag,
   the echo delay and the jitter (reported only).
 - `TestBufferedIdleSender`: the silence `drain` queues after the sender
@@ -527,7 +547,7 @@ Tests:
   2.5% of the frame duration. The slowest single frame of a 10-minute run
   varied between runs, up to 65% of a 10 ms frame
   (`docs/performance.md`).
-- Recipe B keeps cancelling under jitter of up to 30 ms when the echo
-  returns well after the far end's lag (100 ms: 19 to 26 dB), and does
-  not when the echo returns within it (32 ms: U6 fails, a reported
-  finding).
+- Recipe B cancels under jitter of up to 30 ms when the echo returns
+  well after the far end's lag: 19.2 to 25.6 dB at echo delays of 100 and
+  200 ms with a 256 ms filter (U11). With a 32 ms echo it does not (U6
+  fails, a reported finding).

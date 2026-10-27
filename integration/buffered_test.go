@@ -32,8 +32,8 @@ type bufferedCall struct {
 }
 
 // newBufferedCall makes the processors of one call at rate Hz (8000 or
-// 16000) with frames of frameMs milliseconds.
-func newBufferedCall(rate, frameMs int) (*bufferedCall, error) {
+// 16000), frames of frameMs and an echo filter of filterMs milliseconds.
+func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 	if rate != 8000 && rate != 16000 {
 		return nil, fmt.Errorf("call: %d Hz; the echo canceller supports 8 and 16 kHz only", rate)
 	}
@@ -42,7 +42,7 @@ func newBufferedCall(rate, frameMs int) (*bufferedCall, error) {
 		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", b.frame)
 	}
 	var err error
-	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate / 5, SampleRate: rate})
+	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate * filterMs / 1000, SampleRate: rate})
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func TestBufferedUnevenTiming(t *testing.T) {
 			ratio := func(y []int16, from, to float64) float64 {
 				return dB(energy(window(s.mic, rate, from, to)), energy(window(y, rate, from, to)))
 			}
-			b, err := newBufferedCall(rate, frameMs)
+			b, err := newBufferedCall(rate, frameMs, 200)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -193,7 +193,7 @@ func TestBufferedUnevenTiming(t *testing.T) {
 					pause[k] = 6100
 				}
 			}
-			b3, err := newBufferedCall(rate, frameMs)
+			b3, err := newBufferedCall(rate, frameMs, 200)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -222,7 +222,7 @@ func TestBufferedIdleSender(t *testing.T) {
 				at[k] = k * frameMs
 			}
 			stop := 14 * 1000 / frameMs // the sender sends nothing from 14 s on
-			b, err := newBufferedCall(rate, frameMs)
+			b, err := newBufferedCall(rate, frameMs, 200)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -262,7 +262,7 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 		seconds = 3
 	}
 	s := callScenario(rate, 1)
-	b, err := newBufferedCall(rate, frameMs)
+	b, err := newBufferedCall(rate, frameMs, 200)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 	}
 
 	// Replay: one queued frame per received frame, the same one, in order.
-	r, err := newBufferedCall(rate, frameMs)
+	r, err := newBufferedCall(rate, frameMs, 200)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +355,7 @@ func TestNoAllocsBuffered(t *testing.T) {
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
 			skipUnderRace(t)
-			b, err := newBufferedCall(rate, 20)
+			b, err := newBufferedCall(rate, 20, 200)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -412,7 +412,7 @@ func TestBufferedLagAndDelay(t *testing.T) {
 			}
 			n := len(mic) / frame
 			for _, j := range []int{0, 2, 5, 10, 30} {
-				b, err := newBufferedCall(rate, frameMs)
+				b, err := newBufferedCall(rate, frameMs, 200)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -421,5 +421,67 @@ func TestBufferedLagAndDelay(t *testing.T) {
 				t.Logf("%d Hz, echo delay %d ms: drain, jitter 0 to %d ms, echo stage %.1f dB", rate, delayMs, j, erle(e))
 			}
 		}
+	}
+}
+
+// delayedCall is the call scenario with the echo path's bulk delay at
+// delayMs, or stepping from delayMs to stepMs at stepAt seconds.
+func delayedCall(rate, delayMs, stepMs int, stepAt float64) (mic, far []int16) {
+	base := callScenario(rate, 1)
+	echo := convolve(base.far, room(rate, "integration/path", delayMs, delayMs+48, 16384))
+	if stepMs != delayMs {
+		after := convolve(base.far, room(rate, "integration/path", stepMs, stepMs+48, 16384))
+		k := int(stepAt * float64(rate))
+		copy(echo[k:], after[k:])
+	}
+	noise := testutil.WhiteNoise(len(base.far), 30, testutil.Seed("integration/noise"))
+	return mix(echo, base.near, noise), base.far
+}
+
+// TestBufferedLongDelay checks recipe B at echo delays of 100 and 200 ms
+// with a 256 ms filter (U11), and reports the recovery from a delay step.
+func TestBufferedLongDelay(t *testing.T) {
+	skipUnderRace(t)
+	const frameMs, filterMs = 20, 256
+	for _, rate := range []int{8000, 16000} {
+		frame := rate * frameMs / 1000
+		run := func(mic, far []int16) []int16 {
+			b, err := newBufferedCall(rate, frameMs, filterMs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			n := len(mic) / frame
+			_, e := runBuffered(t, b, mic, far, arrivals(n, frameMs, 30, "integration/buffered/mic"),
+				arrivals(n, frameMs, 30, "integration/buffered/far"), frameMs)
+			return e
+		}
+		for _, delayMs := range []int{100, 200} {
+			t.Run(fmt.Sprintf("%dk_%dms", rate/1000, delayMs), func(t *testing.T) {
+				mic, far := delayedCall(rate, delayMs, delayMs, 0)
+				e := run(mic, far)
+				stage := dB(energy(window(mic, rate, 8, 14)), energy(window(e, rate, 8, 14)))
+				t.Logf("echo delay %d ms, jitter 0 to 30 ms, filter %d ms: echo stage %.1f dB over 8 to 14 s", delayMs, filterMs, stage)
+				if stage < 15 {
+					t.Errorf("U11: echo stage %.1f dB, want at least 15", stage)
+				}
+			})
+		}
+		t.Run(fmt.Sprintf("%dk_step_100_140ms", rate/1000), func(t *testing.T) {
+			mic, far := delayedCall(rate, 100, 140, 8)
+			e := run(mic, far)
+			recovered := -1.0
+			for w := 8.0; w+0.5 <= 14; w += 0.5 {
+				if dB(energy(window(mic, rate, w, w+0.5)), energy(window(e, rate, w, w+0.5))) >= 10 {
+					recovered = w - 8
+					break
+				}
+			}
+			before := dB(energy(window(mic, rate, 6, 8)), energy(window(e, rate, 6, 8)))
+			if recovered < 0 {
+				t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB not reached again before 14 s", before)
+				return
+			}
+			t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB again after %.1f s", before, recovered)
+		})
 	}
 }
