@@ -291,7 +291,8 @@ frames.
    the far end by one or two frames when its queue under- or overflows.
 2. **U7. Idle sender.** The far end is white noise of peak 8000 from 2 to
    14 s, with the echo path of "Signals", microphone noise and no near
-   end; nothing follows it, so the echo tail after 14 s is never silent. When the sender keeps sending silence and queuing it with
+   end; nothing follows it, so the echo tail after 14 s is never silent.
+   When the sender keeps sending silence and queuing it with
    `Playback`, the output energy over 14.0 to 14.3 s is at least 10 dB
    below that of a sender that queues nothing after 14 s (whose captures
    find an empty queue and pass the microphone through).
@@ -306,3 +307,11 @@ frames.
    cases and caveats, and `TestUsageCodeIsTested` covers its Go blocks.
    A drift beyond the canceller's queue (a sender pause of 100 ms, then a
    burst) is measured and reported, without a threshold.
+
+### U6 fails, reported as a finding (after measurement)
+
+U6 measured 0.6 dB at 8 kHz and -0.6 dB at 16 kHz (threshold 15 dB). The
+threshold stays. `TestBufferedUnevenTiming` pins the failure and fails if
+U6 starts to pass. `TestBufferedLagAndDelay` was added after this result,
+reported only and without thresholds, to show the cause; it is in
+`docs/testing.md`. What to change needs a decision.
