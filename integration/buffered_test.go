@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -111,12 +112,12 @@ func (b *bufferedCall) drain(pending, rx, toWriter *buffer.SPSC, far, mic, out [
 	// One step per received frame waiting now; frames that arrive while
 	// this runs wait for the next call, so the work is bounded.
 	for range rx.Len() / b.frame {
-		// Exactly one frame is sent per received frame, so sending runs at
+		// At most one frame is sent per received frame, so sending runs at
 		// the call's own pace, whatever the application writes.
 		switch {
 		case toWriter.Free() < b.frame:
 			// The writer is behind: send nothing, keep the pending frame,
-			// and tell the canceller that silence was played.
+			// and assume silence plays in this slot.
 			clear(far)
 		case pending.Len() >= b.frame:
 			pending.Read(far)
@@ -128,8 +129,8 @@ func (b *bufferedCall) drain(pending, rx, toWriter *buffer.SPSC, far, mic, out [
 			clear(far)
 			toWriter.Write(far)
 		}
-		// Playback gets exactly the frame just handed to the writer, so the
-		// far end the canceller sees is what the call hears.
+		// Playback gets exactly the frame just handed to the writer (or
+		// silence when none was), so the far end it sees is what was sent.
 		if err := b.played(far); err != nil {
 			return err
 		}
@@ -283,8 +284,8 @@ func fixedPath(rate, delayMs int) func(int) []tap {
 	return func(int) []tap { return taps }
 }
 
-// scenarioCall is the call scenario at rate as a simCall: the application
-// writes far-end frame k at k*frameMs plus up to jitterMs, and so on.
+// scenarioCall is the call scenario at rate as a simCall: far-end frame k is
+// written at k*frameMs plus up to jitterMs, received frame k likewise.
 func scenarioCall(rate, frameMs, jitterMs int, path func(int) []tap) simCall {
 	s := callScenario(rate, 1)
 	f := rate * frameMs / 1000
@@ -455,6 +456,16 @@ func TestBufferedBurstSender(t *testing.T) {
 					t.Fatalf("writer sent %d samples for %d received", len(r.sent), len(r.mic))
 				}
 				testutil.Compare(t, "replay of the sent frames", replay(t, rate, frameMs, filterMs, v.cancel, r.sent, r.mic), r.echoed)
+				nonSilent := func(x []int16) []int16 {
+					var y []int16
+					for k := 0; (k+1)*f <= len(x); k++ {
+						if slices.ContainsFunc(x[k*f:(k+1)*f], func(v int16) bool { return v != 0 }) {
+							y = append(y, x[k*f:(k+1)*f]...)
+						}
+					}
+					return y
+				}
+				testutil.Compare(t, "non-silent frames sent against the application's", nonSilent(c.app), nonSilent(r.sent))
 				stage := r.stage(rate, 8, 14)
 				t.Logf("burst of 12 s at 2 s, 100 ms echo, jitter 0 to 30 ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
 					stage, r.missing)
@@ -730,6 +741,76 @@ func TestBufferedLagIsOneFrame(t *testing.T) {
 				}
 			}
 			testutil.Compare(t, "echoed", want, r.echoed)
+		})
+	}
+}
+
+// TestBufferedWriterFull checks drain's writer-full branch on an adapted
+// canceller: nothing is sent, silence is played, the pending frame waits.
+func TestBufferedWriterFull(t *testing.T) {
+	const rate, frameMs, after = 8000, 20, 60
+	for _, v := range variants {
+		t.Run(v.name, func(t *testing.T) {
+			b := newVariant(t, rate, frameMs, 200, v.cancel)
+			f := b.frame
+			pending, rx, toWriter, err := newBufferedHandoffs(b, 200)
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := callScenario(rate, 1)
+			frame := func(x []int16, k int) []int16 { return x[(100+k)*f : (101+k)*f] } // from 2 s, far end active
+			warm := 200                                                                 // the canceller adapts; the full slot's frame must not be silent
+			for !slices.ContainsFunc(frame(s.far, warm), func(x int16) bool { return x != 0 }) {
+				warm++
+			}
+			fb, mb, out := make([]int16, f), make([]int16, f), make([]int16, f)
+			var got, sent []int16
+			deliver := func([]int16) { got = append(got, b.echoed...) }
+			step := func(k int) {
+				onPacket(rx, frame(s.mic, k))
+				if err := b.drainVariant(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writer := func() {
+				for toWriter.Len() > 0 {
+					n := len(sent)
+					sent = append(sent, make([]int16, toWriter.Len())...)
+					toWriter.Read(sent[n:])
+				}
+			}
+			for k := range warm { // the canceller adapts
+				onPacket(pending, frame(s.far, k))
+				step(k)
+				writer()
+			}
+
+			for toWriter.Free() >= f { // the writer stalls: its SPSC fills up
+				onPacket(toWriter, make([]int16, f))
+			}
+			full := toWriter.Len()
+			onPacket(pending, frame(s.far, warm))
+			step(warm)
+			if toWriter.Len() != full {
+				t.Fatalf("writer SPSC holds %d samples after a drain with it full, want %d", toWriter.Len(), full)
+			}
+			if pending.Len() != f {
+				t.Fatalf("pending holds %d samples, want the one waiting frame (%d)", pending.Len(), f)
+			}
+			toWriter.Consume(toWriter.Len()) // the writer catches up; the filler was never audio
+
+			for k := warm + 1; k <= warm+after; k++ {
+				onPacket(pending, frame(s.far, k))
+				step(k)
+				writer()
+			}
+			// Sent: the warm-up frames, nothing in the full slot, then the
+			// waiting frame and the rest, one per received frame.
+			wantSent := slices.Clone(s.far[100*f : (100+warm+after)*f])
+			testutil.Compare(t, "sent", wantSent, sent)
+			played := slices.Concat(s.far[100*f:(100+warm)*f], make([]int16, f), s.far[(100+warm)*f:(100+warm+after)*f])
+			want := replay(t, rate, frameMs, 200, v.cancel, played, s.mic[100*f:(101+warm+after)*f])
+			testutil.Compare(t, "canceller output", want, got)
 		})
 	}
 }
