@@ -834,6 +834,12 @@ One mutation of the test's Go chain, or of the recipe, at a time.
 | recipe: `deliver` allocates | caught by `TestNoAllocsRecipe` |
 | recipe: AGC `speech` always true instead of the VAD decision | not caught by `TestRecipeThroughSPSC`: over its 10 s the VAD is false only on frames below the AGC gate, so the output is the same |
 | `docs/usage.md`: one changed code line | caught by `TestUsageCodeIsTested` |
+| recipe B: idle sender queues nothing in both arms of U7 | caught by `TestBufferedIdleSender` |
+| recipe B: replay queues one sent frame more | caught by `TestBufferedTwoGoroutines` |
+| recipe B: `deliver` allocates | caught by `TestNoAllocsBuffered` |
+| recipe B: `drain` never calls `played` | caught by `TestBufferedTwoGoroutines`; `TestBufferedIdleSender` and U6 use `echoStageBuffered`, a copy of the alternation of `drain`, so they cannot catch it |
+| recipe A: `resampleInto` ignores the queue result | caught by `TestQueueFullIsReported` |
+| recipe A: backlog drop without skipping far frames, two goroutines | caught by `TestRecipeDropsUnderRace` (343 mismatches) |
 
 ## Whole-chain measurements (`integration`, WP7)
 
@@ -881,6 +887,53 @@ nothing; `TestPipelineCall` pins the failures):
 
 The test pins both failures, so it shows when either changes. Whether to
 change the scenario, the chain or the criteria needs a decision.
+
+**Recipe B, buffered mode** (`docs/usage.md`; criteria U6 to U10). From
+`go test ./integration -run 'TestBuffered|TestNoAllocsBuffered' -v`
+(darwin/arm64, 2026-10-27), 20 ms frames:
+
+| Criterion | 8 kHz | 16 kHz | Threshold |
+|---|---|---|---|
+| U6: echo stage, 0 to 30 ms jitter per frame | **0.6 dB** | **-0.6 dB** | at least 15 dB |
+| U6: echo through the chain, same run | 4.7 dB | 6.2 dB | reported |
+| U7: echo tail, idle sender queuing silence against nothing | 29.4 dB | 10.5 dB | at least 10 dB |
+| U8: replay of the two-goroutine order | equal | (8 kHz only) | equal |
+| U9: allocations per tick | 0 | 0 | 0 |
+| U10: 100 ms sender pause then a burst, echo stage over 8 to 14 s | 0.6 dB | -0.7 dB | reported |
+
+U6 fails at both rates; the test pins it as a reported finding.
+`TestBufferedLagAndDelay` (added after this result, reported only) shows
+why. Echo stage over 8 to 14 s:
+
+| Case | 8 kHz, echo at 32 ms | 8 kHz, echo at 100 ms | 16 kHz, echo at 32 ms | 16 kHz, echo at 100 ms |
+|---|---|---|---|---|
+| `Cancel`, far end on time | 23.9 | 25.0 | 20.3 | 21.3 |
+| `Cancel`, far end 1 frame late | 7.6 | 24.7 | 11.9 | 19.1 |
+| `Cancel`, far end 2 frames late | 0.3 | 25.3 | -0.3 | 19.3 |
+| `Playback`/`Capture`, no jitter | 7.6 | 24.7 | 11.9 | 19.1 |
+| `Playback`/`Capture`, jitter 0 to 2 ms | -0.7 | 6.8 | -1.6 | 4.4 |
+| `Playback`/`Capture`, jitter 0 to 5 ms | 1.1 | 6.7 | -0.4 | 8.1 |
+| `Playback`/`Capture`, jitter 0 to 10 ms | -3.4 | 8.1 | -0.6 | 6.5 |
+| `Playback`/`Capture`, jitter 0 to 30 ms | 0.6 | 2.2 | -0.6 | 1.8 |
+| `Playback`/`Capture`, jitter 0 to 9 ms, ticks 10 ms after the nominal times | 7.6 | 24.7 | 11.9 | 19.1 |
+
+1. With strict alternation, `Playback` then `Capture`, the buffered mode
+   equals `Cancel` with the far end one frame late. The scenario's echo
+   arrives 32 ms after the far frame, so a one-frame lag of 20 ms leaves
+   little of the path causal, and two frames none: hence 7.6 and 11.9 dB
+   without jitter. With an echo delay of 100 ms the lag costs nothing.
+2. Jitter that moves a frame across a drain tick changes how many frames
+   of each stream a drain sees. The canceller's queue then runs dry
+   (`Capture` passes the frame through) or overflows (`Playback` is
+   discarded), the far end it cancels against loses or repeats frames,
+   and the filter does not converge: 2 to 8 dB even at a 100 ms echo
+   delay. With the ticks 10 ms after the nominal times, jitter below 10 ms
+   never crosses a tick, every drain sees one frame of each, and the
+   figures equal those without jitter.
+
+So recipe B as written cancels echo only when every drain sees the same
+number of sent and received frames, and the echo delay exceeds the queue's
+one or two frames of lag. What to change needs a decision.
 
 **Noise through the send chain** (N1). 30 s of stationary noise,
 `preprocess` (denoise and VAD on, defaults) then `agc` (`DefaultConfig`,
@@ -1040,7 +1093,9 @@ the double talk; definitions as in `docs/acceptance/echo.md`.
 speaker (1272), so the utterances of chapter 128104 are the far end and
 those of the next chapter the near end, the near end scaled by 1/4, in the
 40 s layout of the call scenario. Figures are in "Whole-chain
-measurements" above.
+measurements" above. With the near end unscaled (reported only), B3 is
+-26.1 dBFS at 8 kHz and -25.4 dBFS at 16 kHz, and B4 +0.7 and +0.1 dB,
+against -27.9 and -26.8 dBFS, +1.0 and +0.6 dB with the 1/4 scaling.
 
 ## Fuzzing
 

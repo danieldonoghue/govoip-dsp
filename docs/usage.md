@@ -333,15 +333,17 @@ Fits:
   and receives the caller's audio on the network's clock, so that a sent
   frame is not always there when a frame is received, or the reverse.
 - Any source where the sent and the received frames reach the processing
-  goroutine from two different goroutines, with jitter between them.
+  goroutine from two different goroutines, as long as each drain sees the
+  same number of each (see "Caveats": jitter breaks it).
 
 Does not fit:
 
 - Network rates other than 8 and 16 kHz: the recipe has no resampler.
   Resample both streams first, as recipe A does.
-- A sender that stops for longer than the canceller's queue covers and
-  then sends a burst, or a sent stream that drifts against the received
-  one for good: the queue then discards or runs dry (see "Caveats").
+- Streams whose jitter moves frames across drain ticks, a sender that
+  stops and then sends a burst, or a sent stream that drifts against the
+  received one: the queue then discards or runs dry, and the measured
+  cancellation is about -1 to 8 dB (see "Caveats").
 - A recorder or monitor that only receives: see "Receive only" above.
 
 ### Caveats
@@ -366,9 +368,17 @@ Does not fit:
   received frame that it drops is never processed; either moves the far
   end against its echo by a frame until the queue under- or overflows.
   Nothing reports it.
-- **Measured behaviour.** Criteria U6 to U10 of
-  `docs/acceptance/integration.md` cover this recipe. Their results are
-  not measured yet.
+- **Jitter breaks it.** Measured (`docs/testing.md`, "Recipe B"): the
+  recipe cancels echo only when every `drain` sees the same number of
+  sent and received frames. With each frame up to 30 ms late, or even
+  2 ms late across a tick, the echo stage falls to about -1 to 8 dB (U6
+  fails), because the canceller's queue runs dry or overflows. With the
+  drain ticks placed so that jitter never crosses one, it is as good as
+  without jitter.
+- **Echo delay.** `Playback` then `Capture` cancels against a far end one
+  frame late. An echo that returns sooner than about one frame period
+  after the frame was sent is cancelled poorly: with a 32 ms echo, 7.6 dB
+  at 8 kHz against 23.9 dB for recipe A; with a 100 ms echo, 24.7 dB.
 
 ### Threads (recipe B)
 
@@ -482,11 +492,12 @@ func (b *bufferedCall) drain(sent, rx *buffer.SPSC, far, mic, out []int16, deliv
 frame of each keeps the queue as the calls arrive, and does at most the
 frames waiting when it starts.
 
-Tests (none run yet):
+Tests:
 
 - `TestBufferedUnevenTiming`: each frame of both streams is up to 30 ms
-  late, independently; the echo stage must reach 15 dB (U6). It also
-  reports a 100 ms sender pause followed by a burst.
+  late, independently; the echo stage must reach 15 dB (U6), and does
+  not (a reported finding). It also reports a 100 ms sender pause
+  followed by a burst. `TestBufferedLagAndDelay` reports why.
 - `TestBufferedIdleSender`: queuing silence against queuing nothing after
   the far end stops (U7).
 - `TestBufferedTwoGoroutines`: two producer goroutines and the processing
@@ -512,4 +523,7 @@ Tests (none run yet):
   2.5% of the frame duration. The slowest single frame of a 10-minute run
   varied between runs, up to 65% of a 10 ms frame
   (`docs/performance.md`).
-- Recipe B is not measured yet.
+- Recipe B cancels echo only when each drain sees one sent and one
+  received frame, and the echo returns more than a frame after it was
+  sent; jitter across a drain tick defeats it (U6 fails, a reported
+  finding).
