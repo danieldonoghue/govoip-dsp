@@ -754,12 +754,13 @@ chunk in those modes, and their per-frame VAD and probability streams up to
 the committed prefix; every other case runs in full. `go test -race
 ./preprocess` takes about 100 s on the M1 Pro.
 
-Under `-race` and `-short`, the `echo` reference test runs the first 2 s
-of every case (the first 30 s block of the long runs) and compares the
-committed prefixes of `out` and `residual` element by element; it skips
-the chunk hashes, which need a whole chunk of 2^20 elements. The scenario
-measurements run two configurations (16 kHz, 10 ms, 128 ms and 8 kHz,
-20 ms, 256 ms). The full comparisons run in the normal `go test`.
+Under `-race` and `-short`, the `echo` reference test runs the first 1 s
+of every case and compares the committed prefixes of `out` and
+`residual` (at most 0.4 s) element by element; it skips the chunk hashes,
+which need a whole chunk of 2^20 elements. Its inputs are generated only
+over their first 2 s, which `TestCappedInputsArePrefixes` shows equal the
+full inputs there. The scenario measurements run one configuration (16
+kHz, 10 ms, 128 ms). The full comparisons run in the normal `go test`.
 
 ## Speech
 

@@ -36,9 +36,52 @@ var (
 // inputs returns c's signals, regenerating only when the base changes.
 func inputs(c refCase) signals {
 	if c.base != lastBase {
-		lastBase, lastSignals = c.base, inputsFor(c)
+		lastBase, lastSignals = c.base, inputsUncached(c)
 	}
 	return lastSignals
+}
+
+var (
+	lastCappedBase    string
+	lastCappedSignals signals
+)
+
+// refInputs returns the inputs of a reference run: the full signals, or in
+// a partial run signals generated only over their first shortSeconds+1 s.
+func refInputs(c refCase) signals {
+	if !partialCheck() {
+		return inputs(c)
+	}
+	if c.base != lastCappedBase {
+		genCap = sec(c.rate, shortSeconds+1)
+		lastCappedBase, lastCappedSignals = c.base, inputsUncached(c)
+		genCap = 0
+	}
+	return lastCappedSignals
+}
+
+// TestCappedInputsArePrefixes checks that capped generation, used by
+// partial runs, gives exactly the leading samples of the full inputs.
+func TestCappedInputsArePrefixes(t *testing.T) {
+	if partialCheck() {
+		t.Skip("compares against full inputs; runs in the normal go test")
+	}
+	seen := map[string]bool{}
+	for _, c := range sortedCases() {
+		if seen[c.base] || c.longBlocks > 0 {
+			continue
+		}
+		seen[c.base] = true
+		full := inputs(c)
+		genCap = sec(c.rate, shortSeconds+1)
+		capped := inputsUncached(c)
+		genCap = 0
+		n := sec(c.rate, shortSeconds+1)
+		if !slices.Equal(full.mic[:n], capped.mic[:n]) || !slices.Equal(full.far[:n], capped.far[:n]) ||
+			len(full.mic) != len(capped.mic) || len(full.far) != len(capped.far) {
+			t.Errorf("%s: capped inputs are not a prefix of the full inputs", c.base)
+		}
+	}
 }
 
 // TestHarnessInputs writes the case list and the inputs for the driver. It
@@ -72,8 +115,8 @@ func TestHarnessInputs(t *testing.T) {
 func partialCheck() bool { return testing.Short() || raceEnabled }
 
 // shortSeconds is the leading part of each case that partialCheck runs
-// compare: it covers the committed out prefix at every rate.
-const shortSeconds = 2
+// compare: it covers the committed prefixes (at most 0.4 s) at every rate.
+const shortSeconds = 1
 
 func TestReferenceCaseList(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
@@ -157,7 +200,7 @@ func (k *sink[T]) done() {
 // checks only out, which shows that Residual does not change later output.
 func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bool) {
 	mc := m.Case(t, c.name)
-	s := inputs(c)
+	s := refInputs(c)
 	o := ops(c, s)
 	ec, err := New(Config{FrameSize: c.frame, FilterLength: c.filter, SampleRate: c.rate})
 	if err != nil {

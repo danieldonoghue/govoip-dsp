@@ -236,8 +236,8 @@ func (f figures) String() string {
 
 // TestScenarioMeasurements measures every scenario in every configuration,
 // checks the sanity floors at 8 and 16 kHz and compares the figures with
-// testdata/metrics.golden. Under -short and -race it measures two
-// configurations.
+// testdata/metrics.golden. Under -short and -race it measures one
+// configuration.
 func TestScenarioMeasurements(t *testing.T) {
 	var lines []string
 	failed := 0
@@ -245,8 +245,7 @@ func TestScenarioMeasurements(t *testing.T) {
 		if c.longBlocks > 0 {
 			continue
 		}
-		if partialCheck() && !(c.rate == 16000 && c.frameMs == 10 && c.filterMs == 128) &&
-			!(c.rate == 8000 && c.frameMs == 20 && c.filterMs == 256) {
+		if partialCheck() && !(c.rate == 16000 && c.frameMs == 10 && c.filterMs == 128) {
 			continue
 		}
 		f := measure(t, c, inputs(c))

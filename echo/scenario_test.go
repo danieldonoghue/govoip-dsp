@@ -2,7 +2,6 @@ package echo
 
 import (
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
@@ -31,10 +30,26 @@ func msToSamples(rate, ms int) int { return rate * ms / 1000 }
 func speech(rate, n int, amp int16, seed string) []int16 {
 	block := 2 * rate
 	x := make([]int16, 0, n+block)
-	for b := 0; len(x) < n; b++ {
+	for b := 0; len(x) < min(n, capLen(n)); b++ {
 		x = append(x, testutil.SpeechLike(block, float64(rate), amp, testutil.Seed(fmt.Sprintf("%s/%d", seed, b)))...)
 	}
+	if len(x) < n {
+		x = append(x, make([]int16, n-len(x))...)
+	}
 	return x[:n]
+}
+
+// genCap, when positive, limits the costly generators (speech and
+// convolve) to their first genCap samples and leaves the rest zero. Both
+// are prefix-safe, so the capped samples equal the uncapped ones
+// (TestCappedInputsArePrefixes); partial reference runs use it.
+var genCap int
+
+func capLen(n int) int {
+	if genCap > 0 {
+		return min(n, genCap)
+	}
+	return n
 }
 
 // room returns a synthetic response: a bulk delay, a dense 2 ms early part
@@ -81,7 +96,7 @@ func convolveAt(x []int16, h []tap, i int) int64 {
 
 func convolve(x []int16, h []tap) []int16 {
 	y := make([]int16, len(x))
-	for i := range y {
+	for i := range y[:capLen(len(y))] {
 		y[i] = sat16(convolveAt(x, h, i))
 	}
 	return y
@@ -356,31 +371,17 @@ func refCases() []refCase {
 	return cs
 }
 
-var (
-	inputMu    sync.Mutex
-	inputCache = map[string]signals{}
-)
-
-// inputsFor returns the scenario signals of c, cached by input base. A
-// long run is generated in full: its prefix property is used only by
-// callers that cut the result.
-func inputsFor(c refCase) signals {
-	inputMu.Lock()
-	defer inputMu.Unlock()
-	if s, ok := inputCache[c.base]; ok {
-		return s
-	}
-	var s signals
+// inputsUncached generates the scenario signals of c. A long run is
+// generated in full: its prefix property is used only by callers that cut
+// the result.
+func inputsUncached(c refCase) signals {
 	switch {
 	case c.longBlocks > 0:
-		s = longRun(c.rate, c.longBlocks)
+		return longRun(c.rate, c.longBlocks)
 	case c.scenario == "reset", c.scenario == "rate_switch":
-		s = scenario("farend", c.rate, c.filterMs, c.frame)
-	default:
-		s = scenario(c.scenario, c.rate, c.filterMs, c.frame)
+		return scenario("farend", c.rate, c.filterMs, c.frame)
 	}
-	inputCache[c.base] = s
-	return s
+	return scenario(c.scenario, c.rate, c.filterMs, c.frame)
 }
 
 // ops returns the driver's op stream for c: (op, arg) pairs.
