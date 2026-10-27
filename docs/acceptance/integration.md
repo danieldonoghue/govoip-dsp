@@ -269,3 +269,40 @@ criteria needs a decision.
 uses float64 with IEEE basic operations and explicit rounding, as
 `docs/testing.md` ("Platform determinism of generated inputs") states. The
 wording now says so; the inputs and their hashes are unchanged.
+
+### Second recipe in buffered mode, criteria U6 to U10 added (after review)
+
+A decision after review keeps the first recipe, which passes each received
+frame with the frame sent at the same time to `Cancel`, for sources whose
+sending and receiving are in step, and adds a second recipe for sources
+where they are not (for example an Asterisk application that sends audio
+only when it has some). The second recipe uses the echo canceller's
+`Playback` and `Capture` and receives the sent and the received frames
+through two `buffer.SPSC`s. These criteria are registered before its
+code. The call scenario is as in "Signals", at 8 and 16 kHz with 20 ms
+frames.
+
+1. **U6. Uneven timing.** Each frame of the received and of the sent
+   stream becomes available at its nominal time (k × 20 ms) plus an
+   independent seeded delay of 0 to 30 ms (never before the frame
+   before it), and the processing goroutine drains both buffers every
+   20 ms. The echo stage over 8 to 14 s, as B1 measures it, is at least
+   15 dB. 15 dB is below the 20 dB of B1 because the buffered mode moves
+   the far end by one or two frames when its queue under- or overflows.
+2. **U7. Idle sender.** The far end is white noise of peak 8000 from 2 to
+   14 s, with the echo path of "Signals", microphone noise and no near
+   end; nothing follows it, so the echo tail after 14 s is never silent. When the sender keeps sending silence and queuing it with
+   `Playback`, the output energy over 14.0 to 14.3 s is at least 10 dB
+   below that of a sender that queues nothing after 14 s (whose captures
+   find an empty queue and pass the microphone through).
+3. **U8. Two goroutines.** Received and sent frames arrive from two
+   producer goroutines at irregular times; the processing goroutine
+   records, for each received frame, how many sent frames it had queued
+   before it. A single-goroutine replay of that order gives the same
+   output, and the run passes under `-race`.
+4. **U9. Allocation.** A processing tick (both buffers written and
+   drained) allocates nothing (`testutil.AssertNoAllocs` after warm-up).
+5. **U10. Documented.** `docs/usage.md` gives each recipe its own use
+   cases and caveats, and `TestUsageCodeIsTested` covers its Go blocks.
+   A drift beyond the canceller's queue (a sender pause of 100 ms, then a
+   burst) is measured and reported, without a threshold.
