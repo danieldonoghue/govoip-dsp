@@ -315,3 +315,15 @@ threshold stays. `TestBufferedUnevenTiming` pins the failure and fails if
 U6 starts to pass. `TestBufferedLagAndDelay` was added after this result,
 reported only and without thresholds, to show the cause; it is in
 `docs/testing.md`. What to change needs a decision.
+
+### Recipe B queues one sent frame per received frame (after review)
+
+A decision after the U6 result changes recipe B's `drain`: for each
+received frame it queues exactly one sent frame with `Playback` (silence
+when no sent frame has arrived), then calls `Capture`; later sent frames
+wait for later received frames. U6 to U10 apply unchanged, with their
+registered thresholds. U6, U7 and the U10 pause report now measure the
+echo stage through the real `drain`, instead of through a copy of its
+alternation. U8 replays the one-for-one order, including which received
+frames got silence. A mutation that breaks the one-for-one rule must be
+caught.
