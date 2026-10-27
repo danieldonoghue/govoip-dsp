@@ -27,6 +27,7 @@ type bufferedCall struct {
 	gc  *agc.AGC
 
 	echoed   []int16 // the echo canceller's output, which the tests measure
+	speech   bool    // the last VAD decision, which the tests compare
 	clean    []int16
 	residual []int32
 }
@@ -88,6 +89,7 @@ func (b *bufferedCall) received(mic, out []int16) error {
 	if err != nil {
 		return err
 	}
+	b.speech = speech
 	// The AGC raises the gain only on speech frames.
 	return b.gc.Process(b.clean, out, speech)
 }
@@ -414,8 +416,8 @@ func TestNoAllocsBuffered(t *testing.T) {
 // TestBufferedLagAndDelay reports the echo stage against the far end's lag,
 // the echo delay and the jitter (reported only, added after a U6 result).
 func TestBufferedLagAndDelay(t *testing.T) {
-	reportOnly(t)
 	skipUnderRace(t)
+	reportOnly(t)
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		frame := rate * frameMs / 1000

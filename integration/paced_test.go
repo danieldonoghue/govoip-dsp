@@ -28,6 +28,7 @@ type pacedCall struct {
 	gc  *agc.AGC
 
 	echoed   []int16 // the echo canceller's output, which the tests measure
+	speech   bool    // the last VAD decision, which the tests compare
 	clean    []int16
 	residual []int32
 }
@@ -143,6 +144,7 @@ func (b *pacedCall) finish(out []int16) error {
 	if err != nil {
 		return err
 	}
+	b.speech = speech
 	// The AGC raises the gain only on speech frames.
 	return b.gc.Process(b.clean, out, speech)
 }
@@ -558,8 +560,8 @@ func noAllocsPaced(t *testing.T, rate int) {
 // TestPacedDelaySweep reports the echo stage against the far end's lag,
 // the echo delay and the jitter (reported only).
 func TestPacedDelaySweep(t *testing.T) {
-	reportOnly(t)
 	skipUnderRace(t)
+	reportOnly(t)
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		frame := rate * frameMs / 1000

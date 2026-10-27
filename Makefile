@@ -63,7 +63,8 @@ race: ## Run all tests with the race detector
 bench: ## Run short benchmarks with allocation counts
 	CGO_ENABLED=0 $(GO) test -run '^$$' -bench . -benchtime 100ms -benchmem ./...
 
-# Runs the integration measurements that only report figures (docs/testing.md).
+# Runs the whole integration package, verbose, with -report, so the
+# measurements that only report figures run too (docs/testing.md).
 report: ## Run the reported-only integration measurements (-report)
 	CGO_ENABLED=0 $(GO) test ./integration -count=1 -timeout 20m -v -args -report
 

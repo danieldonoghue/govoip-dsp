@@ -222,8 +222,8 @@ func TestReceivePath(t *testing.T) {
 // TestFinding48k reports the measurements behind the 48 kHz finding of
 // docs/testing.md. It asserts nothing; TestPipelineCall pins the finding.
 func TestFinding48k(t *testing.T) {
-	reportOnly(t)
 	skipUnderRace(t)
+	reportOnly(t)
 	s48 := callScenario(48000, 1)
 	for _, q := range []int{resample.QualityVoIP, resample.QualityDesktop, resample.QualityMax} {
 		c, err := newCall(48000, 20)

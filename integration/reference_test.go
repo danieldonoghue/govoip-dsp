@@ -377,43 +377,46 @@ func TestReferenceRecipes(t *testing.T) {
 			sEcho := newSink[int16](t, m, mc, "echo_out", false)
 			sRes := newSink[int32](t, m, mc, "residual", false)
 			sOut := newSink[int16](t, m, mc, "out", false)
+			sVad := newSink[int16](t, m, mc, "vad", false)
 			f := c.frame
 			out := make([]int16, f)
-			// Each step returns the canceller output, the residual and the
-			// preprocess output of the recipe's path.
-			var step func(mic, far []int16) ([]int16, []int32, []int16)
+			// Each step returns the canceller output, the residual, the
+			// preprocess output and the VAD decision of the recipe's path.
+			var step func(mic, far []int16) ([]int16, []int32, []int16, bool)
 			if c.capture { // recipe B: Playback then Capture, as the C driver does
 				b, err := newBufferedCall(c.rate, c.frameMs, 200)
 				if err != nil {
 					t.Fatal(err)
 				}
-				step = func(mic, far []int16) ([]int16, []int32, []int16) {
+				step = func(mic, far []int16) ([]int16, []int32, []int16, bool) {
 					if err := b.played(far); err != nil {
 						t.Fatal(err)
 					}
 					if err := b.received(mic, out); err != nil {
 						t.Fatal(err)
 					}
-					return b.echoed, b.residual, b.clean
+					return b.echoed, b.residual, b.clean, b.speech
 				}
 			} else { // recipe A: Cancel with the frame sent with mic
 				p := newPacedTest(t, c.rate, c.frameMs, 200)
-				step = func(mic, far []int16) ([]int16, []int32, []int16) {
+				step = func(mic, far []int16) ([]int16, []int32, []int16, bool) {
 					if err := p.received(mic, far, out); err != nil {
 						t.Fatal(err)
 					}
-					return p.echoed, p.residual, p.clean
+					return p.echoed, p.residual, p.clean, p.speech
 				}
 			}
 			for k := 0; (k+1)*f <= len(s.mic); k++ {
-				e, r, o := step(s.mic[k*f:(k+1)*f], s.far[k*f:(k+1)*f])
+				e, r, o, v := step(s.mic[k*f:(k+1)*f], s.far[k*f:(k+1)*f])
 				sEcho.put(e...)
 				sRes.put(r...)
 				sOut.put(o...)
+				sVad.put(int16(b2i(v)))
 			}
 			sEcho.done()
 			sRes.done()
 			sOut.done()
+			sVad.done()
 		})
 	}
 }

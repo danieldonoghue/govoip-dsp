@@ -286,6 +286,7 @@ func (b *pacedCall) finish(out []int16) error {
 	if err != nil {
 		return err
 	}
+	b.speech = speech
 	// The AGC raises the gain only on speech frames.
 	return b.gc.Process(b.clean, out, speech)
 }
@@ -310,14 +311,14 @@ Tests:
 - `TestPacedUnevenTiming`: application and received frames each up to
   30 ms late; the echo stage must reach 15 dB with a 32 ms echo (U6), and
   does not (a reported finding). It also reports a 100 ms application
-  pause followed by a burst (U10).
+  pause followed by a burst (U10, with `-report`).
 - `TestPacedBurstSender`: 12 s of audio written at once; the frames sent
   are the frames the canceller got, checked by a bit-exact replay, the
   non-silent frames sent equal the application's in order, and the echo
   stage must reach 15 dB with a 100 ms echo (U12).
 - `TestPacedLongDelay`: echo delays of 100 and 200 ms with a 256 ms
   filter must reach 15 dB (U11); it also reports the recovery after a
-  step from 100 to 140 ms.
+  step from 100 to 140 ms (with `-report`).
 - `TestPacedIdleSender`: one frame is sent per received frame, silence
   after the application stops, against captures with nothing queued
   (U7).
@@ -331,7 +332,7 @@ Tests:
   next received frame.
 - `TestReferenceRecipes`: recipe A's `received` on the reference
   pairing's `cancel_*_20ms` inputs gives the C chain's canceller output,
-  residual and preprocess output bit for bit.
+  residual, preprocess output and VAD decision bit for bit.
 - `TestNoAllocsPaced` (U9), and `TestPacedDelaySweep`, which only
   reports figures and runs with `-report` (`docs/testing.md`).
 
@@ -417,8 +418,78 @@ func newCall(netRate, frameMs int) (*call, error) {
 }
 ```
 
-The source's frames reach the processing goroutine through one SPSC;
-`drain` drops a backlog after a stall and keeps each frame paired:
+Where the source runs at another rate, `process` resamples both streams
+into queues sized from `OutLen`, `resampleInto` reports a resampler that
+leaves input unread or a queue without room, and `outLen` sizes the
+output:
+
+```go
+func (c *call) process(mic, far, out []int16) (int, error) {
+	// Without resampling a network frame is a processing frame.
+	if c.micRS == nil {
+		return c.frame, c.step(mic, far, out[:c.frame])
+	}
+	// Resample both streams the same way, so that they stay paired sample
+	// for sample, and queue the results until a whole frame is there.
+	if err := c.resampleInto(c.micRS, c.micQ, mic); err != nil {
+		return 0, err
+	}
+	if err := c.resampleInto(c.farRS, c.farQ, far); err != nil {
+		return 0, err
+	}
+	// The echo canceller and the preprocessor take whole frames only. Both
+	// queues hold the same number of samples, so checking one is enough.
+	n := 0
+	for c.micQ.Len() >= c.frame && n+c.frame <= len(out) {
+		c.micQ.Read(c.micBuf)
+		c.farQ.Read(c.farBuf)
+		if err := c.step(c.micBuf, c.farBuf, out[n:n+c.frame]); err != nil {
+			return n, err
+		}
+		n += c.frame
+	}
+	return n, nil
+}
+```
+
+```go
+func (c *call) resampleInto(r *resample.Resampler, q *buffer.Ring, x []int16) error {
+	// A resampler may leave input unread when its output is full; with
+	// rsOut sized by OutLen that cannot happen, so it is reported as an error.
+	read, written, err := r.Process(x, c.rsOut)
+	if err != nil {
+		return err
+	}
+	if read != len(x) {
+		return errShortRead
+	}
+	// The queue is sized so that it always has room; a short write would
+	// drop samples and unpair the two streams, so it is reported too.
+	if q.Write(c.rsOut[:written]) != written {
+		return errQueueFull
+	}
+	return nil
+}
+```
+
+```go
+func (c *call) outLen() int { return 2 * c.frame }
+```
+
+The source's frames reach the processing goroutine through one SPSC with
+room for 200 ms; `drain` drops a backlog after a stall and keeps each
+frame paired. The tests pass `maxBacklog` 3*netFrame (three frames)
+where they test the drop (`TestDrainDropsBacklog`, `TestNoAllocsRecipe`,
+`TestRecipeDropsUnderRace`) and `math.MaxInt` where no drop may happen
+(`TestRecipeThroughSPSC`):
+
+```go
+func newRx(c *call) (*buffer.SPSC, error) {
+	// netRate/5 samples is 200 ms of network audio: room for a stall of
+	// about ten 20 ms frames before onPacket has to drop.
+	return buffer.NewSPSC(buffer.SPSCConfig{Capacity: c.netRate / 5})
+}
+```
 
 ```go
 func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
@@ -633,6 +704,7 @@ func (b *bufferedCall) received(mic, out []int16) error {
 	if err != nil {
 		return err
 	}
+	b.speech = speech
 	// The AGC raises the gain only on speech frames.
 	return b.gc.Process(b.clean, out, speech)
 }
@@ -671,7 +743,7 @@ Tests:
 - `TestBufferedUnevenTiming`: both callbacks' frames up to 30 ms late;
   the echo stage must reach 15 dB with a 32 ms echo (U6), and does not
   (a reported finding). It also reports a 100 ms output pause followed
-  by a burst (U10).
+  by a burst (U10, with `-report`).
 - `TestBufferedLongDelay`: echo delays of 100 and 200 ms with a 256 ms
   filter must reach 15 dB (U11).
 - `TestBufferedIdleSender`: silence queued after the output stops,
