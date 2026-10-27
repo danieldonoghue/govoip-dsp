@@ -513,3 +513,32 @@ No threshold changes and every figure stays reported. U6 to U12 apply to
 recipe A as registered: U6 fails (11.1 and 10.7 dB) and stays pinned; U7
 to U12 pass. U6, U7 to U11 also stay with recipe B, as measured for its
 one-for-one `drain`; U12 does not apply to it, since it does not send.
+
+### Comparison removed, reported-only measurements behind a flag (after review)
+
+Two decisions after review:
+
+1. The recipe A tests no longer run the `Playback`/`Capture` comparison
+   variant. The comparison figures in this file and in `docs/testing.md`
+   stay as recorded; they were measured on this branch at commit 09a990a
+   ("docs: report recipe A with Cancel and recipe B for separate
+   callbacks"), whose tests still ran the comparison, and the current
+   tests do not regenerate them. Mutation checks that used the
+   comparison are re-targeted to recipe A's own tests.
+2. Measurements that only report figures and check no threshold run only
+   with the test flag `-report`, as the budget runs only with `-budget`;
+   without it they skip with a reason naming the flag. Every check with
+   a registered threshold or a pinned finding still runs in the normal
+   `go test`. The reported figures in `docs/testing.md` were produced
+   with the flag.
+
+U1, which asks `docs/usage.md` to cover dropping a backlog and sizing
+every buffer with `resample.OutLen`, is met by the note on sources that
+deliver the pairing: it quotes the in-step wiring's `newCall` (sizing,
+resampling) and `drain` (backlog drop), which `TestUsageCodeIsTested`
+keeps identical to the tests.
+
+Two more checks are added, with no new threshold: recipe A's path and
+recipe B's path, fed the `cancel_*_20ms` and `capture_*_20ms` inputs of
+the reference pairing, must give the echo canceller output, the residual
+spectrum and the preprocess output of the C chain bit for bit.
