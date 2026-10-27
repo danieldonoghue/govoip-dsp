@@ -327,3 +327,13 @@ echo stage through the real `drain`, instead of through a copy of its
 alternation. U8 replays the one-for-one order, including which received
 frames got silence. A mutation that breaks the one-for-one rule must be
 caught.
+
+### U6 still fails with the one-for-one drain, reported as a finding (after measurement)
+
+With the one-for-one `drain`, U6 measured 0.7 dB at 8 kHz and 0.3 dB at
+16 kHz (threshold 15 dB). The threshold stays, and the test pins the
+failure again. `TestBufferedLagAndDelay` (reported only) shows that
+jitter no longer matters at an echo delay of 100 ms (24.7 to 26.2 dB at
+8 kHz, 19.1 to 20.3 dB at 16 kHz, for jitter from 0 to 30 ms), and that
+the scenario's echo delay of 32 ms is shorter than the far end's lag in
+the buffered mode. What to change needs a decision.
