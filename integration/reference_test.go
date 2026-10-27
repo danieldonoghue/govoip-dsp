@@ -128,36 +128,45 @@ func TestReferenceCaseList(t *testing.T) {
 	}
 }
 
-// partialCheck reports whether the reference test compares only the
+// partialCheck reports whether the reference test compares mostly the
 // committed prefixes: in -short mode and under the race detector.
 func partialCheck() bool { return testing.Short() || raceEnabled }
 
-// TestReferencePairing runs the Go chain (resample, echo, Residual,
-// RunEcho) on every case and compares every stream with the C chain, in
-// which the preprocessor holds the echo state. In partial runs it compares
-// the committed prefixes only, which cover the first 200 frames.
+// fullInPartial names the cases that partial runs still compare in full:
+// one per echo mode and the resampled chain, each a few seconds of work.
+func fullInPartial(c refCase) bool {
+	return c.name == "cancel_8k_20ms" || c.name == "capture_8k_20ms" || c.name == "resampled_48k_16k_20ms"
+}
+
+// TestReferencePairing compares every stream of the Go chain with the C
+// chain; partial runs compare prefixes, except the fullInPartial cases.
 func TestReferencePairing(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
 	for _, c := range sortedCases() {
 		t.Run(c.name, func(t *testing.T) {
 			mc := m.Case(t, c.name)
 			var params struct {
-				NetRate int `json:"net_rate"`
-				Rate    int `json:"rate"`
-				Frame   int `json:"frame_size"`
-				Filter  int `json:"filter_length"`
-				Mode    string
-				Frames  int `json:"frames"`
+				NetRate int    `json:"net_rate"`
+				Rate    int    `json:"rate"`
+				Frame   int    `json:"frame_size"`
+				Filter  int    `json:"filter_length"`
+				Mode    string `json:"mode"`
+				Quality int    `json:"quality"`
+				Input   string `json:"input"`
+				Frames  int    `json:"frames"`
 			}
 			mc.DecodeParams(t, &params)
-			if params.NetRate != c.netRate || params.Rate != c.rate || params.Frame != c.frame || params.Filter != c.filter {
+			mode := map[bool]string{false: "cancel", true: "capture"}[c.capture]
+			if params.NetRate != c.netRate || params.Rate != c.rate || params.Frame != c.frame || params.Filter != c.filter ||
+				params.Mode != mode || params.Quality != c.quality || params.Input != c.inputBase {
 				t.Fatalf("manifest params %+v do not match the Go case %+v", params, c)
 			}
-			if partialCheck() && c.reps > 1 {
+			partial := partialCheck() && !fullInPartial(c)
+			if partial && c.reps > 1 {
 				// One repetition covers the prefixes (TestScenarioIsPrefixSafe).
 				c.reps, c.inputBase = 1, fmt.Sprintf("call_%dk_1", c.netRate/1000)
 			}
-			runPairing(t, m, mc, c, inputs(c), params.Frames, partialCheck())
+			runPairing(t, m, mc, c, inputs(c), params.Frames, partial)
 		})
 	}
 }
