@@ -22,7 +22,7 @@ func BenchmarkCancellerCancel(b *testing.B) {
 		fs := msToSamples(k.rate, k.frameMs)
 		name := fmt.Sprintf("%s_%dms_%dms_%d", khz(k.rate), k.frameMs, k.filterMs, fs)
 		b.Run(name, func(b *testing.B) {
-			s := scenario("farend", k.rate, k.filterMs, fs)
+			s := gen{}.scenario("farend", k.rate, k.filterMs, fs)
 			c, err := New(Config{FrameSize: fs, FilterLength: msToSamples(k.rate, k.filterMs), SampleRate: k.rate})
 			if err != nil {
 				b.Fatal(err)

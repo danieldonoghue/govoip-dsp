@@ -25,12 +25,16 @@ type tap struct {
 
 func msToSamples(rate, ms int) int { return rate * ms / 1000 }
 
+// gen makes the scenario inputs. A positive limit stops speech and convolve
+// after limit samples, leaving zeros (TestCappedInputsArePrefixes).
+type gen struct{ limit int }
+
 // speech is speech-like audio built from 2 s blocks of testutil.SpeechLike,
 // so a prefix does not depend on the total length.
-func speech(rate, n int, amp int16, seed string) []int16 {
+func (g gen) speech(rate, n int, amp int16, seed string) []int16 {
 	block := 2 * rate
 	x := make([]int16, 0, n+block)
-	for b := 0; len(x) < min(n, capLen(n)); b++ {
+	for b := 0; len(x) < min(n, g.capLen(n)); b++ {
 		x = append(x, testutil.SpeechLike(block, float64(rate), amp, testutil.Seed(fmt.Sprintf("%s/%d", seed, b)))...)
 	}
 	if len(x) < n {
@@ -39,15 +43,9 @@ func speech(rate, n int, amp int16, seed string) []int16 {
 	return x[:n]
 }
 
-// genCap, when positive, limits the costly generators (speech and
-// convolve) to their first genCap samples and leaves the rest zero. Both
-// are prefix-safe, so the capped samples equal the uncapped ones
-// (TestCappedInputsArePrefixes); partial reference runs use it.
-var genCap int
-
-func capLen(n int) int {
-	if genCap > 0 {
-		return min(n, genCap)
+func (g gen) capLen(n int) int {
+	if g.limit > 0 {
+		return min(n, g.limit)
 	}
 	return n
 }
@@ -94,9 +92,9 @@ func convolveAt(x []int16, h []tap, i int) int64 {
 	return (acc + 16384) >> 15
 }
 
-func convolve(x []int16, h []tap) []int16 {
+func (g gen) convolve(x []int16, h []tap) []int16 {
 	y := make([]int16, len(x))
-	for i := range y[:capLen(len(y))] {
+	for i := range y[:g.capLen(len(y))] {
 		y[i] = sat16(convolveAt(x, h, i))
 	}
 	return y
@@ -147,41 +145,41 @@ func sec(rate int, s float64) int { return int(float64(rate) * s) }
 
 // scenario builds the named input set. filterMs matters only for
 // misaligned_late and frame only for capture.
-func scenario(name string, rate, filterMs, frame int) signals {
+func (g gen) scenario(name string, rate, filterMs, frame int) signals {
 	n := func(s float64) int { return sec(rate, s) }
 	noise := func(len int) []int16 { return testutil.WhiteNoise(len, noiseA, testutil.Seed(name+"/noise")) }
 	echoOnly := func(far []int16, h []tap) signals {
-		e := convolve(far, h)
+		e := g.convolve(far, h)
 		return signals{mic: mix(e, noise(len(far))), far: far, near: make([]int16, len(far)), echo: e}
 	}
 	switch name {
 	case "farend":
-		return echoOnly(speech(rate, n(16), farAmp, "far"), pathA(rate))
+		return echoOnly(g.speech(rate, n(16), farAmp, "far"), pathA(rate))
 	case "nearend":
-		near := speech(rate, n(12), nearAmp, "near")
+		near := g.speech(rate, n(12), nearAmp, "near")
 		return signals{mic: mix(near, noise(len(near))), far: make([]int16, len(near)), near: near, echo: make([]int16, len(near))}
 	case "doubletalk":
-		far := speech(rate, n(20), farAmp, "far")
-		e := convolve(far, pathA(rate))
-		near := gate(speech(rate, n(20), nearAmp, "near"), [2]int{n(8), n(12)}, [2]int{n(15), n(18)})
+		far := g.speech(rate, n(20), farAmp, "far")
+		e := g.convolve(far, pathA(rate))
+		near := gate(g.speech(rate, n(20), nearAmp, "near"), [2]int{n(8), n(12)}, [2]int{n(15), n(18)})
 		return signals{mic: mix(e, near, noise(len(far))), far: far, near: near, echo: e}
 	case "silence":
-		far := gate(speech(rate, n(16), farAmp, "far"), [2]int{0, n(4)}, [2]int{n(6), n(10)}, [2]int{n(12), n(16)})
-		e := convolve(far, pathA(rate))
+		far := gate(g.speech(rate, n(16), farAmp, "far"), [2]int{0, n(4)}, [2]int{n(6), n(10)}, [2]int{n(12), n(16)})
+		e := g.convolve(far, pathA(rate))
 		s := signals{mic: mix(e, noise(len(far))), far: far, near: make([]int16, len(far)), echo: e}
 		clear(s.mic[n(10):n(12)])
 		return s
 	case "lownoise":
 		far := testutil.PinkNoise(n(16), 200, testutil.Seed("lownoise/far"))
-		e := convolve(far, pathA(rate))
+		e := g.convolve(far, pathA(rate))
 		mic := mix(e, testutil.WhiteNoise(len(far), 4, testutil.Seed("lownoise/noise")))
 		return signals{mic: mic, far: far, near: make([]int16, len(far)), echo: e}
 	case "ir_short":
-		return echoOnly(speech(rate, n(12), farAmp, "far"), room(rate, "short", 0, 6, 16000))
+		return echoOnly(g.speech(rate, n(12), farAmp, "far"), room(rate, "short", 0, 6, 16000))
 	case "ir_long":
-		return echoOnly(speech(rate, n(16), farAmp, "far"), room(rate, "long", 10, 220, 16000))
+		return echoOnly(g.speech(rate, n(16), farAmp, "far"), room(rate, "long", 10, 220, 16000))
 	case "path_sudden":
-		far := speech(rate, n(20), farAmp, "far")
+		far := g.speech(rate, n(20), farAmp, "far")
 		a, b := pathA(rate), pathB(rate)
 		e := make([]int16, len(far))
 		for i := range e {
@@ -193,7 +191,7 @@ func scenario(name string, rate, filterMs, frame int) signals {
 		}
 		return signals{mic: mix(e, noise(len(far))), far: far, near: make([]int16, len(far)), echo: e}
 	case "path_gradual":
-		far := speech(rate, n(20), farAmp, "far")
+		far := g.speech(rate, n(20), farAmp, "far")
 		a, b := pathA(rate), pathB(rate)
 		e := make([]int16, len(far))
 		f0, f1 := int64(n(6)), int64(n(14))
@@ -204,7 +202,7 @@ func scenario(name string, rate, filterMs, frame int) signals {
 		}
 		return signals{mic: mix(e, noise(len(far))), far: far, near: make([]int16, len(far)), echo: e}
 	case "misaligned_late":
-		far := speech(rate, n(16), farAmp, "far")
+		far := g.speech(rate, n(16), farAmp, "far")
 		h := pathA(rate)
 		d := msToSamples(rate, filterMs+32)
 		for i := range h {
@@ -213,28 +211,28 @@ func scenario(name string, rate, filterMs, frame int) signals {
 		return echoOnly(far, h)
 	case "misaligned_early":
 		// The echo comes from far; the canceller is given far 30 ms late.
-		far := speech(rate, n(16), farAmp, "far")
+		far := g.speech(rate, n(16), farAmp, "far")
 		s := echoOnly(far, pathA(rate))
 		s.far = delay(far, msToSamples(rate, 30))
 		return s
 	case "diverge":
-		return diverge(rate)
+		return g.diverge(rate)
 	case "edges":
-		return edges(rate, frame)
+		return g.edges(rate, frame)
 	case "capture":
 		// Echo of each played frame arrives two frames later, the delay the
 		// buffered mode assumes; the far end is longer to cover overruns.
-		far := speech(rate, n(19), farAmp, "far")
-		e := convolve(delay(far, 2*frame), pathA(rate))[:n(16)]
+		far := g.speech(rate, n(19), farAmp, "far")
+		e := g.convolve(delay(far, 2*frame), pathA(rate))[:n(16)]
 		return signals{mic: mix(e, noise(len(e))), far: far, near: make([]int16, len(e)), echo: e}
 	}
 	panic("unknown scenario " + name)
 }
 
-func diverge(rate int) signals {
+func (g gen) diverge(rate int) signals {
 	n := func(s float64) int { return sec(rate, s) }
 	total := n(20)
-	far := speech(rate, total, farAmp, "far")
+	far := g.speech(rate, total, farAmp, "far")
 	near := make([]int16, total)
 	r := testutil.SplitMix64{State: testutil.Seed("diverge")}
 	// 5-7 s: full-scale square wave at 250 Hz.
@@ -249,7 +247,7 @@ func diverge(rate int) signals {
 	for i := n(13); i < n(15); i++ {
 		far[i] = int16(r.Next() >> 48)
 	}
-	e := convolve(far, pathA(rate))
+	e := g.convolve(far, pathA(rate))
 	noise := testutil.WhiteNoise(total, noiseA, testutil.Seed("diverge/noise"))
 	mic := make([]int16, total)
 	for i := range mic {
@@ -273,20 +271,20 @@ func diverge(rate int) signals {
 // near-end speech in the second half of some blocks and a 3 s silence. Each
 // block depends only on its seed and earlier blocks, so a prefix of blocks
 // is a prefix of the whole.
-func longRun(rate, blocks int) signals {
+func (g gen) longRun(rate, blocks int) signals {
 	bl := 30 * rate
 	far := make([]int16, 0, blocks*bl)
 	near := make([]int16, 0, blocks*bl)
 	paths := make([][]tap, blocks)
 	for b := 0; b < blocks; b++ {
 		r := testutil.SplitMix64{State: testutil.Seed(fmt.Sprintf("long/%d", b))}
-		f := speech(rate, bl, farAmp, fmt.Sprintf("long/far/%d", b))
+		f := g.speech(rate, bl, farAmp, fmt.Sprintf("long/far/%d", b))
 		s0 := r.Intn(26 * rate)
 		clear(f[s0 : s0+3*rate])
 		far = append(far, f...)
 		nb := make([]int16, bl)
 		if r.Intn(2) == 1 {
-			copy(nb[bl/2:], speech(rate, bl/2, nearAmp, fmt.Sprintf("long/near/%d", b)))
+			copy(nb[bl/2:], g.speech(rate, bl/2, nearAmp, fmt.Sprintf("long/near/%d", b)))
 		}
 		near = append(near, nb...)
 		paths[b] = room(rate, fmt.Sprintf("long/path/%d", b), 2+r.Intn(10), 30+r.Intn(60), int32(8000+r.Intn(8000)))
@@ -371,17 +369,16 @@ func refCases() []refCase {
 	return cs
 }
 
-// inputsUncached generates the scenario signals of c. A long run is
-// generated in full: its prefix property is used only by callers that cut
-// the result.
-func inputsUncached(c refCase) signals {
+// inputs generates the scenario signals of c. A long run is generated in
+// full; only callers that cut the result rely on its prefix property.
+func (g gen) inputs(c refCase) signals {
 	switch {
 	case c.longBlocks > 0:
-		return longRun(c.rate, c.longBlocks)
+		return g.longRun(c.rate, c.longBlocks)
 	case c.scenario == "reset", c.scenario == "rate_switch":
-		return scenario("farend", c.rate, c.filterMs, c.frame)
+		return g.scenario("farend", c.rate, c.filterMs, c.frame)
 	}
-	return scenario(c.scenario, c.rate, c.filterMs, c.frame)
+	return g.scenario(c.scenario, c.rate, c.filterMs, c.frame)
 }
 
 // ops returns the driver's op stream for c: (op, arg) pairs.
@@ -492,11 +489,11 @@ func notchRadius(rate int) int16 {
 
 // edges builds the boundary inputs of docs/acceptance/echo.md ("Changes"):
 // mdf.c:1153, :973 and :728-739; rate changes follow in the op stream.
-func edges(rate, frame int) signals {
+func (g gen) edges(rate, frame int) signals {
 	n := func(s float64) int { return sec(rate, s) }
 	total := n(16)
 	far := make([]int16, total)
-	copy(far[n(0.5):], speech(rate, total-n(0.5), farAmp, "far"))
+	copy(far[n(0.5):], g.speech(rate, total-n(0.5), farAmp, "far"))
 	p15 := func(v int16) int16 { return int16((16384 + int32(q09)*int32(v)) >> 15) }
 
 	// Frame 3: Sxx, twice the frame's inner product (mdf.c:786, :1044), lies
@@ -526,7 +523,7 @@ func edges(rate, frame int) signals {
 		far[j] = p15(far[j-1]) // pre-emphasis output 0
 	}
 
-	e := convolve(far, pathA(rate))
+	e := g.convolve(far, pathA(rate))
 	mic := mix(e, testutil.WhiteNoise(total, noiseA, testutil.Seed("edges/noise")))
 	clip := func(lo, hi int) {
 		for i := lo; i < hi; i++ {
@@ -588,7 +585,7 @@ func TestEdgesHitBoundaries(t *testing.T) {
 		}
 		for _, fms := range frameMss {
 			fs := msToSamples(rate, fms)
-			s := edges(rate, fs)
+			s := gen{}.edges(rate, fs)
 			// The threshold frame: Sxx = 2 * inner product of its pre-emphasis.
 			x := make([]int16, fs)
 			var memX int16

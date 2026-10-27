@@ -351,7 +351,7 @@ func TestSpeechScenario(t *testing.T) {
 	if n < 20*rate {
 		t.Skipf("only %d samples of speech", n)
 	}
-	echo := convolve(far, pathA(rate))
+	echo := gen{}.convolve(far, pathA(rate))
 	near = gate(near, [2]int{n / 2, n})
 	noise := testutil.WhiteNoise(n, noiseA, testutil.Seed("speech/noise"))
 	s := signals{mic: mix(echo, near, noise), far: far, near: near, echo: echo}
@@ -394,7 +394,7 @@ func TestCaptureEqualsDelayedCancel(t *testing.T) {
 	for _, rate := range []int{8000, 16000} {
 		for _, playFirst := range []bool{true, false} {
 			fs := rate / 100
-			s := scenario("capture", rate, 128, fs)
+			s := gen{}.scenario("capture", rate, 128, fs)
 			buffered := mustNew(t, fs, rate/8, rate)
 			direct := mustNew(t, fs, rate/8, rate)
 			o1, o2 := make([]int16, fs), make([]int16, fs)

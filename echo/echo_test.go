@@ -90,7 +90,7 @@ func diffState(a, b map[string][]int32) []string {
 // warm runs n frames of the farend scenario (8 kHz) through c.
 func warm(t testing.TB, c *Canceller, n int) {
 	t.Helper()
-	s := scenario("farend", 8000, 128, 80)
+	s := gen{}.scenario("farend", 8000, 128, 80)
 	fs := c.FrameSize()
 	out := make([]int16, fs)
 	for k := 0; k < n; k++ {
@@ -202,7 +202,7 @@ func TestResetState(t *testing.T) {
 // Before adaptation nothing that Reset keeps has changed, so the output
 // after Reset equals a new Canceller's.
 func TestResetMatchesNewBeforeAdaptation(t *testing.T) {
-	s := scenario("farend", 8000, 128, 80)
+	s := gen{}.scenario("farend", 8000, 128, 80)
 	fresh := mustNew(t, 80, 1024, 8000)
 	c := mustNew(t, 80, 1024, 8000)
 	out := make([]int16, 80)
@@ -255,7 +255,7 @@ func TestCaptureUnderrunPassesMicThrough(t *testing.T) {
 
 func TestNoAllocs(t *testing.T) {
 	c := mustNew(t, 160, 2048, 16000)
-	s := scenario("farend", 16000, 128, 160)
+	s := gen{}.scenario("farend", 16000, 128, 160)
 	out := make([]int16, 160)
 	res := make([]int32, c.ResidualLen())
 	ir := make([]int32, c.ImpulseResponseLen())

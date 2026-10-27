@@ -36,7 +36,7 @@ var (
 // inputs returns c's signals, regenerating only when the base changes.
 func inputs(c refCase) signals {
 	if c.base != lastBase {
-		lastBase, lastSignals = c.base, inputsUncached(c)
+		lastBase, lastSignals = c.base, gen{}.inputs(c)
 	}
 	return lastSignals
 }
@@ -53,12 +53,14 @@ func refInputs(c refCase) signals {
 		return inputs(c)
 	}
 	if c.base != lastCappedBase {
-		genCap = sec(c.rate, shortSeconds+1)
-		lastCappedBase, lastCappedSignals = c.base, inputsUncached(c)
-		genCap = 0
+		lastCappedBase, lastCappedSignals = c.base, partialGen(c.rate).inputs(c)
 	}
 	return lastCappedSignals
 }
+
+// partialGen generates inputs only over the first shortSeconds+1 s, for
+// the partial runs.
+func partialGen(rate int) gen { return gen{limit: sec(rate, shortSeconds+1)} }
 
 // TestCappedInputsArePrefixes checks that capped generation, used by
 // partial runs, gives exactly the leading samples of the full inputs.
@@ -73,9 +75,7 @@ func TestCappedInputsArePrefixes(t *testing.T) {
 		}
 		seen[c.base] = true
 		full := inputs(c)
-		genCap = sec(c.rate, shortSeconds+1)
-		capped := inputsUncached(c)
-		genCap = 0
+		capped := partialGen(c.rate).inputs(c)
 		n := sec(c.rate, shortSeconds+1)
 		if !slices.Equal(full.mic[:n], capped.mic[:n]) || !slices.Equal(full.far[:n], capped.far[:n]) ||
 			len(full.mic) != len(capped.mic) || len(full.far) != len(capped.far) {
