@@ -395,3 +395,42 @@ The same entry says that U11 is registered before it is measured. Its
 a 200 ms filter), before U11 was written. U11's threshold is U6's, set
 before any figure with a longer delay existed; its 200 ms case, the
 256 ms filter and the delay step had not been measured.
+
+### Recipe B sends what it plays (after review)
+
+A decision after review changes recipe B so that the frames sent to the
+network and the frames passed to `Playback` are the same by
+construction. The application writes the audio it wants to send, in any
+amount, into a pending `buffer.SPSC`. For each received frame the
+processing goroutine takes at most one pending frame, or silence when
+none is waiting, writes that frame to a second SPSC that the network
+writer goroutine reads, and passes the same frame to `Playback`, then
+calls `Capture`. When the writer's SPSC has no room for a frame, nothing
+is sent for that received frame, `Playback` gets silence, and the pending
+frame waits.
+
+The tests then simulate the call: sent frame n plays in the slot of
+received frame n on the call's clock, and its echo reaches the
+microphone after the echo path's bulk delay. The microphone signal is
+built from the frames actually sent, at the time each received frame
+becomes available; echo of a frame not yet sent by then is left out and
+counted, and the count is reported. U6 to U11 keep their thresholds and
+are measured through the new code: the application's frames take the
+place of the sent stream, with the same seeded delays.
+
+**U12. Burst sender.** At 8 and 16 kHz with 20 ms frames, the
+application writes all of the call scenario's far end from 2 to 14 s
+into the pending SPSC at once at 2 s; the received frames have the U6
+jitter; the echo path's bulk delay is 100 ms and the filter 256 ms.
+
+1. The frames the writer sends equal, in order, the frames passed to
+   `Playback`: a single-goroutine replay that passes the writer's frames
+   to `Playback` gives the same canceller output, bit for bit.
+2. The echo stage over 8 to 14 s, as B1 measures it, is at least 15 dB,
+   U11's threshold.
+
+Mutation checks: handing the writer a different frame from the one
+passed to `Playback`, and taking more than one pending frame for one
+received frame, must each be caught. A test with the application, the
+network reader, the writer and the processing goroutine running
+concurrently replays the observed order and passes under `-race`.
