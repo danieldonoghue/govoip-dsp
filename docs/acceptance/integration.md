@@ -471,3 +471,18 @@ and 0.2 dB) and in U12 (by 0.3 and 1.2 dB). So (i), `Playback` then
 they are. (ii) avoids (i)'s one-frame lag, which matters only for echoes
 shorter than realistic calls give; the tests keep measuring it
 (`drainWith`) for comparison. Figures in `docs/testing.md`.
+
+### Wording of the two-way outcome (after review)
+
+Two statements of the entries above need a correction, without changing
+any criterion. First, the sweep that "Wording of the U6 explanation"
+cites (60 ms and more cancelled, 50 ms and less not) was of the earlier
+one-for-one `drain`; with the current `drain`, 40 and 50 ms were
+cancelled, with 16 received frames each that needed echo of frames not
+yet sent. Second, the outcome entry says that (i)'s one-frame lag matters
+only for echoes shorter than realistic calls give. (i) also fails the
+physical 32 ms case without jitter (7.6 and 11.9 dB) that (ii) passes
+(23.9 and 20.3 dB), and at 16 kHz with a 100 ms echo and up to 30 ms of
+jitter the sweep gave (i) 15.1 dB against (ii) 21.0 dB with a 200 ms
+filter. The count of frames that needed echo of unsent frames is a lower
+bound, because the simulation models no network delay.

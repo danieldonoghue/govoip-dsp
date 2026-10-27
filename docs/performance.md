@@ -344,7 +344,7 @@ Target (`docs/acceptance/integration.md`, T2): p99 at most 10% of the frame
 duration and every frame below the frame duration. Met in every configuration,
 in all three runs. The maxima are single frames far above the p99, and they
 differ between runs by up to 29 times for the same configuration (16 kHz, 10 ms:
-223 to 6465 µs; 48 kHz, 20 ms: 363 to 2748 µs, 18 times). Their cause was not
+223 to 6465 µs; 48 kHz, 20 ms: 363 to 6580 µs, 18 times). Their cause was not
 traced; preemption by other processes is likely but not shown. Go is not a hard
 real-time platform (requirements §16), so these are measured tails, not bounds.
 

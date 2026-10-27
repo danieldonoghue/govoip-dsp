@@ -839,6 +839,9 @@ One mutation of the test's Go chain, or of the recipe, at a time.
 | recipe B: no `Playback` when nothing was pending | caught by `TestBufferedIdleSender` (U7 -0.0 and 0.2 dB) |
 | recipe B: the previous frame sent again instead of silence | caught by `TestBufferedIdleSender` (a non-zero sample after the application stopped) |
 | recipe B: `deliver` allocates | caught by `TestNoAllocsBuffered` |
+| recipe B, writer full: the pending frame played but kept pending | caught by `TestBufferedWriterFull` (canceller output differs) |
+| recipe B, writer full: the frame written anyway, without the room check | caught by `TestBufferedWriterFull` (the pending frame is gone) |
+| recipe B, writer full: the pending frame dropped | caught by `TestBufferedWriterFull` (the pending frame is gone) |
 | lag test: reference two frames late instead of one | caught by `TestBufferedLagIsOneFrame` |
 | U11: filter 128 ms instead of 256 ms | caught by `TestBufferedLongDelay` (200 ms delay: 0.1 to 0.6 dB) |
 | recipe A: `resampleInto` ignores the queue result | caught by `TestQueueFullIsReported` |
@@ -917,24 +920,39 @@ unless stated:
 | U11: 200 ms echo, 256 ms filter | 24.3 / 19.2 dB | 24.1 / 19.6 dB | at least 15 dB |
 | U11: step 100 to 140 ms, time back to 10 dB | 3.5 / 2.5 s | 3.5 / 2.5 s | reported |
 | U12: 12 s burst at once, 100 ms echo, 256 ms filter | 24.5 / 19.1 dB | 24.2 / 17.9 dB | at least 15 dB |
+| U12: non-silent frames sent against the application's, in order | equal | equal | equal |
+| Writer's SPSC full (`TestBufferedWriterFull`, 8 kHz) | nothing sent, silence played, the frame sent next | same | exact |
 
-U6 fails in both variants; the test pins it as a reported finding. In
-U6, 470 of the 2000 received frames would have needed echo of frames not
-yet sent: with up to 30 ms of jitter, a 32 ms echo is shorter than the
-send path, so the case is not a physical call. U12's replay of the
+U6 fails in both variants; the test pins it as a reported finding. The
+echo delay counts from the slot of the received frame a sent frame goes
+with, so it includes the time until that frame is sent: the received
+frame's own 20 ms, its jitter of up to 30 ms and the wait for the next
+20 ms drain tick, up to about 70 ms. An echo shorter than that partly
+comes from frames not yet sent: in U6, 470 of the 2000 received frames
+would have needed such echo, so with that jitter the case is not a
+physical call. The count is a lower bound, because the simulation models
+no network delay between the writer and the call. The physical 32 ms
+case without jitter, where no frame is missing, also fails for (i), 7.6
+and 11.9 dB, while (ii) passes it, 23.9 and 20.3 dB. U12's replay of the
 writer's frames through `Playback` gives the canceller's output bit for
 bit in both variants, and in U8 the writer's frames equal the frames
 passed to `Playback`, one application frame per received frame in
-order.
+order. U7's counterfactual, `Capture` with nothing queued after the
+application stops, is a `Playback`/`Capture` construct; variant (ii) is
+compared against the same counterfactual, which shows what sending
+silence gains, not a (ii)-specific alternative.
 
 **Choosing a variant.** The rule registered before measuring: (ii)
 becomes the main recipe if it meets every criterion (i) meets and is
 better on the echo stage in U6, U11 and U12. It meets the same criteria
 and is better in U6 (by 1.2 to 2.2 dB) and in U11 at 16 kHz, but worse
 in U11 at 8 kHz (by 0.1 and 0.2 dB) and in U12 (by 0.3 and 1.2 dB). So
-(i) stays recipe B. (ii) avoids (i)'s one-frame lag, which matters only
-for short echoes: with a 32 ms echo and no jitter, 23.9 / 20.3 dB for
-(ii) against 7.6 / 11.9 dB for (i).
+(i) stays recipe B. (ii) avoids (i)'s one-frame lag. The lag costs (i)
+most with short echoes: with a 32 ms echo and no jitter, 7.6 / 11.9 dB
+against 23.9 / 20.3 dB for (ii). It is not limited to them: at 16 kHz
+with a 100 ms echo and up to 30 ms of jitter, the sweep's 200 ms filter
+gave 15.1 dB for (i) against 21.0 dB for (ii); with U11's 256 ms filter
+the same case gave 19.3 against 20.1 dB.
 
 **The one-frame lag.** Without jitter, (i) equals `Cancel` with the
 sent frames one frame late. `TestBufferedLagIsOneFrame` checks this bit
@@ -959,7 +977,8 @@ Delay sweep through the simulated call, reported only
 | 100 ms | 24.7 / 25.0 | 24.4 / 25.3 | 19.1 / 21.3 | 15.1 / 21.0 |
 
 With up to 30 ms of jitter, 40 and 50 ms count 16 received frames with
-echo of frames not yet sent, and 32 ms 470; 60 ms and more count none.
+echo of frames not yet sent, so their figures include that much
+non-physical echo, and 32 ms 470; 60 ms and more count none.
 
 **Noise through the send chain** (N1). 30 s of stationary noise,
 `preprocess` (denoise and VAD on, defaults) then `agc` (`DefaultConfig`,
@@ -1097,8 +1116,8 @@ adds for packages that start goroutines: `TestPipelineCall`,
 `TestFinding48k`, `TestBufferedUnevenTiming`, `TestBufferedIdleSender`,
 `TestBufferedLagAndDelay`, `TestBufferedLongDelay`, `TestBufferedBurstSender`,
 `TestBufferedLagIsOneFrame`, `TestScenarioIsPrefixSafe`, `TestRealTimeBudget`
-and the `TestNoAllocs*` tests. Each skip names the rule, so `go test -v -race
-./integration` lists them. The tests that start goroutines
+and the `TestNoAllocs*` tests. Each skip names the rule, so
+`go test -v -race ./integration` lists them. The tests that start goroutines
 (`TestRecipeThroughSPSC`, `TestRecipeDropsUnderRace`,
 `TestBufferedTwoGoroutines`) run in full, and `TestReferencePairing` runs as
 under `-short`. The normal `go test` runs everything. Measured on the M1 Pro,
