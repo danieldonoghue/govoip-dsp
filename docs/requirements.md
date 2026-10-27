@@ -511,20 +511,22 @@ Never report a platform as tested because it cross-compiled.
 
 | Path | Contents |
 |---|---|
-| `CLAUDE.md` | Working rules for contributors and coding agents |
+| `CLAUDE.md` | Working rules for contributors |
 | `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md` | Project front matter |
 | `LICENSES/` | Third-party licence texts |
 | `Makefile`, `go.mod` | Build entry points: check, test, race, bench, fixtures |
 | `resample/`, `buffer/`, `preprocess/`, `echo/`, `agc/` | Public packages (`jitter/` when started) |
+| `integration/` | Tests of the whole chain; no library code |
 | `internal/fixed/` | Fixed-point operations (shared, append-only) |
 | `internal/fft/` | Fixed-point FFT |
 | `internal/testutil/` | Signal generators, metrics, fixture loader, allocation helpers |
-| `internal/kernels/` | Architecture-specific code (stretch), isolated |
+| `internal/kernels/` | Architecture-specific code (WP9), isolated |
 | `reference/` | C harness, `config.h`, scripts (no Go files) |
 | `testdata/speexdsp/` | Committed fixtures and manifests |
 | `docs/requirements.md` | This file |
 | `docs/contracts.md` | Cross-package interfaces and conventions (created by WP0) |
 | `docs/acceptance/` | Pre-registered acceptance criteria |
+| `docs/usage.md` | Tested recipes for wiring one call |
 | `docs/architecture.md`, `algorithms.md`, `performance.md`, `testing.md` | Reference documentation |
 | `docs/decisions/` | Architecture decision records (ADRs), indexed in its README |
 | `.github/workflows/` | CI |
