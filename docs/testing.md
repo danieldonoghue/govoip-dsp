@@ -838,6 +838,7 @@ One mutation of the test's Go chain, or of the recipe, at a time.
 | recipe B: `drain` queues nothing when no sent frame has arrived | caught by `TestBufferedIdleSender` (U7 -0.0 and 0.2 dB) |
 | recipe B: `drain` queues the previous frame instead of silence | caught by `TestBufferedIdleSender` (U7 -8.2 and -9.1 dB) |
 | recipe B: `deliver` allocates | caught by `TestNoAllocsBuffered` |
+| U11: filter 128 ms instead of 256 ms | caught by `TestBufferedLongDelay` (200 ms delay: -0.2 and 2.1 dB) |
 | recipe A: `resampleInto` ignores the queue result | caught by `TestQueueFullIsReported` |
 | recipe A: backlog drop without skipping far frames, two goroutines | caught by `TestRecipeDropsUnderRace` (343 mismatches) |
 
@@ -930,9 +931,23 @@ U6 fails at both rates; the test pins it as a reported finding.
    8 kHz and 19.1 to 20.3 dB at 16 kHz for every jitter measured.
 4. The scenario's echo returns 32 ms after the far frame, sooner than a
    lag of two frames (40 ms), so part of it is ahead of the far end the
-   canceller sees: hence U6 fails.
+   canceller sees: hence U6 fails. U6 stays as a pinned finding: it marks
+   the shortest echo delay the recipe can cancel.
 
-What to change needs a decision.
+**U11, longer echo delays** (`TestBufferedLongDelay`): the call scenario
+with the echo's bulk delay at 100 and 200 ms, 0 to 30 ms of jitter, 256 ms
+filter, through the real `drain`. Echo stage over 8 to 14 s, threshold
+15 dB:
+
+| Echo delay | 8 kHz | 16 kHz |
+|---|---|---|
+| 100 ms | 25.6 dB | 19.8 dB |
+| 200 ms | 24.3 dB | 19.2 dB |
+
+Both pass at both rates. A step of the bulk delay from 100 to 140 ms at
+8 s, reported only: the echo stage was 21.7 dB (8 kHz) and 17.6 dB
+(16 kHz) over 6 to 8 s, and the first 0.5 s window at 10 dB or more again
+started 3.5 s (8 kHz) and 3.0 s (16 kHz) after the step.
 
 **Noise through the send chain** (N1). 30 s of stationary noise,
 `preprocess` (denoise and VAD on, defaults) then `agc` (`DefaultConfig`,
