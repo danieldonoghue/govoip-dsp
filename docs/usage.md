@@ -259,3 +259,7 @@ this on every call); the queues cover ratios that do not.
 - On the chain resampled from 48 kHz the echo canceller cancelled less
   (16 dB) and the AGC held the near end lower (-33 dBFS), a reported
   finding.
+- On an Apple M1 Pro the 99th percentile of the whole chain is 0.4% to
+  2.5% of the frame duration, and the slowest of 30000 to 60000 frames
+  took 14% to 24% at 48 kHz with 20 ms frames and at quality 10
+  (`docs/performance.md`).
