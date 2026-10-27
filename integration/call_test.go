@@ -11,8 +11,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/resample"
 )
 
-// This file is the recipe of docs/usage.md; TestUsageCodeIsTested checks
-// that every Go block there appears here or in usage_test.go verbatim.
+// This file is the in-step wiring of docs/usage.md (recipe A's note on
+// sources that deliver the pairing); the recipes are in paced_test.go.
 
 // Sentinel errors that the buffer sizes of newCall rule out.
 var (

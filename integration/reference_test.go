@@ -20,6 +20,8 @@ import (
 
 const fixtureDir = "../testdata/speexdsp/integration"
 
+var report = flag.Bool("report", false, "run the measurements that only report figures (docs/testing.md)")
+
 var harnessInputs = flag.String("harness-inputs", "", "directory to write harness input files into (used by reference/fixtures.sh)")
 
 // prefixFrames is the number of leading frames committed per output stream.
@@ -131,6 +133,14 @@ func TestReferenceCaseList(t *testing.T) {
 // partialCheck reports whether the reference test compares mostly the
 // committed prefixes: in -short mode and under the race detector.
 func partialCheck() bool { return testing.Short() || raceEnabled }
+
+// reportOnly skips a test or subtest that only reports figures unless the
+// -report flag is given; every threshold check runs without it.
+func reportOnly(t testing.TB) {
+	if !*report {
+		t.Skip("reports figures only; run with -report (docs/testing.md)")
+	}
+}
 
 // skipUnderRace skips single-goroutine work under -race, by the WP7 rule of
 // docs/contracts.md section 9; the normal go test runs it in full.
@@ -349,5 +359,61 @@ func TestScenarioIsPrefixSafe(t *testing.T) {
 		if !slices.Equal(short.mic, long.mic[:n]) || !slices.Equal(short.far, long.far[:n]) {
 			t.Errorf("%d Hz: one repetition is not a prefix of fifteen", rate)
 		}
+	}
+}
+
+// TestReferenceRecipes runs recipe A's and recipe B's per-frame paths on the
+// 20 ms pairing inputs and compares them with the C chain bit for bit.
+func TestReferenceRecipes(t *testing.T) {
+	skipUnderRace(t)
+	m := testutil.LoadManifest(t, fixtureDir)
+	for _, c := range refCases() {
+		if c.reps != 1 || c.frameMs != 20 || c.netRate != c.rate {
+			continue
+		}
+		t.Run(c.name, func(t *testing.T) {
+			mc := m.Case(t, c.name)
+			s := inputs(c)
+			sEcho := newSink[int16](t, m, mc, "echo_out", false)
+			sRes := newSink[int32](t, m, mc, "residual", false)
+			sOut := newSink[int16](t, m, mc, "out", false)
+			f := c.frame
+			out := make([]int16, f)
+			// Each step returns the canceller output, the residual and the
+			// preprocess output of the recipe's path.
+			var step func(mic, far []int16) ([]int16, []int32, []int16)
+			if c.capture { // recipe B: Playback then Capture, as the C driver does
+				b, err := newBufferedCall(c.rate, c.frameMs, 200)
+				if err != nil {
+					t.Fatal(err)
+				}
+				step = func(mic, far []int16) ([]int16, []int32, []int16) {
+					if err := b.played(far); err != nil {
+						t.Fatal(err)
+					}
+					if err := b.received(mic, out); err != nil {
+						t.Fatal(err)
+					}
+					return b.echoed, b.residual, b.clean
+				}
+			} else { // recipe A: Cancel with the frame sent with mic
+				p := newPacedTest(t, c.rate, c.frameMs, 200)
+				step = func(mic, far []int16) ([]int16, []int32, []int16) {
+					if err := p.received(mic, far, out); err != nil {
+						t.Fatal(err)
+					}
+					return p.echoed, p.residual, p.clean
+				}
+			}
+			for k := 0; (k+1)*f <= len(s.mic); k++ {
+				e, r, o := step(s.mic[k*f:(k+1)*f], s.far[k*f:(k+1)*f])
+				sEcho.put(e...)
+				sRes.put(r...)
+				sOut.put(o...)
+			}
+			sEcho.done()
+			sRes.done()
+			sOut.done()
+		})
 	}
 }

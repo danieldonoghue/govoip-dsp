@@ -7,6 +7,6 @@
 // same chain in C (testdata/speexdsp/integration), measure the chain on
 // synthetic calls, LibriSpeech speech and stationary noise, measure the
 // real-time budget (go test ./integration -run TestRealTimeBudget -budget),
-// and hold the recipe of docs/usage.md. Criteria are in
+// and hold the recipes of docs/usage.md. Criteria are in
 // docs/acceptance/integration.md.
 package integration

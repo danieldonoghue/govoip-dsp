@@ -42,11 +42,10 @@ func onPacket(rx *buffer.SPSC, p []int16) bool {
 // gives the frame sent with each received one, deliver takes the output.
 func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 	far func() []int16, deliver func([]int16)) error {
-	// After a stall, old audio is useless for a live call: drop to the
-	// newest frame instead of processing a growing backlog.
+	// After a stall, old audio is useless for a live call: keep only the
+	// newest frame, and skip the far frames of the dropped ones so that
+	// each frame keeps its far frame.
 	if rx.Len() > maxBacklog {
-		// After a stall keep the newest frame, and skip the far frames of
-		// the dropped ones so that each frame keeps its far frame.
 		for range rx.Consume(rx.Len()-c.netFrame) / c.netFrame {
 			far()
 		}
@@ -326,8 +325,8 @@ func TestQueueFullIsReported(t *testing.T) {
 	}
 }
 
-// TestRecipeDropsUnderRace runs recipe A with bursts that make drain drop
-// a backlog, and checks that every processed frame keeps its far frame.
+// TestRecipeDropsUnderRace runs the in-step wiring with bursts that make
+// drain drop a backlog, and checks that every frame keeps its far frame.
 func TestRecipeDropsUnderRace(t *testing.T) {
 	c, err := newCall(8000, 20)
 	if err != nil {

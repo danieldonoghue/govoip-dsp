@@ -22,7 +22,6 @@ import (
 // goroutine paces off the received frames. Use it from one goroutine.
 type pacedCall struct {
 	rate, frame int
-	queued      bool // the tests' comparison variant, see drainQueued
 
 	ec  *echo.Canceller
 	pre *preprocess.Preprocessor
@@ -148,48 +147,6 @@ func (b *pacedCall) finish(out []int16) error {
 	return b.gc.Process(b.clean, out, speech)
 }
 
-// drainQueued is drain with Playback and Capture in place of Cancel: the
-// variant the tests measure for comparison.
-func (b *pacedCall) drainQueued(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
-	for range rx.Len() / b.frame {
-		switch {
-		case toWriter.Free() < b.frame:
-			clear(far)
-		case pending.Len() >= b.frame:
-			pending.Read(far)
-			toWriter.Write(far)
-		default:
-			clear(far)
-			toWriter.Write(far)
-		}
-		if err := b.ec.Playback(far); err != nil {
-			return err
-		}
-		rx.Read(mic)
-		if err := b.receivedQueued(mic, out); err != nil {
-			return err
-		}
-		deliver(out)
-	}
-	return nil
-}
-
-// receivedQueued cleans a received frame against the queued sent frames.
-func (b *pacedCall) receivedQueued(mic, out []int16) error {
-	if err := b.ec.Capture(mic, b.echoed); err != nil {
-		return err
-	}
-	return b.finish(out)
-}
-
-// drainVariant runs drain, or drainQueued for the comparison variant.
-func (b *pacedCall) drainVariant(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
-	if b.queued {
-		return b.drainQueued(pending, rx, toWriter, far, mic, out, deliver)
-	}
-	return b.drain(pending, rx, toWriter, far, mic, out, deliver)
-}
-
 // simCall simulates recipe A in a call: sent frame k plays in the slot of
 // received frame k, and its echo reaches the microphone through path.
 type simCall struct {
@@ -252,7 +209,7 @@ func (c simCall) run(t testing.TB, b *pacedCall) simResult {
 				t.Fatalf("received frame %d dropped", km)
 			}
 		}
-		if err := b.drainVariant(pending, rx, toWriter, fb, mb, o, deliver); err != nil {
+		if err := b.drain(pending, rx, toWriter, fb, mb, o, deliver); err != nil {
 			t.Fatal(err)
 		}
 		for toWriter.Len() > 0 { // the writer sends everything handed to it
@@ -294,35 +251,36 @@ func (r simResult) stage(rate int, from, to float64) float64 {
 func TestPacedUnevenTiming(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
-		for _, v := range pacedVariants {
-			t.Run(fmt.Sprintf("%dk_%s", rate/1000, v.name), func(t *testing.T) {
-				skipUnderRace(t)
-				c := scenarioCall(rate, frameMs, 30, fixedPath(rate, 32))
-				r := c.run(t, newPacedVariant(t, rate, frameMs, 200, v.cancel))
-				stage := r.stage(rate, 8, 14)
-				chain := dB(energy(window(r.mic, rate, 8, 14)), energy(window(r.out, rate, 8, 14)))
-				t.Logf("32 ms echo, jitter 0 to 30 ms: echo stage %.1f dB, chain %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
-					stage, chain, r.missing)
-				// U6 fails in both pacedVariants, a reported finding (docs/testing.md); the
-				// test shows if that changes.
-				if stage < 15 {
-					t.Logf("U6 fails, a reported finding: echo stage %.1f dB, want at least 15", stage)
-				} else {
-					t.Errorf("U6 was a reported finding but now passes (%.1f dB); update docs/testing.md", stage)
-				}
+		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
+			c := scenarioCall(rate, frameMs, 30, fixedPath(rate, 32))
+			r := c.run(t, newPacedTest(t, rate, frameMs, 200))
+			stage := r.stage(rate, 8, 14)
+			chain := dB(energy(window(r.mic, rate, 8, 14)), energy(window(r.out, rate, 8, 14)))
+			t.Logf("32 ms echo, jitter 0 to 30 ms: echo stage %.1f dB, chain %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
+				stage, chain, r.missing)
+			// U6 fails, a reported finding (docs/testing.md); the test shows
+			// if that changes.
+			if stage < 15 {
+				t.Logf("U6 fails, a reported finding: echo stage %.1f dB, want at least 15", stage)
+			} else {
+				t.Errorf("U6 was a reported finding but now passes (%.1f dB); update docs/testing.md", stage)
+			}
 
-				// A 100 ms application pause at 6 s, then a burst: reported only.
-				c.appAt = append([]int(nil), c.appAt...)
-				for k, ms := range c.appAt {
-					if ms >= 6000 && ms < 6100 {
-						c.appAt[k] = 6100
-					}
+			if !*report {
+				return // the rest only reports figures (-report)
+			}
+			// A 100 ms application pause at 6 s, then a burst: reported only.
+			c.appAt = append([]int(nil), c.appAt...)
+			for k, ms := range c.appAt {
+				if ms >= 6000 && ms < 6100 {
+					c.appAt[k] = 6100
 				}
-				r3 := c.run(t, newPacedVariant(t, rate, frameMs, 200, v.cancel))
-				t.Logf("application pause of 100 ms at 6 s: echo stage %.1f dB over 8 to 14 s, %.1f dB over 6 to 8 s",
-					r3.stage(rate, 8, 14), r3.stage(rate, 6, 8))
-			})
-		}
+			}
+			r3 := c.run(t, newPacedTest(t, rate, frameMs, 200))
+			t.Logf("application pause of 100 ms at 6 s: echo stage %.1f dB over 8 to 14 s, %.1f dB over 6 to 8 s",
+				r3.stage(rate, 8, 14), r3.stage(rate, 6, 8))
+		})
 	}
 }
 
@@ -331,96 +289,80 @@ func TestPacedUnevenTiming(t *testing.T) {
 func TestPacedIdleSender(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
-		for _, v := range pacedVariants {
-			t.Run(fmt.Sprintf("%dk_%s", rate/1000, v.name), func(t *testing.T) {
-				skipUnderRace(t)
-				n := 16 * rate
-				frame := rate * frameMs / 1000
-				frames := n / frame
-				stop := 14 * 1000 / frameMs // the application writes nothing from 14 s on
-				far := gate(testutil.WhiteNoise(n, 8000, testutil.Seed("integration/idle")), rate, []segment{{2, 14}})
-				at := make([]int, frames)
-				for k := range at {
-					at[k] = k * frameMs
+		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
+			n := 16 * rate
+			frame := rate * frameMs / 1000
+			frames := n / frame
+			stop := 14 * 1000 / frameMs // the application writes nothing from 14 s on
+			far := gate(testutil.WhiteNoise(n, 8000, testutil.Seed("integration/idle")), rate, []segment{{2, 14}})
+			at := make([]int, frames)
+			for k := range at {
+				at[k] = k * frameMs
+			}
+			c := simCall{
+				frameMs: frameMs, app: far[:stop*frame], appAt: at[:stop], micAt: at, pendingMs: 200,
+				local: testutil.WhiteNoise(n, 30, testutil.Seed("integration/noise")),
+				path:  fixedPath(rate, 32),
+			}
+			r := c.run(t, newPacedTest(t, rate, frameMs, 200))
+			if len(r.sent) != len(r.mic) {
+				t.Fatalf("writer sent %d samples for %d received, want one frame per received frame", len(r.sent), len(r.mic))
+			}
+			for i, x := range r.sent[stop*frame:] {
+				if x != 0 {
+					t.Fatalf("sample %d sent after the application stopped is %d, want silence", stop*frame+i, x)
 				}
-				c := simCall{
-					frameMs: frameMs, app: far[:stop*frame], appAt: at[:stop], micAt: at, pendingMs: 200,
-					local: testutil.WhiteNoise(n, 30, testutil.Seed("integration/noise")),
-					path:  fixedPath(rate, 32),
-				}
-				r := c.run(t, newPacedVariant(t, rate, frameMs, 200, v.cancel))
-				if len(r.sent) != len(r.mic) {
-					t.Fatalf("writer sent %d samples for %d received, want one frame per received frame", len(r.sent), len(r.mic))
-				}
-				for i, x := range r.sent[stop*frame:] {
-					if x != 0 {
-						t.Fatalf("sample %d sent after the application stopped is %d, want silence", stop*frame+i, x)
-					}
-				}
+			}
 
-				// The counterfactual, which drain never does: no Playback after 14 s.
-				ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
-				if err != nil {
-					t.Fatal(err)
-				}
-				nothing := make([]int16, frames*frame)
-				for k := range frames {
-					if k < stop {
-						if err := ec.Playback(r.sent[k*frame : (k+1)*frame]); err != nil {
-							t.Fatal(err)
-						}
-					}
-					if err := ec.Capture(r.mic[k*frame:(k+1)*frame], nothing[k*frame:(k+1)*frame]); err != nil {
+			// The counterfactual, which drain never does: no Playback after 14 s.
+			ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
+			if err != nil {
+				t.Fatal(err)
+			}
+			nothing := make([]int16, frames*frame)
+			for k := range frames {
+				if k < stop {
+					if err := ec.Playback(r.sent[k*frame : (k+1)*frame]); err != nil {
 						t.Fatal(err)
 					}
 				}
-				gain := dB(energy(window(nothing, rate, 14.0, 14.3)), energy(window(r.echoed, rate, 14.0, 14.3)))
-				t.Logf("echo tail over 14.0 to 14.3 s: %.1f dB lower when silence is sent", gain)
-				if gain < 10 {
-					t.Errorf("U7: queuing silence lowers the echo tail by %.1f dB, want at least 10", gain)
+				if err := ec.Capture(r.mic[k*frame:(k+1)*frame], nothing[k*frame:(k+1)*frame]); err != nil {
+					t.Fatal(err)
 				}
-			})
-		}
+			}
+			gain := dB(energy(window(nothing, rate, 14.0, 14.3)), energy(window(r.echoed, rate, 14.0, 14.3)))
+			t.Logf("echo tail over 14.0 to 14.3 s: %.1f dB lower when silence is sent", gain)
+			if gain < 10 {
+				t.Errorf("U7: queuing silence lowers the echo tail by %.1f dB, want at least 10", gain)
+			}
+		})
 	}
 }
 
-// pacedVariants are recipe A (Cancel with the frame just sent) and the
-// comparison variant (Playback then Capture).
-var pacedVariants = []struct {
-	name   string
-	cancel bool
-}{{"cancel", true}, {"playback", false}}
-
-// newPacedVariant is newPacedCall for one of the pacedVariants.
-func newPacedVariant(t testing.TB, rate, frameMs, filterMs int, cancel bool) *pacedCall {
+// newPacedTest is newPacedCall for a test.
+func newPacedTest(t testing.TB, rate, frameMs, filterMs int) *pacedCall {
 	b, err := newPacedCall(rate, frameMs, filterMs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.queued = !cancel
 	return b
 }
 
-// replay passes sent frame k with received frame k to a new call of the same
-// variant, as drain does, and returns the canceller's output.
-func replayPaced(t testing.TB, rate, frameMs, filterMs int, cancel bool, sent, mic []int16) []int16 {
-	b := newPacedVariant(t, rate, frameMs, filterMs, cancel)
+// replayPaced passes sent frame k with received frame k to a new call, as
+// drain does, and returns the canceller's output and the chain's.
+func replayPaced(t testing.TB, rate, frameMs, filterMs int, sent, mic []int16) (echoed, out []int16) {
+	b := newPacedTest(t, rate, frameMs, filterMs)
 	f := b.frame
-	out := make([]int16, f)
-	var got []int16
+	o := make([]int16, f)
 	for k := 0; (k+1)*f <= len(mic); k++ {
-		var err error
-		if cancel {
-			err = b.received(mic[k*f:(k+1)*f], sent[k*f:(k+1)*f], out)
-		} else if err = b.ec.Playback(sent[k*f : (k+1)*f]); err == nil {
-			err = b.receivedQueued(mic[k*f:(k+1)*f], out)
-		}
-		if err != nil {
+		if err := b.received(mic[k*f:(k+1)*f], sent[k*f:(k+1)*f], o); err != nil {
 			t.Fatal(err)
 		}
-		got = append(got, b.echoed...)
+		echoed = append(echoed, b.echoed...)
+		out = append(out, o...)
 	}
-	return got
+	return echoed, out
 }
 
 // TestPacedBurstSender writes 12 s of far end into the pending SPSC at
@@ -428,60 +370,57 @@ func replayPaced(t testing.TB, rate, frameMs, filterMs int, cancel bool, sent, m
 func TestPacedBurstSender(t *testing.T) {
 	const frameMs, filterMs = 20, 256
 	for _, rate := range []int{8000, 16000} {
-		for _, v := range pacedVariants {
-			t.Run(fmt.Sprintf("%dk_%s", rate/1000, v.name), func(t *testing.T) {
-				skipUnderRace(t)
-				c := scenarioCall(rate, frameMs, 30, fixedPath(rate, 100))
-				f := rate * frameMs / 1000
-				first, last := 2*1000/frameMs, 14*1000/frameMs
-				c.app = c.app[first*f : last*f]
-				c.appAt = make([]int, last-first)
-				for k := range c.appAt {
-					c.appAt[k] = 2000 // the whole burst at once
-				}
-				c.pendingMs = 15000
-				r := c.run(t, newPacedVariant(t, rate, frameMs, filterMs, v.cancel))
-				if len(r.sent) != len(r.mic) {
-					t.Fatalf("writer sent %d samples for %d received", len(r.sent), len(r.mic))
-				}
-				testutil.Compare(t, "replay of the sent frames", replayPaced(t, rate, frameMs, filterMs, v.cancel, r.sent, r.mic), r.echoed)
-				nonSilent := func(x []int16) []int16 {
-					var y []int16
-					for k := 0; (k+1)*f <= len(x); k++ {
-						if slices.ContainsFunc(x[k*f:(k+1)*f], func(v int16) bool { return v != 0 }) {
-							y = append(y, x[k*f:(k+1)*f]...)
-						}
+		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
+			c := scenarioCall(rate, frameMs, 30, fixedPath(rate, 100))
+			f := rate * frameMs / 1000
+			first, last := 2*1000/frameMs, 14*1000/frameMs
+			c.app = c.app[first*f : last*f]
+			c.appAt = make([]int, last-first)
+			for k := range c.appAt {
+				c.appAt[k] = 2000 // the whole burst at once
+			}
+			c.pendingMs = 15000
+			r := c.run(t, newPacedTest(t, rate, frameMs, filterMs))
+			if len(r.sent) != len(r.mic) {
+				t.Fatalf("writer sent %d samples for %d received", len(r.sent), len(r.mic))
+			}
+			replayEchoed, _ := replayPaced(t, rate, frameMs, filterMs, r.sent, r.mic)
+			testutil.Compare(t, "replay of the sent frames", replayEchoed, r.echoed)
+			nonSilent := func(x []int16) []int16 {
+				var y []int16
+				for k := 0; (k+1)*f <= len(x); k++ {
+					if slices.ContainsFunc(x[k*f:(k+1)*f], func(v int16) bool { return v != 0 }) {
+						y = append(y, x[k*f:(k+1)*f]...)
 					}
-					return y
 				}
-				testutil.Compare(t, "non-silent frames sent against the application's", nonSilent(c.app), nonSilent(r.sent))
-				stage := r.stage(rate, 8, 14)
-				t.Logf("burst of 12 s at 2 s, 100 ms echo, jitter 0 to 30 ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
-					stage, r.missing)
-				if stage < 15 {
-					t.Errorf("U12: echo stage %.1f dB, want at least 15", stage)
-				}
-			})
-		}
+				return y
+			}
+			testutil.Compare(t, "non-silent frames sent against the application's", nonSilent(c.app), nonSilent(r.sent))
+			stage := r.stage(rate, 8, 14)
+			t.Logf("burst of 12 s at 2 s, 100 ms echo, jitter 0 to 30 ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
+				stage, r.missing)
+			if stage < 15 {
+				t.Errorf("U12: echo stage %.1f dB, want at least 15", stage)
+			}
+		})
 	}
 }
 
 // TestPacedFourGoroutines runs the application, the network reader, the
 // writer and the processing goroutine concurrently (U8).
 func TestPacedFourGoroutines(t *testing.T) {
-	for _, v := range pacedVariants {
-		t.Run(v.name, func(t *testing.T) { fourGoroutines(t, v.cancel) })
-	}
+	fourGoroutines(t)
 }
 
-func fourGoroutines(t *testing.T, cancel bool) {
+func fourGoroutines(t *testing.T) {
 	const frameMs, rate = 20, 8000
 	seconds := 10
 	if testing.Short() {
 		seconds = 3
 	}
 	s := callScenario(rate, 1)
-	b := newPacedVariant(t, rate, frameMs, 200, cancel)
+	b := newPacedTest(t, rate, frameMs, 200)
 	f := b.frame
 	frames := seconds * 1000 / frameMs
 	mic := s.mic[:frames*f]
@@ -503,7 +442,7 @@ func fourGoroutines(t *testing.T, cancel bool) {
 		defer wg.Done()
 		r := testutil.SplitMix64{State: testutil.Seed(seed)}
 		for k := 0; k < frames && !stop.Load(); {
-			for i := 0; i < 1+r.Intn(burst) && k < frames; i++ {
+			for n := 1 + r.Intn(burst); n > 0 && k < frames; n-- {
 				if !onPacket(q, x[k*f:(k+1)*f]) {
 					break
 				}
@@ -532,9 +471,10 @@ func fourGoroutines(t *testing.T, cancel bool) {
 
 	fb, mb := make([]int16, f), make([]int16, f)
 	out := make([]int16, f)
-	var got, played []int16
+	var got, gotOut, played []int16
 	deliver := func(x []int16) {
 		got = append(got, b.echoed...)
+		gotOut = append(gotOut, x...)
 		played = append(played, fb...)
 	}
 	tick := time.NewTicker(time.Duration(frameMs) * time.Millisecond / 4)
@@ -542,7 +482,7 @@ func fourGoroutines(t *testing.T, cancel bool) {
 	deadline := time.Now().Add(time.Minute)
 	for len(got) < len(mic) && time.Now().Before(deadline) {
 		<-tick.C
-		if err := b.drainVariant(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
+		if err := b.drain(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -556,7 +496,7 @@ func fourGoroutines(t *testing.T, cancel bool) {
 	wg.Wait()
 
 	if len(written) != len(played) {
-		t.Fatalf("writer sent %d samples, Playback got %d (the writer fell behind)", len(written), len(played))
+		t.Fatalf("writer sent %d samples, the canceller got %d (the writer fell behind)", len(written), len(played))
 	}
 	testutil.Compare(t, "written against played", played, written)
 	next, silent := 1, 0
@@ -571,7 +511,9 @@ func fourGoroutines(t *testing.T, cancel bool) {
 		}
 	}
 	t.Logf("%d received frames, %d with silence sent", frames, silent)
-	testutil.Compare(t, "replay", replayPaced(t, rate, frameMs, 200, cancel, written, mic), got)
+	wantEchoed, wantOut := replayPaced(t, rate, frameMs, 200, written, mic)
+	testutil.Compare(t, "replay, canceller output", wantEchoed, got)
+	testutil.Compare(t, "replay, chain output", wantOut, gotOut)
 }
 
 // TestNoAllocsPaced checks that a processing tick of recipe A, all three
@@ -580,15 +522,13 @@ func TestNoAllocsPaced(t *testing.T) {
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
 			skipUnderRace(t)
-			for _, v := range pacedVariants {
-				noAllocsPaced(t, rate, v.cancel)
-			}
+			noAllocsPaced(t, rate)
 		})
 	}
 }
 
-func noAllocsPaced(t *testing.T, rate int, cancel bool) {
-	b := newPacedVariant(t, rate, 20, 200, cancel)
+func noAllocsPaced(t *testing.T, rate int) {
+	b := newPacedTest(t, rate, 20, 200)
 	pending, rx, toWriter, err := newPacedHandoffs(b, 200)
 	if err != nil {
 		t.Fatal(err)
@@ -603,7 +543,7 @@ func noAllocsPaced(t *testing.T, rate int, cancel bool) {
 			onPacket(pending, s.far[k*b.frame:(k+1)*b.frame])
 		}
 		onPacket(rx, s.mic[k*b.frame:(k+1)*b.frame])
-		if err := b.drainVariant(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
+		if err := b.drain(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
 			t.Fatal(err)
 		}
 		toWriter.Read(wb) // the writer
@@ -618,6 +558,7 @@ func noAllocsPaced(t *testing.T, rate int, cancel bool) {
 // TestPacedDelaySweep reports the echo stage against the far end's lag,
 // the echo delay and the jitter (reported only).
 func TestPacedDelaySweep(t *testing.T) {
+	reportOnly(t)
 	skipUnderRace(t)
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
@@ -641,12 +582,10 @@ func TestPacedDelaySweep(t *testing.T) {
 				}
 				t.Logf("%d Hz, echo delay %d ms: Cancel with the far end %d frames late, echo stage %.1f dB", rate, delayMs, lag, erle(e))
 			}
-			for _, v := range pacedVariants {
-				for _, j := range []int{0, 30} {
-					r := scenarioCall(rate, frameMs, j, fixedPath(rate, delayMs)).run(t, newPacedVariant(t, rate, frameMs, 200, v.cancel))
-					t.Logf("%d Hz, echo delay %d ms: drain (%s), jitter 0 to %d ms, echo stage %.1f dB, %d frames with echo of unsent frames",
-						rate, delayMs, v.name, j, r.stage(rate, 8, 14), r.missing)
-				}
+			for _, j := range []int{0, 30} {
+				r := scenarioCall(rate, frameMs, j, fixedPath(rate, delayMs)).run(t, newPacedTest(t, rate, frameMs, 200))
+				t.Logf("%d Hz, echo delay %d ms: drain, jitter 0 to %d ms, echo stage %.1f dB, %d frames with echo of unsent frames",
+					rate, delayMs, j, r.stage(rate, 8, 14), r.missing)
 			}
 		}
 	}
@@ -658,114 +597,111 @@ func TestPacedLongDelay(t *testing.T) {
 	skipUnderRace(t)
 	const frameMs, filterMs = 20, 256
 	for _, rate := range []int{8000, 16000} {
-		for _, v := range pacedVariants {
-			run := func(path func(int) []tap) simResult {
-				return scenarioCall(rate, frameMs, 30, path).run(t, newPacedVariant(t, rate, frameMs, filterMs, v.cancel))
-			}
-			for _, delayMs := range []int{100, 200} {
-				t.Run(fmt.Sprintf("%dk_%dms_%s", rate/1000, delayMs, v.name), func(t *testing.T) {
-					r := run(fixedPath(rate, delayMs))
-					stage := r.stage(rate, 8, 14)
-					t.Logf("echo delay %d ms, jitter 0 to 30 ms, filter %d ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
-						delayMs, filterMs, stage, r.missing)
-					if stage < 15 {
-						t.Errorf("U11: echo stage %.1f dB, want at least 15", stage)
-					}
-				})
-			}
-			t.Run(fmt.Sprintf("%dk_step_100_140ms_%s", rate/1000, v.name), func(t *testing.T) {
-				p100, p140 := fixedPath(rate, 100), fixedPath(rate, 140)
-				stepAt := 8 * rate
-				r := run(func(i int) []tap {
-					if i < stepAt {
-						return p100(i)
-					}
-					return p140(i)
-				})
-				recovered := -1.0
-				for w := 8.0; w+0.5 <= 14; w += 0.5 {
-					if r.stage(rate, w, w+0.5) >= 10 {
-						recovered = w - 8
-						break
-					}
+		run := func(path func(int) []tap) simResult {
+			return scenarioCall(rate, frameMs, 30, path).run(t, newPacedTest(t, rate, frameMs, filterMs))
+		}
+		for _, delayMs := range []int{100, 200} {
+			t.Run(fmt.Sprintf("%dk_%dms", rate/1000, delayMs), func(t *testing.T) {
+				r := run(fixedPath(rate, delayMs))
+				stage := r.stage(rate, 8, 14)
+				t.Logf("echo delay %d ms, jitter 0 to 30 ms, filter %d ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
+					delayMs, filterMs, stage, r.missing)
+				if stage < 15 {
+					t.Errorf("U11: echo stage %.1f dB, want at least 15", stage)
 				}
-				before := r.stage(rate, 6, 8)
-				if recovered < 0 {
-					t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB not reached again before 14 s", before)
-					return
-				}
-				t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB again after %.1f s", before, recovered)
 			})
 		}
+		t.Run(fmt.Sprintf("%dk_step_100_140ms", rate/1000), func(t *testing.T) {
+			reportOnly(t)
+			p100, p140 := fixedPath(rate, 100), fixedPath(rate, 140)
+			stepAt := 8 * rate
+			r := run(func(i int) []tap {
+				if i < stepAt {
+					return p100(i)
+				}
+				return p140(i)
+			})
+			recovered := -1.0
+			for w := 8.0; w+0.5 <= 14; w += 0.5 {
+				if r.stage(rate, w, w+0.5) >= 10 {
+					recovered = w - 8
+					break
+				}
+			}
+			before := r.stage(rate, 6, 8)
+			if recovered < 0 {
+				t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB not reached again before 14 s", before)
+				return
+			}
+			t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB again after %.1f s", before, recovered)
+		})
 	}
 }
 
 // TestPacedWriterFull checks drain's writer-full branch on an adapted
-// canceller: nothing is sent, silence is played, the pending frame waits.
+// canceller: nothing is sent, silence is cancelled against, the frame waits.
 func TestPacedWriterFull(t *testing.T) {
 	const rate, frameMs, after = 8000, 20, 60
-	for _, v := range pacedVariants {
-		t.Run(v.name, func(t *testing.T) {
-			b := newPacedVariant(t, rate, frameMs, 200, v.cancel)
-			f := b.frame
-			pending, rx, toWriter, err := newPacedHandoffs(b, 200)
-			if err != nil {
+	t.Run("8k", func(t *testing.T) {
+		b := newPacedTest(t, rate, frameMs, 200)
+		f := b.frame
+		pending, rx, toWriter, err := newPacedHandoffs(b, 200)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := callScenario(rate, 1)
+		frame := func(x []int16, k int) []int16 { return x[(100+k)*f : (101+k)*f] } // from 2 s, far end active
+		warm := 200                                                                 // the canceller adapts; the full slot's frame must not be silent
+		for !slices.ContainsFunc(frame(s.far, warm), func(x int16) bool { return x != 0 }) {
+			warm++
+		}
+		fb, mb, out := make([]int16, f), make([]int16, f), make([]int16, f)
+		var got, sent []int16
+		deliver := func([]int16) { got = append(got, b.echoed...) }
+		step := func(k int) {
+			onPacket(rx, frame(s.mic, k))
+			if err := b.drain(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
 				t.Fatal(err)
 			}
-			s := callScenario(rate, 1)
-			frame := func(x []int16, k int) []int16 { return x[(100+k)*f : (101+k)*f] } // from 2 s, far end active
-			warm := 200                                                                 // the canceller adapts; the full slot's frame must not be silent
-			for !slices.ContainsFunc(frame(s.far, warm), func(x int16) bool { return x != 0 }) {
-				warm++
+		}
+		writer := func() {
+			for toWriter.Len() > 0 {
+				n := len(sent)
+				sent = append(sent, make([]int16, toWriter.Len())...)
+				toWriter.Read(sent[n:])
 			}
-			fb, mb, out := make([]int16, f), make([]int16, f), make([]int16, f)
-			var got, sent []int16
-			deliver := func([]int16) { got = append(got, b.echoed...) }
-			step := func(k int) {
-				onPacket(rx, frame(s.mic, k))
-				if err := b.drainVariant(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
-					t.Fatal(err)
-				}
-			}
-			writer := func() {
-				for toWriter.Len() > 0 {
-					n := len(sent)
-					sent = append(sent, make([]int16, toWriter.Len())...)
-					toWriter.Read(sent[n:])
-				}
-			}
-			for k := range warm { // the canceller adapts
-				onPacket(pending, frame(s.far, k))
-				step(k)
-				writer()
-			}
+		}
+		for k := range warm { // the canceller adapts
+			onPacket(pending, frame(s.far, k))
+			step(k)
+			writer()
+		}
 
-			for toWriter.Free() >= f { // the writer stalls: its SPSC fills up
-				onPacket(toWriter, make([]int16, f))
-			}
-			full := toWriter.Len()
-			onPacket(pending, frame(s.far, warm))
-			step(warm)
-			if toWriter.Len() != full {
-				t.Fatalf("writer SPSC holds %d samples after a drain with it full, want %d", toWriter.Len(), full)
-			}
-			if pending.Len() != f {
-				t.Fatalf("pending holds %d samples, want the one waiting frame (%d)", pending.Len(), f)
-			}
-			toWriter.Consume(toWriter.Len()) // the writer catches up; the filler was never audio
+		for toWriter.Free() >= f { // the writer stalls: its SPSC fills up
+			onPacket(toWriter, make([]int16, f))
+		}
+		full := toWriter.Len()
+		onPacket(pending, frame(s.far, warm))
+		step(warm)
+		if toWriter.Len() != full {
+			t.Fatalf("writer SPSC holds %d samples after a drain with it full, want %d", toWriter.Len(), full)
+		}
+		if pending.Len() != f {
+			t.Fatalf("pending holds %d samples, want the one waiting frame (%d)", pending.Len(), f)
+		}
+		toWriter.Consume(toWriter.Len()) // the writer catches up; the filler was never audio
 
-			for k := warm + 1; k <= warm+after; k++ {
-				onPacket(pending, frame(s.far, k))
-				step(k)
-				writer()
-			}
-			// Sent: the warm-up frames, nothing in the full slot, then the
-			// waiting frame and the rest, one per received frame.
-			wantSent := slices.Clone(s.far[100*f : (100+warm+after)*f])
-			testutil.Compare(t, "sent", wantSent, sent)
-			played := slices.Concat(s.far[100*f:(100+warm)*f], make([]int16, f), s.far[(100+warm)*f:(100+warm+after)*f])
-			want := replayPaced(t, rate, frameMs, 200, v.cancel, played, s.mic[100*f:(101+warm+after)*f])
-			testutil.Compare(t, "canceller output", want, got)
-		})
-	}
+		for k := warm + 1; k <= warm+after; k++ {
+			onPacket(pending, frame(s.far, k))
+			step(k)
+			writer()
+		}
+		// Sent: the warm-up frames, nothing in the full slot, then the
+		// waiting frame and the rest, one per received frame.
+		wantSent := slices.Clone(s.far[100*f : (100+warm+after)*f])
+		testutil.Compare(t, "sent", wantSent, sent)
+		played := slices.Concat(s.far[100*f:(100+warm)*f], make([]int16, f), s.far[(100+warm)*f:(100+warm+after)*f])
+		want, _ := replayPaced(t, rate, frameMs, 200, played, s.mic[100*f:(101+warm+after)*f])
+		testutil.Compare(t, "canceller output", want, got)
+	})
 }

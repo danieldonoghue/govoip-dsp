@@ -8,7 +8,7 @@ CROSS_TARGETS ?= linux/arm linux/riscv64 linux/ppc64le linux/s390x \
 	linux/mips64le freebsd/amd64 darwin/amd64 windows/arm64 wasip1/wasm
 
 .PHONY: help check fmt-check vet test test-purego staticcheck deps-guard race \
-	bench fixtures fixtures-host cross speech hooks check-short test-short
+	bench report fixtures fixtures-host cross speech hooks check-short test-short
 
 .DEFAULT_GOAL := help
 
@@ -62,6 +62,10 @@ race: ## Run all tests with the race detector
 
 bench: ## Run short benchmarks with allocation counts
 	CGO_ENABLED=0 $(GO) test -run '^$$' -bench . -benchtime 100ms -benchmem ./...
+
+# Runs the integration measurements that only report figures (docs/testing.md).
+report: ## Run the reported-only integration measurements (-report)
+	CGO_ENABLED=0 $(GO) test ./integration -count=1 -timeout 20m -v -args -report
 
 # Regenerates every committed fixture set. Needs network once, plus Docker or
 # a host clang. HARNESS_MODE=host forces the host toolchain.

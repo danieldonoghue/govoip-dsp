@@ -27,8 +27,8 @@ one is not. Each section names the tests that back it.
   library.
 - **Rates.** The echo canceller supports 8 and 16 kHz only
   ([ADR `wp6-rates-and-shifts`](decisions/wp6-rates-and-shifts.md)). At any
-  other network rate, resample both streams to 16 kHz first, as the
-  in-step note of recipe A shows.
+  other network rate, resample both streams to 16 kHz first, as
+  `newCall` does in "Sources that deliver the pairing".
 - **One call, one goroutine.** Every processor is single-owner: make one
   set per call and use it from one goroutine. Only `buffer.SPSC` is shared,
   between exactly two goroutines.
@@ -63,7 +63,8 @@ Speex manual advises `speex_echo_cancellation`.
 Does not fit:
 
 - Network rates other than 8 and 16 kHz: the recipe has no resampler.
-  Resample both streams first (see "Sources that deliver the pairing").
+  Resample both streams first, as `newCall` does in "Sources that
+  deliver the pairing".
 - Playback and capture that arrive on separate callbacks with their own
   timing: use recipe B.
 - A recorder or monitor that only receives: see "Receive only" above.
@@ -81,14 +82,16 @@ Does not fit:
   pending frame waits. The call then hears a gap, and the frames the
   writer gets later are sent after the slots `Cancel` assumed for them,
   so the echo shifts against what the canceller saw.
-- **Echo delay.** The echo delay counts from the slot of the received
-  frame that a sent frame goes with, so it includes the time until that
-  frame is sent. In simulated calls with up to 30 ms of jitter, echo
-  delays of 40 to 200 ms were cancelled by 17.1 to 27.2 dB
-  (`docs/testing.md`, "Recipe A"). U6, a 32 ms echo with that jitter,
-  fails (11.1 and 10.7 dB at 8 and 16 kHz): at that delay part of the
-  echo would come from frames not yet sent, so the case is not a physical
-  call. Without jitter a 32 ms echo is cancelled by 23.9 and 20.3 dB.
+- **Echo delay.** The echo delay counts from the slot of the received frame that
+  a sent frame goes with, so it includes the time until that frame is sent. In
+  simulated calls with up to 30 ms of jitter, echo delays of 40 to 100 ms
+  (`TestPacedDelaySweep`) and of 100 and 200 ms (U11, U12) were cancelled by
+  17.1 to 27.2 dB (`docs/testing.md`, "Recipe A"); at 40 and 50 ms, 16 received
+  frames lack part of their echo, because it would come from frames not yet
+  sent. U6, a 32 ms echo with that jitter, fails (11.1 and 10.7 dB at 8 and 16
+  kHz): at that delay part of the echo would come from frames not yet sent, so
+  the case is not a physical call. Without jitter a 32 ms echo is cancelled by
+  23.9 and 20.3 dB.
 - **Filter length.** Choose the shortest `filterMs` that covers the
   largest echo delay expected plus the echo's tail, not the longest
   available. A longer filter costs more per frame
@@ -127,6 +130,11 @@ Does not fit:
 - **Drops.** A received frame that `onPacket` drops is never processed
   and gets no sent frame, so the call hears a gap there. Nothing reports
   it.
+- **A stalled processing goroutine.** After a stall, `drain` processes
+  all the waiting received frames at once and hands the writer a burst of
+  sent frames, which Asterisk plays as they arrive, later than the slots
+  `Cancel` assumed for them, so the echo shifts against what the
+  canceller saw. Recipe A has no backlog drop.
 
 ### Threads (recipe A)
 
@@ -292,9 +300,9 @@ For each received frame:
    included, from the received frame.
 4. `Residual` reads the echo `Cancel` left in this frame, and `RunEcho`
    suppresses it with the noise, in place, and returns the VAD decision.
-   This is the pairing of `docs/contracts.md` section 12;
-   `TestReferencePairing` checks it bit for bit against the C chain, in
-   which the preprocessor holds the echo state.
+   This is the pairing of `docs/contracts.md` section 12.
+   `TestReferenceRecipes` checks steps 3 and 4 bit for bit against the C
+   chain, in which the preprocessor holds the echo state.
 5. The AGC applies its gain, raising it only on speech frames.
 
 Tests:
@@ -315,16 +323,17 @@ Tests:
   (U7).
 - `TestPacedFourGoroutines`: the application, the network reader, the
   writer and the processing goroutine run concurrently; the writer's
-  frames are the canceller's, one application frame per received frame
-  in order, and a replay gives the same output (U8).
+  frames are the canceller's, at most one application frame per received
+  frame, in order, silence otherwise, and a replay gives the same
+  canceller and chain output (U8).
 - `TestPacedWriterFull`: with the writer's SPSC full, nothing is sent,
   silence is cancelled against, and the pending frame goes out with the
   next received frame.
-- `TestPacedDelaySweep` and `TestNoAllocsPaced` (U9).
-
-Every case also runs a comparison variant that passes the same frame to
-`Playback` before `Capture` (`drainQueued`); `docs/testing.md` compares
-the two.
+- `TestReferenceRecipes`: recipe A's `received` on the reference
+  pairing's `cancel_*_20ms` inputs gives the C chain's canceller output,
+  residual and preprocess output bit for bit.
+- `TestNoAllocsPaced` (U9), and `TestPacedDelaySweep`, which only
+  reports figures and runs with `-report` (`docs/testing.md`).
 
 ### Sources that deliver the pairing
 
@@ -333,7 +342,108 @@ frame sent at the same time, such as one sound card driving both, needs
 no pending SPSC: it is the same `Cancel` call with the pairing given by
 the source. The tests keep that wiring as `call` (`call_test.go`): one
 `step` per frame, and resampling to 16 kHz where the source runs at
-another rate.
+another rate. `newCall` sizes every buffer from the rate and the frame
+duration, with `preprocess.SupportedFrameSize` and `resample.OutLen`:
+
+```go
+func newCall(netRate, frameMs int) (*call, error) {
+	// Process at the network rate when the echo canceller supports it, so
+	// nothing is resampled; otherwise resample to 16 kHz.
+	rate := netRate
+	if rate != 8000 && rate != 16000 {
+		rate = 16000 // the echo canceller supports 8 and 16 kHz only
+	}
+	// A frame is the same duration at both rates, so one network frame
+	// becomes one processing frame (20 ms: 160 samples at 8 kHz).
+	c := &call{
+		netRate: netRate, rate: rate,
+		netFrame: netRate * frameMs / 1000, frame: rate * frameMs / 1000,
+	}
+	// The preprocessor's FFT needs a supported frame size; check it before
+	// building anything, so a bad frame duration fails here, not mid-call.
+	if !preprocess.SupportedFrameSize(c.frame) {
+		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", c.frame)
+	}
+
+	var err error
+	c.ec, err = echo.New(echo.Config{
+		FrameSize:    c.frame,
+		FilterLength: rate / 5, // models echo delays up to 200 ms
+		SampleRate:   rate,
+	})
+	if err != nil {
+		return nil, err
+	}
+	c.pre, err = preprocess.New(preprocess.Config{SampleRate: rate, FrameSize: c.frame})
+	if err != nil {
+		return nil, err
+	}
+	// The VAD decision is what tells the AGC which frames are speech.
+	c.pre.SetVAD(true) // denoise is on by default
+	c.gc, err = agc.New(agc.DefaultConfig(rate))
+	if err != nil {
+		return nil, err
+	}
+	// Scratch buffers, made once so the per-frame path never allocates; the
+	// residual spectrum has one value more than the frame (ResidualLen).
+	c.clean = make([]int16, c.frame)
+	c.residual = make([]int32, c.ec.ResidualLen())
+
+	// Resampling only where the network rate is not 8 or 16 kHz: one
+	// resampler per stream, because each keeps its own filter history.
+	if rate != netRate {
+		rs := resample.Config{Channels: 1, InRate: netRate, OutRate: rate, Quality: resample.QualityVoIP}
+		if c.micRS, err = resample.New(rs); err != nil {
+			return nil, err
+		}
+		if c.farRS, err = resample.New(rs); err != nil {
+			return nil, err
+		}
+		// OutLen gives the output space one call needs to consume a whole
+		// network frame, so no input is ever left behind.
+		c.rsOut = make([]int16, c.micRS.OutLen(c.netFrame))
+		// Less than one frame waits between calls, plus one call's output.
+		q := buffer.Config{Capacity: c.frame + len(c.rsOut), Overflow: buffer.Reject}
+		if c.micQ, err = buffer.New(q); err != nil {
+			return nil, err
+		}
+		if c.farQ, err = buffer.New(q); err != nil {
+			return nil, err
+		}
+		c.micBuf = make([]int16, c.frame)
+		c.farBuf = make([]int16, c.frame)
+	}
+	return c, nil
+}
+```
+
+The source's frames reach the processing goroutine through one SPSC;
+`drain` drops a backlog after a stall and keeps each frame paired:
+
+```go
+func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
+	far func() []int16, deliver func([]int16)) error {
+	// After a stall, old audio is useless for a live call: keep only the
+	// newest frame, and skip the far frames of the dropped ones so that
+	// each frame keeps its far frame.
+	if rx.Len() > maxBacklog {
+		for range rx.Consume(rx.Len()-c.netFrame) / c.netFrame {
+			far()
+		}
+	}
+	// Each received frame is processed with the frame sent at the same
+	// time, which far returns in order.
+	for rx.Len() >= c.netFrame {
+		rx.Read(mic)
+		n, err := c.process(mic, far(), out)
+		if err != nil {
+			return err
+		}
+		deliver(out[:n])
+	}
+	return nil
+}
+```
 
 ```go
 func (c *call) step(mic, far, out []int16) error {
@@ -359,7 +469,8 @@ func (c *call) step(mic, far, out []int16) error {
 ```
 
 `TestReferencePairing`, `TestRecipeThroughSPSC`,
-`TestRecipeDropsUnderRace`, `TestPipelineCall`, `TestPipelineSpeech` and
+`TestRecipeDropsUnderRace`, `TestDrainDropsBacklog`,
+`TestQueueFullIsReported`, `TestPipelineCall`, `TestPipelineSpeech` and
 `TestNoAllocsRecipe` back it, and `Example_call` prints the sizes of its
 buffers at 8, 16 and 48 kHz.
 
@@ -567,8 +678,12 @@ Tests:
   against captures with nothing queued (U7).
 - `TestBufferedTwoGoroutines`: both callbacks as goroutines, compared with
   a replay of the observed order (U8).
-- `TestBufferedLagIsOneFrame`, `TestBufferedLagAndDelay` and
-  `TestNoAllocsBuffered` (U9).
+- `TestReferenceRecipes`: recipe B's `played` and `received` on the
+  reference pairing's `capture_*_20ms` inputs give the C chain's output
+  bit for bit.
+- `TestBufferedLagIsOneFrame`, `TestNoAllocsBuffered` (U9), and
+  `TestBufferedLagAndDelay`, which only reports figures and runs with
+  `-report`.
 
 ## What the measurements show
 
@@ -592,7 +707,8 @@ Tests:
 - Recipe A sends what it cancels against, one frame per received frame,
   also when the application writes in bursts. In simulated calls with up
   to 30 ms of jitter it cancelled echo delays of 40 to 200 ms by 17.1 to
-  27.2 dB (U11, U12); with a 32 ms echo it does not (U6, a reported
+  27.2 dB (U11, U12 and the reported sweep; at 40 and 50 ms some frames
+  lack part of their echo); with a 32 ms echo it does not (U6, a reported
   finding).
 - Recipe B cancels with one frame of lag; with up to 30 ms of jitter it
   cancelled echo delays of 60 to 200 ms, not 50 ms and less (U6 fails).

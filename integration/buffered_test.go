@@ -69,7 +69,7 @@ func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 // played queues a frame that the output callback played.
 func (b *bufferedCall) played(far []int16) error { return b.ec.Playback(far) }
 
-// received cleans a received frame against the queued sent frames.
+// received cleans a captured frame against the queued played frames.
 func (b *bufferedCall) received(mic, out []int16) error {
 	// Capture cancels mic against the oldest frame Playback queued: the one
 	// played with the previous captured frame.
@@ -208,6 +208,9 @@ func TestBufferedUnevenTiming(t *testing.T) {
 				t.Errorf("U6 was a reported finding but now passes (%.1f dB); update docs/testing.md", stage)
 			}
 
+			if !*report {
+				return // the rest only reports figures (-report)
+			}
 			// A 100 ms sender pause at 6 s, then a burst: reported only.
 			pause := append([]int(nil), farAt...)
 			for k := range pause {
@@ -411,6 +414,7 @@ func TestNoAllocsBuffered(t *testing.T) {
 // TestBufferedLagAndDelay reports the echo stage against the far end's lag,
 // the echo delay and the jitter (reported only, added after a U6 result).
 func TestBufferedLagAndDelay(t *testing.T) {
+	reportOnly(t)
 	skipUnderRace(t)
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
@@ -491,6 +495,7 @@ func TestBufferedLongDelay(t *testing.T) {
 			})
 		}
 		t.Run(fmt.Sprintf("%dk_step_100_140ms", rate/1000), func(t *testing.T) {
+			reportOnly(t)
 			mic, far := delayedCall(rate, 100, 140, 8)
 			e := run(mic, far)
 			recovered := -1.0
