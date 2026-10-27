@@ -11,8 +11,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/resample"
 )
 
-// Inputs use testutil generators and integer arithmetic only, so they are
-// identical on every platform and the harness hashes can check them.
+// Inputs use testutil generators (integer or IEEE basic operations) and
+// integer arithmetic, so they are identical on every platform.
 
 // scenarioSeconds is the length of one repetition of the call scenario.
 const scenarioSeconds = 40

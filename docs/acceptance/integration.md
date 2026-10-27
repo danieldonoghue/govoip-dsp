@@ -42,8 +42,9 @@ which covers the requirements §7 expensive configuration.
 ## Signals
 
 All synthetic inputs are generated in Go from fixed seeds with
-`internal/testutil` generators and integer arithmetic only, so they are
-identical on every platform. The **call scenario** at rate `R`:
+`internal/testutil` generators, which use integer arithmetic or IEEE basic
+operations with explicit rounding, and integer arithmetic here, so they
+are identical on every platform. The **call scenario** at rate `R`:
 
 | Time (s) | Far end | Near end |
 |---|---|---|
@@ -247,9 +248,10 @@ active frames, against -33 dBFS). Its thresholds are unchanged.
 ### Budget input repeats one 40 s repetition (during the implementation)
 
 The 10-minute budget loops one 40 s repetition of the call scenario
-rather than repetitions with new seeds. The work per frame does not
-depend on the seed, so the timing is the same; the bit-exact 10-minute
-cases use new seeds as registered.
+rather than repetitions with new seeds. The timing is expected to be the
+same, because the code path per frame does not depend on the seed, but
+this has not been measured; a run with new seeds per repetition is
+planned. The bit-exact 10-minute cases use new seeds as registered.
 
 ### B1 and B3 fail at 48 kHz, reported as a finding (after measurement)
 
@@ -260,3 +262,10 @@ fails if either of them starts to pass, or if any other criterion fails,
 so a change in either direction shows. The measured cause is in
 `docs/testing.md`. Whether to change the scenario, the chain or the
 criteria needs a decision.
+
+### Input arithmetic worded exactly (after review)
+
+"Signals" said the inputs use integer arithmetic only. `testutil.SpeechLike`
+uses float64 with IEEE basic operations and explicit rounding, as
+`docs/testing.md` ("Platform determinism of generated inputs") states. The
+wording now says so; the inputs and their hashes are unchanged.

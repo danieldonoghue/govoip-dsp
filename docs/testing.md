@@ -249,14 +249,14 @@ a mutation of the `Eh` update was reported at op 14 in `Eh`.
   `SPEEX_PREPROCESS_SET_ECHO_STATE`, so the C preprocessor fetches the
   residual echo itself. It calls `speex_echo_get_residual` once more after
   each frame only to record the spectrum. The case table and the inputs
-  come from `integration/reference_test.go` (`harness-inputs:
-  ./integration`).
+  come from `integration/reference_test.go`
+  (`harness-inputs: ./integration`).
 - Host cross-check
   (`HARNESS_MODE=host sh reference/fixtures.sh --check integration`): the
   Apple clang 21 build gives identical cases sections to the committed
   manifest.
 - Sanitizer builds (container and host) give identical outputs to the
-  plain build, with 38 reports each (listed below).
+  plain build. Each log holds 38 report lines, at the sites listed below.
 - Go side: `go test ./integration -run TestReferencePairing` passes on
   darwin/arm64 (22 s). This is the first test of the real pairing of
   `docs/contracts.md` section 12: `echo.Canceller.Residual` feeding
