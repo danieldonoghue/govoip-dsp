@@ -14,13 +14,14 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/preprocess"
 )
 
-// This file is the buffered-mode recipe of docs/usage.md: sent and received
-// frames that are not in step meet in the echo canceller's playback queue.
+// This file is recipe B of docs/usage.md: the processing goroutine sends one
+// frame per received frame and passes the same frame to Playback.
 
 // bufferedCall is the send path of a call whose sent and received frames
 // arrive independently. Use it from one goroutine.
 type bufferedCall struct {
 	rate, frame int
+	cancel      bool // the tests' variant (ii), see drainWith
 
 	ec  *echo.Canceller
 	pre *preprocess.Preprocessor
@@ -69,6 +70,19 @@ func (b *bufferedCall) received(mic, out []int16) error {
 	if err := b.ec.Capture(mic, b.echoed); err != nil {
 		return err
 	}
+	return b.finish(out)
+}
+
+// receivedWith cleans a received frame against the frame sent with it.
+func (b *bufferedCall) receivedWith(mic, far, out []int16) error {
+	if err := b.ec.Cancel(mic, far, b.echoed); err != nil {
+		return err
+	}
+	return b.finish(out)
+}
+
+// finish runs the rest of the send path on the canceller's output.
+func (b *bufferedCall) finish(out []int16) error {
 	copy(b.clean, b.echoed)
 	if err := b.ec.Residual(b.residual); err != nil {
 		return err
@@ -80,14 +94,19 @@ func (b *bufferedCall) received(mic, out []int16) error {
 	return b.gc.Process(b.clean, out, speech)
 }
 
-// drain runs on the processing goroutine. For each received frame it queues
-// one sent frame, or silence when none has arrived, then cleans the frame.
-func (b *bufferedCall) drain(sent, rx *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
+// drain runs on the processing goroutine. For each received frame it sends
+// at most one pending frame, or silence, and passes the same frame to played.
+func (b *bufferedCall) drain(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
 	for range rx.Len() / b.frame { // bounds the work of this call
-		if sent.Len() >= b.frame {
-			sent.Read(far)
-		} else {
-			clear(far) // nothing sent yet; a later sent frame waits for the next
+		switch {
+		case toWriter.Free() < b.frame:
+			clear(far) // the writer is behind: send nothing, keep the pending frame
+		case pending.Len() >= b.frame:
+			pending.Read(far)
+			toWriter.Write(far)
+		default:
+			clear(far) // nothing to send: send silence
+			toWriter.Write(far)
 		}
 		if err := b.played(far); err != nil {
 			return err
@@ -101,13 +120,48 @@ func (b *bufferedCall) drain(sent, rx *buffer.SPSC, far, mic, out []int16, deliv
 	return nil
 }
 
-// newBufferedRx makes the two hand-offs, each with room for 200 ms.
-func newBufferedRx(b *bufferedCall) (sent, rx *buffer.SPSC, err error) {
-	if sent, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate / 5}); err != nil {
-		return nil, nil, err
+// drainWith is drain with Cancel against the frame just sent instead of
+// Playback and Capture: variant (ii), which the tests measure for comparison.
+func (b *bufferedCall) drainWith(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
+	for range rx.Len() / b.frame {
+		switch {
+		case toWriter.Free() < b.frame:
+			clear(far)
+		case pending.Len() >= b.frame:
+			pending.Read(far)
+			toWriter.Write(far)
+		default:
+			clear(far)
+			toWriter.Write(far)
+		}
+		rx.Read(mic)
+		if err := b.receivedWith(mic, far, out); err != nil {
+			return err
+		}
+		deliver(out)
 	}
-	rx, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate / 5})
-	return sent, rx, err
+	return nil
+}
+
+// drainVariant runs drain, or drainWith for variant (ii).
+func (b *bufferedCall) drainVariant(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
+	if b.cancel {
+		return b.drainWith(pending, rx, toWriter, far, mic, out, deliver)
+	}
+	return b.drain(pending, rx, toWriter, far, mic, out, deliver)
+}
+
+// newBufferedHandoffs makes the three hand-offs: pending audio with room for
+// pendingMs, and the received and the to-send frames with room for 200 ms.
+func newBufferedHandoffs(b *bufferedCall, pendingMs int) (pending, rx, toWriter *buffer.SPSC, err error) {
+	if pending, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate * pendingMs / 1000}); err != nil {
+		return nil, nil, nil, err
+	}
+	if rx, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate / 5}); err != nil {
+		return nil, nil, nil, err
+	}
+	toWriter, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate / 5})
+	return pending, rx, toWriter, err
 }
 
 // arrivals returns when each of n frames becomes available: k*frameMs plus
@@ -123,158 +177,294 @@ func arrivals(n, frameMs, maxMs int, seed string) []int {
 	return at
 }
 
-// runBuffered runs drain every frameMs of a simulated clock, with frame k of
-// mic and far available from micAt[k] and farAt[k] ms.
-func runBuffered(t testing.TB, b *bufferedCall, mic, far []int16, micAt, farAt []int, frameMs int) (out, echoed []int16) {
-	sent, rx, err := newBufferedRx(b)
+// simCall simulates recipe B in a call: sent frame k plays in the slot of
+// received frame k, and its echo reaches the microphone through path.
+type simCall struct {
+	frameMs   int
+	app       []int16           // frames the application writes, in order
+	appAt     []int             // when each is written to the pending SPSC, ms
+	local     []int16           // the microphone without echo
+	micAt     []int             // when each received frame becomes available, ms
+	path      func(i int) []tap // the echo path for microphone sample i
+	pendingMs int
+}
+
+// simResult is what a simulated call produced. missing counts received
+// frames whose echo would have come from a frame not yet sent.
+type simResult struct {
+	out, echoed, mic, sent []int16
+	missing                int
+}
+
+func (c simCall) run(t testing.TB, b *bufferedCall) simResult {
+	pending, rx, toWriter, err := newBufferedHandoffs(b, c.pendingMs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fb, mb := make([]int16, b.frame), make([]int16, b.frame)
-	o := make([]int16, b.frame)
+	f := b.frame
+	var r simResult
+	fb, mb, o := make([]int16, f), make([]int16, f), make([]int16, f)
 	deliver := func(x []int16) {
-		out = append(out, x...)
-		echoed = append(echoed, b.echoed...)
+		r.out = append(r.out, x...)
+		r.echoed = append(r.echoed, b.echoed...)
 	}
-	frames := len(mic) / b.frame
-	km, kf := 0, 0
-	for now := 0; km < frames; now += frameMs {
-		for ; kf < len(farAt) && farAt[kf] <= now; kf++ {
-			if !onPacket(sent, far[kf*b.frame:(kf+1)*b.frame]) {
-				t.Fatalf("sent frame %d dropped", kf)
+	frames := len(c.local) / f
+	r.mic = make([]int16, frames*f)
+	ka, km := 0, 0
+	for now := 0; km < frames || rx.Len() > 0; now += c.frameMs {
+		for ; ka < len(c.appAt) && c.appAt[ka] <= now; ka++ {
+			if !onPacket(pending, c.app[ka*f:(ka+1)*f]) {
+				t.Fatalf("pending frame %d dropped", ka)
 			}
 		}
-		for ; km < frames && micAt[km] <= now; km++ {
-			if !onPacket(rx, mic[km*b.frame:(km+1)*b.frame]) {
+		for ; km < frames && c.micAt[km] <= now; km++ {
+			miss := false
+			for i := km * f; i < (km+1)*f; i++ {
+				var acc int64
+				for _, tp := range c.path(i) {
+					switch j := i - tp.off; {
+					case j < 0:
+					case j < len(r.sent):
+						acc += int64(tp.v) * int64(r.sent[j])
+					default:
+						miss = true
+					}
+				}
+				r.mic[i] = sat16(int64(c.local[i]) + int64(sat16((acc+16384)>>15)))
+			}
+			if miss {
+				r.missing++
+			}
+			if !onPacket(rx, r.mic[km*f:(km+1)*f]) {
 				t.Fatalf("received frame %d dropped", km)
 			}
 		}
-		if err := b.drain(sent, rx, fb, mb, o, deliver); err != nil {
+		if err := b.drainVariant(pending, rx, toWriter, fb, mb, o, deliver); err != nil {
 			t.Fatal(err)
 		}
+		for toWriter.Len() > 0 { // the writer sends everything handed to it
+			n := len(r.sent)
+			r.sent = append(r.sent, make([]int16, toWriter.Len())...)
+			toWriter.Read(r.sent[n:])
+		}
 	}
-	return out, echoed
+	return r
 }
 
-// TestBufferedUnevenTiming checks echo cancellation with jittered sent and
+// fixedPath is the call scenario's echo path with its bulk delay at delayMs.
+func fixedPath(rate, delayMs int) func(int) []tap {
+	taps := room(rate, "integration/path", delayMs, delayMs+48, 16384)
+	return func(int) []tap { return taps }
+}
+
+// scenarioCall is the call scenario at rate as a simCall: the application
+// writes far-end frame k at k*frameMs plus up to jitterMs, and so on.
+func scenarioCall(rate, frameMs, jitterMs int, path func(int) []tap) simCall {
+	s := callScenario(rate, 1)
+	f := rate * frameMs / 1000
+	n := len(s.far) / f
+	local := mix(s.near, testutil.WhiteNoise(len(s.near), 30, testutil.Seed("integration/noise")))
+	return simCall{
+		frameMs: frameMs, app: s.far, local: local, path: path, pendingMs: 200,
+		appAt: arrivals(n, frameMs, jitterMs, "integration/buffered/far"),
+		micAt: arrivals(n, frameMs, jitterMs, "integration/buffered/mic"),
+	}
+}
+
+// stage is the echo stage over [from, to) seconds, as B1 measures it.
+func (r simResult) stage(rate int, from, to float64) float64 {
+	return dB(energy(window(r.mic, rate, from, to)), energy(window(r.echoed, rate, from, to)))
+}
+
+// TestBufferedUnevenTiming checks echo cancellation with jittered pending and
 // received frames (U6), and reports a sender pause and burst (U10).
 func TestBufferedUnevenTiming(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
-		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
-			skipUnderRace(t)
-			s := callScenario(rate, 1)
-			frame := rate * frameMs / 1000
-			n := len(s.mic) / frame
-			micAt := arrivals(n, frameMs, 30, "integration/buffered/mic")
-			farAt := arrivals(n, frameMs, 30, "integration/buffered/far")
-			ratio := func(y []int16, from, to float64) float64 {
-				return dB(energy(window(s.mic, rate, from, to)), energy(window(y, rate, from, to)))
-			}
-			b, err := newBufferedCall(rate, frameMs, 200)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out, e := runBuffered(t, b, s.mic, s.far, micAt, farAt, frameMs)
-			stage := ratio(e, 8, 14)
-			t.Logf("jitter 0 to 30 ms: echo stage %.1f dB, chain %.1f dB over 8 to 14 s", stage, ratio(out, 8, 14))
-			// U6 fails, a reported finding (docs/testing.md); the test shows
-			// if that changes.
-			if stage < 15 {
-				t.Logf("U6 fails, a reported finding: echo stage %.1f dB with uneven timing, want at least 15", stage)
-			} else {
-				t.Errorf("U6 was a reported finding but now passes (%.1f dB); update docs/testing.md", stage)
-			}
-
-			// A 100 ms sender pause at 6 s, then a burst: reported only.
-			pause := append([]int(nil), farAt...)
-			for k := range pause {
-				if ms := pause[k]; ms >= 6000 && ms < 6100 {
-					pause[k] = 6100
+		for _, v := range variants {
+			t.Run(fmt.Sprintf("%dk_%s", rate/1000, v.name), func(t *testing.T) {
+				skipUnderRace(t)
+				c := scenarioCall(rate, frameMs, 30, fixedPath(rate, 32))
+				r := c.run(t, newVariant(t, rate, frameMs, 200, v.cancel))
+				stage := r.stage(rate, 8, 14)
+				chain := dB(energy(window(r.mic, rate, 8, 14)), energy(window(r.out, rate, 8, 14)))
+				t.Logf("32 ms echo, jitter 0 to 30 ms: echo stage %.1f dB, chain %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
+					stage, chain, r.missing)
+				// U6 fails in both variants, a reported finding (docs/testing.md); the
+				// test shows if that changes.
+				if stage < 15 {
+					t.Logf("U6 fails, a reported finding: echo stage %.1f dB, want at least 15", stage)
+				} else {
+					t.Errorf("U6 was a reported finding but now passes (%.1f dB); update docs/testing.md", stage)
 				}
-			}
-			b3, err := newBufferedCall(rate, frameMs, 200)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, e3 := runBuffered(t, b3, s.mic, s.far, micAt, pause, frameMs)
-			t.Logf("sender pause of 100 ms at 6 s: echo stage %.1f dB over 8 to 14 s, %.1f dB over 6 to 8 s",
-				ratio(e3, 8, 14), ratio(e3, 6, 8))
-		})
+
+				// A 100 ms application pause at 6 s, then a burst: reported only.
+				c.appAt = append([]int(nil), c.appAt...)
+				for k, ms := range c.appAt {
+					if ms >= 6000 && ms < 6100 {
+						c.appAt[k] = 6100
+					}
+				}
+				r3 := c.run(t, newVariant(t, rate, frameMs, 200, v.cancel))
+				t.Logf("application pause of 100 ms at 6 s: echo stage %.1f dB over 8 to 14 s, %.1f dB over 6 to 8 s",
+					r3.stage(rate, 8, 14), r3.stage(rate, 6, 8))
+			})
+		}
 	}
 }
 
-// TestBufferedIdleSender compares drain, which queues silence once the
-// sender stops, with captures that find nothing queued (criterion U7).
+// TestBufferedIdleSender compares drain, which sends and queues silence once
+// the application stops, with captures that find nothing queued (U7).
 func TestBufferedIdleSender(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
-		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
-			skipUnderRace(t)
-			n := 16 * rate
-			far := gate(testutil.WhiteNoise(n, 8000, testutil.Seed("integration/idle")), rate, []segment{{2, 14}})
-			noise := testutil.WhiteNoise(n, 30, testutil.Seed("integration/noise"))
-			mic := mix(convolve(far, echoPath(rate)), noise)
-			frame := rate * frameMs / 1000
-			frames := n / frame
-			at := make([]int, frames)
-			for k := range at {
-				at[k] = k * frameMs
-			}
-			stop := 14 * 1000 / frameMs // the sender sends nothing from 14 s on
-			b, err := newBufferedCall(rate, frameMs, 200)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, withSilence := runBuffered(t, b, mic, far, at, at[:stop], frameMs)
+		for _, v := range variants {
+			t.Run(fmt.Sprintf("%dk_%s", rate/1000, v.name), func(t *testing.T) {
+				skipUnderRace(t)
+				n := 16 * rate
+				frame := rate * frameMs / 1000
+				frames := n / frame
+				stop := 14 * 1000 / frameMs // the application writes nothing from 14 s on
+				far := gate(testutil.WhiteNoise(n, 8000, testutil.Seed("integration/idle")), rate, []segment{{2, 14}})
+				at := make([]int, frames)
+				for k := range at {
+					at[k] = k * frameMs
+				}
+				c := simCall{
+					frameMs: frameMs, app: far[:stop*frame], appAt: at[:stop], micAt: at, pendingMs: 200,
+					local: testutil.WhiteNoise(n, 30, testutil.Seed("integration/noise")),
+					path:  fixedPath(rate, 32),
+				}
+				r := c.run(t, newVariant(t, rate, frameMs, 200, v.cancel))
+				for i, x := range r.sent[stop*frame:] {
+					if x != 0 {
+						t.Fatalf("sample %d sent after the application stopped is %d, want silence", stop*frame+i, x)
+					}
+				}
 
-			// The counterfactual, which drain never does: no Playback after 14 s.
-			ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
-			if err != nil {
-				t.Fatal(err)
-			}
-			nothing := make([]int16, frames*frame)
-			for k := range frames {
-				if k < stop {
-					if err := ec.Playback(far[k*frame : (k+1)*frame]); err != nil {
+				// The counterfactual, which drain never does: no Playback after 14 s.
+				ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
+				if err != nil {
+					t.Fatal(err)
+				}
+				nothing := make([]int16, frames*frame)
+				for k := range frames {
+					if k < stop {
+						if err := ec.Playback(r.sent[k*frame : (k+1)*frame]); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if err := ec.Capture(r.mic[k*frame:(k+1)*frame], nothing[k*frame:(k+1)*frame]); err != nil {
 						t.Fatal(err)
 					}
 				}
-				if err := ec.Capture(mic[k*frame:(k+1)*frame], nothing[k*frame:(k+1)*frame]); err != nil {
-					t.Fatal(err)
+				gain := dB(energy(window(nothing, rate, 14.0, 14.3)), energy(window(r.echoed, rate, 14.0, 14.3)))
+				t.Logf("echo tail over 14.0 to 14.3 s: %.1f dB lower when silence is sent and queued", gain)
+				if gain < 10 {
+					t.Errorf("U7: queuing silence lowers the echo tail by %.1f dB, want at least 10", gain)
 				}
-			}
-			gain := dB(energy(window(nothing, rate, 14.0, 14.3)), energy(window(withSilence, rate, 14.0, 14.3)))
-			t.Logf("echo tail over 14.0 to 14.3 s: %.1f dB lower when silence is queued", gain)
-			if gain < 10 {
-				t.Errorf("U7: queuing silence lowers the echo tail by %.1f dB, want at least 10", gain)
-			}
-		})
+			})
+		}
 	}
 }
 
-// TestBufferedTwoGoroutines feeds the recipe from two producer goroutines
-// at irregular times and replays the observed order in one goroutine (U8).
+// variants are the two ways recipe B is measured: (i) Playback then Capture,
+// (ii) Cancel with the frame just sent.
+var variants = []struct {
+	name   string
+	cancel bool
+}{{"playback", false}, {"cancel", true}}
+
+// newVariant is newBufferedCall for one of the variants.
+func newVariant(t testing.TB, rate, frameMs, filterMs int, cancel bool) *bufferedCall {
+	b, err := newBufferedCall(rate, frameMs, filterMs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.cancel = cancel
+	return b
+}
+
+// replay passes sent frame k with received frame k to a new call of the same
+// variant, as drain does, and returns the canceller's output.
+func replay(t testing.TB, rate, frameMs, filterMs int, cancel bool, sent, mic []int16) []int16 {
+	b := newVariant(t, rate, frameMs, filterMs, cancel)
+	f := b.frame
+	out := make([]int16, f)
+	var got []int16
+	for k := 0; (k+1)*f <= len(mic); k++ {
+		var err error
+		if cancel {
+			err = b.receivedWith(mic[k*f:(k+1)*f], sent[k*f:(k+1)*f], out)
+		} else if err = b.played(sent[k*f : (k+1)*f]); err == nil {
+			err = b.received(mic[k*f:(k+1)*f], out)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, b.echoed...)
+	}
+	return got
+}
+
+// TestBufferedBurstSender writes 12 s of far end into the pending SPSC at
+// once and checks that the writer sends what Playback gets (U12).
+func TestBufferedBurstSender(t *testing.T) {
+	const frameMs, filterMs = 20, 256
+	for _, rate := range []int{8000, 16000} {
+		for _, v := range variants {
+			t.Run(fmt.Sprintf("%dk_%s", rate/1000, v.name), func(t *testing.T) {
+				skipUnderRace(t)
+				c := scenarioCall(rate, frameMs, 30, fixedPath(rate, 100))
+				f := rate * frameMs / 1000
+				first, last := 2*1000/frameMs, 14*1000/frameMs
+				c.app = c.app[first*f : last*f]
+				c.appAt = make([]int, last-first)
+				for k := range c.appAt {
+					c.appAt[k] = 2000 // the whole burst at once
+				}
+				c.pendingMs = 15000
+				r := c.run(t, newVariant(t, rate, frameMs, filterMs, v.cancel))
+				if len(r.sent) != len(r.mic) {
+					t.Fatalf("writer sent %d samples for %d received", len(r.sent), len(r.mic))
+				}
+				testutil.Compare(t, "replay of the sent frames", replay(t, rate, frameMs, filterMs, v.cancel, r.sent, r.mic), r.echoed)
+				stage := r.stage(rate, 8, 14)
+				t.Logf("burst of 12 s at 2 s, 100 ms echo, jitter 0 to 30 ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
+					stage, r.missing)
+				if stage < 15 {
+					t.Errorf("U12: echo stage %.1f dB, want at least 15", stage)
+				}
+			})
+		}
+	}
+}
+
+// TestBufferedTwoGoroutines runs the application, the network reader, the
+// writer and the processing goroutine concurrently (U8).
 func TestBufferedTwoGoroutines(t *testing.T) {
+	for _, v := range variants {
+		t.Run(v.name, func(t *testing.T) { twoGoroutines(t, v.cancel) })
+	}
+}
+
+func twoGoroutines(t *testing.T, cancel bool) {
 	const frameMs, rate = 20, 8000
 	seconds := 10
 	if testing.Short() {
 		seconds = 3
 	}
 	s := callScenario(rate, 1)
-	b, err := newBufferedCall(rate, frameMs, 200)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := newVariant(t, rate, frameMs, 200, cancel)
+	f := b.frame
 	frames := seconds * 1000 / frameMs
-	mic := s.mic[:frames*b.frame]
-	// Sample 0 of each sent frame is its index plus 1, so the processing
-	// goroutine can tell which one it queued; silence reads as 0.
-	far := append([]int16(nil), s.far[:frames*b.frame]...)
+	mic := s.mic[:frames*f]
+	// Sample 0 of each application frame is its index plus 1; silence reads 0.
+	app := append([]int16(nil), s.far[:frames*f]...)
 	for k := range frames {
-		far[k*b.frame] = int16(k + 1)
+		app[k*f] = int16(k + 1)
 	}
-	sent, rx, err := newBufferedRx(b)
+	pending, rx, toWriter, err := newBufferedHandoffs(b, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,111 +473,124 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 	defer stop.Store(true) // also when a check fails
-	produce := func(q *buffer.SPSC, x []int16, seed string) {
+	produce := func(q *buffer.SPSC, x []int16, burst int, seed string) {
 		defer wg.Done()
 		r := testutil.SplitMix64{State: testutil.Seed(seed)}
 		for k := 0; k < frames && !stop.Load(); {
-			if onPacket(q, x[k*b.frame:(k+1)*b.frame]) {
+			for i := 0; i < 1+r.Intn(burst) && k < frames; i++ {
+				if !onPacket(q, x[k*f:(k+1)*f]) {
+					break
+				}
 				k++
 			}
 			time.Sleep(time.Duration(r.Intn(2*frameMs*1000)) * time.Microsecond)
 		}
 	}
-	wg.Add(2)
-	go produce(rx, mic, t.Name()+"/rx")
-	go produce(sent, far, t.Name()+"/sent")
+	var written []int16 // read by the writer goroutine only, until wg.Wait
+	writer := func() {
+		defer wg.Done()
+		buf := make([]int16, f)
+		for !stop.Load() {
+			if toWriter.Len() >= f {
+				toWriter.Read(buf)
+				written = append(written, buf...)
+				continue
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+	wg.Add(3)
+	go produce(rx, mic, 1, t.Name()+"/rx")
+	go produce(pending, app, 4, t.Name()+"/app")
+	go writer()
 
-	fb, mb := make([]int16, b.frame), make([]int16, b.frame)
-	out := make([]int16, b.frame)
-	var got []int16
-	var queued []int // per received frame: the sent frame's index plus 1, or 0
+	fb, mb := make([]int16, f), make([]int16, f)
+	out := make([]int16, f)
+	var got, played []int16
 	deliver := func(x []int16) {
-		got = append(got, x...)
-		queued = append(queued, int(fb[0]))
+		got = append(got, b.echoed...)
+		played = append(played, fb...)
 	}
 	tick := time.NewTicker(time.Duration(frameMs) * time.Millisecond / 4)
 	defer tick.Stop()
 	deadline := time.Now().Add(time.Minute)
 	for len(got) < len(mic) && time.Now().Before(deadline) {
 		<-tick.C
-		if err := b.drain(sent, rx, fb, mb, out, deliver); err != nil {
+		if err := b.drainVariant(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if len(got) != len(mic) {
 		t.Fatalf("processed %d of %d received samples", len(got), len(mic))
 	}
-
-	// Replay: one queued frame per received frame, the same one, in order.
-	r, err := newBufferedCall(rate, frameMs, 200)
-	if err != nil {
-		t.Fatal(err)
+	for toWriter.Len() > 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
 	}
-	want := make([]int16, 0, len(mic))
-	o := make([]int16, b.frame)
-	silence := make([]int16, b.frame)
+	stop.Store(true)
+	wg.Wait()
+
+	if len(written) != len(played) {
+		t.Fatalf("writer sent %d samples, Playback got %d (the writer fell behind)", len(written), len(played))
+	}
+	testutil.Compare(t, "written against played", played, written)
 	next, silent := 1, 0
 	for k := range frames {
-		f := silence
-		if q := queued[k]; q != 0 {
-			if q != next {
-				t.Fatalf("received frame %d got sent frame %d, want %d (sent frames in order)", k, q-1, next-1)
-			}
-			f, next = far[(q-1)*b.frame:q*b.frame], next+1
-		} else {
+		switch m := int(written[k*f]); {
+		case m == 0:
 			silent++
+		case m != next:
+			t.Fatalf("sent frame %d is application frame %d, want %d (one per received frame, in order)", k, m-1, next-1)
+		default:
+			next++
 		}
-		if err := r.played(f); err != nil {
-			t.Fatal(err)
-		}
-		if err := r.received(mic[k*b.frame:(k+1)*b.frame], o); err != nil {
-			t.Fatal(err)
-		}
-		want = append(want, o...)
 	}
-	t.Logf("%d received frames, %d of them with silence queued", frames, silent)
-	testutil.Compare(t, "out", want, got)
+	t.Logf("%d received frames, %d with silence sent", frames, silent)
+	testutil.Compare(t, "replay", replay(t, rate, frameMs, 200, cancel, written, mic), got)
 }
 
-// TestNoAllocsBuffered checks that a processing tick of the buffered recipe,
-// both hand-offs included, allocates nothing (criterion U9).
+// TestNoAllocsBuffered checks that a processing tick of recipe B, all three
+// hand-offs included, allocates nothing (U9).
 func TestNoAllocsBuffered(t *testing.T) {
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
 			skipUnderRace(t)
-			b, err := newBufferedCall(rate, 20, 200)
-			if err != nil {
-				t.Fatal(err)
+			for _, v := range variants {
+				noAllocsBuffered(t, rate, v.cancel)
 			}
-			sent, rx, err := newBufferedRx(b)
-			if err != nil {
-				t.Fatal(err)
-			}
-			s := callScenario(rate, 1)
-			frames := len(s.mic) / b.frame
-			fb, mb, out := make([]int16, b.frame), make([]int16, b.frame), make([]int16, b.frame)
-			deliver := func([]int16) {}
-			k := 0
-			tick := func() {
-				if k%4 != 3 { // every 4th tick has no sent frame, so drain queues silence
-					onPacket(sent, s.far[k*b.frame:(k+1)*b.frame])
-				}
-				onPacket(rx, s.mic[k*b.frame:(k+1)*b.frame])
-				if err := b.drain(sent, rx, fb, mb, out, deliver); err != nil {
-					t.Fatal(err)
-				}
-				k = (k + 1) % frames
-			}
-			for range 12 * 50 { // past adaptation
-				tick()
-			}
-			testutil.AssertNoAllocs(t, 200, tick)
 		})
 	}
 }
 
+func noAllocsBuffered(t *testing.T, rate int, cancel bool) {
+	b := newVariant(t, rate, 20, 200, cancel)
+	pending, rx, toWriter, err := newBufferedHandoffs(b, 200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := callScenario(rate, 1)
+	frames := len(s.mic) / b.frame
+	fb, mb, out, wb := make([]int16, b.frame), make([]int16, b.frame), make([]int16, b.frame), make([]int16, b.frame)
+	deliver := func([]int16) {}
+	k := 0
+	tick := func() {
+		if k%4 != 3 { // every 4th tick has nothing pending, so drain sends silence
+			onPacket(pending, s.far[k*b.frame:(k+1)*b.frame])
+		}
+		onPacket(rx, s.mic[k*b.frame:(k+1)*b.frame])
+		if err := b.drainVariant(pending, rx, toWriter, fb, mb, out, deliver); err != nil {
+			t.Fatal(err)
+		}
+		toWriter.Read(wb) // the writer
+		k = (k + 1) % frames
+	}
+	for range 12 * 50 { // past adaptation
+		tick()
+	}
+	testutil.AssertNoAllocs(t, 200, tick)
+}
+
 // TestBufferedLagAndDelay reports the echo stage against the far end's lag,
-// the echo delay and the jitter (reported only, added after a U6 result).
+// the echo delay and the jitter (reported only).
 func TestBufferedLagAndDelay(t *testing.T) {
 	skipUnderRace(t)
 	const frameMs = 20
@@ -412,32 +615,15 @@ func TestBufferedLagAndDelay(t *testing.T) {
 				}
 				t.Logf("%d Hz, echo delay %d ms: Cancel with the far end %d frames late, echo stage %.1f dB", rate, delayMs, lag, erle(e))
 			}
-			n := len(mic) / frame
-			for _, j := range []int{0, 2, 5, 10, 30} {
-				b, err := newBufferedCall(rate, frameMs, 200)
-				if err != nil {
-					t.Fatal(err)
+			for _, v := range variants {
+				for _, j := range []int{0, 30} {
+					r := scenarioCall(rate, frameMs, j, fixedPath(rate, delayMs)).run(t, newVariant(t, rate, frameMs, 200, v.cancel))
+					t.Logf("%d Hz, echo delay %d ms: drain (%s), jitter 0 to %d ms, echo stage %.1f dB, %d frames with echo of unsent frames",
+						rate, delayMs, v.name, j, r.stage(rate, 8, 14), r.missing)
 				}
-				_, e := runBuffered(t, b, mic, base.far, arrivals(n, frameMs, j, "integration/buffered/mic"),
-					arrivals(n, frameMs, j, "integration/buffered/far"), frameMs)
-				t.Logf("%d Hz, echo delay %d ms: drain, jitter 0 to %d ms, echo stage %.1f dB", rate, delayMs, j, erle(e))
 			}
 		}
 	}
-}
-
-// delayedCall is the call scenario with the echo path's bulk delay at
-// delayMs, or stepping from delayMs to stepMs at stepAt seconds.
-func delayedCall(rate, delayMs, stepMs int, stepAt float64) (mic, far []int16) {
-	base := callScenario(rate, 1)
-	echo := convolve(base.far, room(rate, "integration/path", delayMs, delayMs+48, 16384))
-	if stepMs != delayMs {
-		after := convolve(base.far, room(rate, "integration/path", stepMs, stepMs+48, 16384))
-		k := int(stepAt * float64(rate))
-		copy(echo[k:], after[k:])
-	}
-	noise := testutil.WhiteNoise(len(base.far), 30, testutil.Seed("integration/noise"))
-	return mix(echo, base.near, noise), base.far
 }
 
 // TestBufferedLongDelay checks recipe B at echo delays of 100 and 200 ms
@@ -446,83 +632,78 @@ func TestBufferedLongDelay(t *testing.T) {
 	skipUnderRace(t)
 	const frameMs, filterMs = 20, 256
 	for _, rate := range []int{8000, 16000} {
-		frame := rate * frameMs / 1000
-		run := func(mic, far []int16) []int16 {
-			b, err := newBufferedCall(rate, frameMs, filterMs)
-			if err != nil {
-				t.Fatal(err)
+		for _, v := range variants {
+			run := func(path func(int) []tap) simResult {
+				return scenarioCall(rate, frameMs, 30, path).run(t, newVariant(t, rate, frameMs, filterMs, v.cancel))
 			}
-			n := len(mic) / frame
-			_, e := runBuffered(t, b, mic, far, arrivals(n, frameMs, 30, "integration/buffered/mic"),
-				arrivals(n, frameMs, 30, "integration/buffered/far"), frameMs)
-			return e
-		}
-		for _, delayMs := range []int{100, 200} {
-			t.Run(fmt.Sprintf("%dk_%dms", rate/1000, delayMs), func(t *testing.T) {
-				mic, far := delayedCall(rate, delayMs, delayMs, 0)
-				e := run(mic, far)
-				stage := dB(energy(window(mic, rate, 8, 14)), energy(window(e, rate, 8, 14)))
-				t.Logf("echo delay %d ms, jitter 0 to 30 ms, filter %d ms: echo stage %.1f dB over 8 to 14 s", delayMs, filterMs, stage)
-				if stage < 15 {
-					t.Errorf("U11: echo stage %.1f dB, want at least 15", stage)
+			for _, delayMs := range []int{100, 200} {
+				t.Run(fmt.Sprintf("%dk_%dms_%s", rate/1000, delayMs, v.name), func(t *testing.T) {
+					r := run(fixedPath(rate, delayMs))
+					stage := r.stage(rate, 8, 14)
+					t.Logf("echo delay %d ms, jitter 0 to 30 ms, filter %d ms: echo stage %.1f dB over 8 to 14 s; %d frames with echo of unsent frames",
+						delayMs, filterMs, stage, r.missing)
+					if stage < 15 {
+						t.Errorf("U11: echo stage %.1f dB, want at least 15", stage)
+					}
+				})
+			}
+			t.Run(fmt.Sprintf("%dk_step_100_140ms_%s", rate/1000, v.name), func(t *testing.T) {
+				p100, p140 := fixedPath(rate, 100), fixedPath(rate, 140)
+				stepAt := 8 * rate
+				r := run(func(i int) []tap {
+					if i < stepAt {
+						return p100(i)
+					}
+					return p140(i)
+				})
+				recovered := -1.0
+				for w := 8.0; w+0.5 <= 14; w += 0.5 {
+					if r.stage(rate, w, w+0.5) >= 10 {
+						recovered = w - 8
+						break
+					}
 				}
+				before := r.stage(rate, 6, 8)
+				if recovered < 0 {
+					t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB not reached again before 14 s", before)
+					return
+				}
+				t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB again after %.1f s", before, recovered)
 			})
 		}
-		t.Run(fmt.Sprintf("%dk_step_100_140ms", rate/1000), func(t *testing.T) {
-			mic, far := delayedCall(rate, 100, 140, 8)
-			e := run(mic, far)
-			recovered := -1.0
-			for w := 8.0; w+0.5 <= 14; w += 0.5 {
-				if dB(energy(window(mic, rate, w, w+0.5)), energy(window(e, rate, w, w+0.5))) >= 10 {
-					recovered = w - 8
-					break
-				}
-			}
-			before := dB(energy(window(mic, rate, 6, 8)), energy(window(e, rate, 6, 8)))
-			if recovered < 0 {
-				t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB not reached again before 14 s", before)
-				return
-			}
-			t.Logf("delay step 100 to 140 ms at 8 s: echo stage %.1f dB over 6 to 8 s; 10 dB again after %.1f s", before, recovered)
-		})
 	}
 }
 
 // TestBufferedLagIsOneFrame checks that drain without jitter equals Cancel
-// with the far end one frame late, the first sent frame lost (mdf.c:656).
+// with the sent frames one frame late, the first one lost (mdf.c:656).
 func TestBufferedLagIsOneFrame(t *testing.T) {
 	skipUnderRace(t)
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
-			s := callScenario(rate, 1)
-			frame := rate * frameMs / 1000
-			n := len(s.mic) / frame
-			at := make([]int, n)
-			for k := range at {
-				at[k] = k * frameMs
-			}
 			b, err := newBufferedCall(rate, frameMs, 200)
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, got := runBuffered(t, b, s.mic, s.far, at, at, frameMs)
+			r := scenarioCall(rate, frameMs, 0, fixedPath(rate, 100)).run(t, b)
+			frame := b.frame
+			n := len(r.mic) / frame
 
 			// Received frame k cancels against sent frame k-1; frames 0 and 1
 			// against silence, because Playback before the first Capture is lost.
 			ref := make([]int16, n*frame)
-			copy(ref[2*frame:], s.far[frame:(n-1)*frame])
+			copy(ref[2*frame:], r.sent[frame:(n-1)*frame])
 			ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
 			if err != nil {
 				t.Fatal(err)
 			}
 			want := make([]int16, n*frame)
 			for i := 0; i < n*frame; i += frame {
-				if err := ec.Cancel(s.mic[i:i+frame], ref[i:i+frame], want[i:i+frame]); err != nil {
+				if err := ec.Cancel(r.mic[i:i+frame], ref[i:i+frame], want[i:i+frame]); err != nil {
 					t.Fatal(err)
 				}
 			}
-			testutil.Compare(t, "echoed", want, got)
+			testutil.Compare(t, "echoed", want, r.echoed)
 		})
 	}
 }
