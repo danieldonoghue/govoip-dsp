@@ -81,7 +81,7 @@ audio path and a device or network goroutine without blocking either side
 The library is built in numbered work packages (WP). Commit messages,
 acceptance criteria and ADR names cite them, for example
 `docs/decisions/wp0-harness.md`. A suffix letter (WP1b) marks a follow-up
-to the same component. S1 to S5 are stretch items, which start after WP9.
+to an earlier work package. S1 to S5 are stretch items, which start after WP9.
 
 | WP | Scope | Paths | Depends on | Parity | Status |
 |---|---|---|---|---|---|
@@ -98,8 +98,9 @@ to the same component. S1 to S5 are stretch items, which start after WP9.
 | WP5b | Preprocess frame-size check, `SupportedFrameSize` | `preprocess` | WP5 | bit-exact | Validated |
 | WP6 | Echo canceller (MDF) | `echo` | WP3 | bit-exact | Validated |
 | WP6b | Parallel reference subtests | `echo`, `preprocess` tests | WP5, WP6 | bit-exact | Validated |
-| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | n/a | In progress |
-| WP8 | Developer documentation | package docs, examples, root package `govoipdsp`, `docs/` | WP7 | n/a | Planned |
+| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | bit-exact (echo and preprocess pairing) | Implemented (two criteria fail at 48 kHz) |
+| WP7b | Zero-value safety: frame methods return `ErrConfig` on a zero value | `echo`, `resample`, `agc` | WP7 | bit-exact (unchanged on valid input) | Planned |
+| WP8 | Developer documentation | package docs, examples, root package `govoipdsp`, `docs/` | WP7, WP7b | n/a | Planned |
 | WP9 | Performance | `internal/kernels`, hot paths | WP8 | bit-exact with the portable code | Planned |
 | S1 | Jitter buffer | `jitter` | WP9 | to be decided | Planned |
 | S2 | Clock-drift controller | `resample` extension | WP9 | behavioural | Planned |
@@ -121,13 +122,38 @@ Recorded so it is not lost; none of it is scheduled.
 2. **slin byte conversion.** Little-endian `[]byte` to `[]int16` and back
    belongs in the planned codec repository
    ([ADR `codecs-separate-repo`](decisions/codecs-separate-repo.md)).
-3. **AGC noise input.** If WP7 shows residual noise above the AGC gate after
-   `preprocess`, the preprocess noise estimate could be fed to `agc`, which
-   changes the `agc` API
-   ([ADR `wp4-noise-protection`](decisions/wp4-noise-protection.md)).
+3. **AGC noise input.** After `preprocess`, with the default gate of
+   -50 dBFS, the AGC raises white noise from about -40 dBFS and pink noise
+   from about -52 dBFS at the input by 16 to 23 dB
+   ([testing.md](testing.md#whole-chain-measurements-integration-wp7)).
+   A higher default gate, or the preprocess noise estimate fed to `agc`
+   (an `agc` API change), needs a decision
+   ([ADR `wp7-agc-noise`](decisions/wp7-agc-noise.md)).
 4. **Faster reference tests.** The `echo` and `preprocess` reference tests
    run in parallel. Further cuts that change test names or test content
    are separate decisions, taken after a CPU profile
    ([ADR `wp6b-parallel-tests`](decisions/wp6b-parallel-tests.md)). CI
    keeps `-timeout 20m` until its run times show it can go
    ([testing.md](testing.md#race-detector-and-short-mode)).
+5. **48 kHz echo stage.** Trace why the echo stage cancels less on the
+   chain resampled from 48 kHz, where criteria B1 and B3 fail
+   ([testing.md](testing.md#whole-chain-measurements-integration-wp7)).
+6. **Recipe A backlog policy.** After a processing stall, recipe A hands
+   the writer a burst, which Asterisk plays as it arrives, so the echo
+   shifts. A drop or re-timing policy is a design decision
+   ([usage.md](usage.md#recipe-a-sending-paced-by-the-received-frames)).
+7. **Short echo delays.** Both recipes fail criterion U6, a 32 ms echo
+   with up to 30 ms of jitter
+   ([ADR `wp7-recipes`](decisions/wp7-recipes.md)).
+8. **Clock drift in recipe B.** `Playback` and `Capture` do not correct
+   drift between the two callbacks; S2 is the place for it
+   ([usage.md](usage.md#recipe-b-separate-capture-and-playback-callbacks)).
+9. **Shorter real-time goroutine tests.** `TestPacedFourGoroutines` and
+   `TestBufferedTwoGoroutines` run in real time, about 10 s each
+   ([testing.md](testing.md#race-detector-and-short-mode)).
+   `TestPacedFourGoroutines` fails if its writer goroutine is starved for
+   more than 200 ms, the capacity of its SPSC.
+10. **Apple `container` for fixtures.** Apple's `container` tool as an
+    option next to Docker for the linux/arm64 fixture container; amd64
+    stays on Docker or the Linux VM. Fixtures regenerated with it must
+    match every committed hash.
