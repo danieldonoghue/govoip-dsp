@@ -138,6 +138,9 @@ func TestReferenceCaseList(t *testing.T) {
 func TestReferenceEcho(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
 	for _, c := range sortedCases() {
+		if raceEnabled && !fullInPartial(c) {
+			continue // no goroutines here: -race adds run time, not coverage
+		}
 		if partialCheck() && c.longBlocks > 0 {
 			// A leading part of a long run is the same as a 60 s case's.
 			c.longBlocks = 1
@@ -149,10 +152,10 @@ func TestReferenceEcho(t *testing.T) {
 	}
 }
 
-// fullInPartial reports whether a -short run still checks c in full: one
-// configuration per scenario, one that reaches the internal reset for diverge.
+// fullInPartial: in partial runs one configuration per scenario is checked
+// in full (for diverge one that resets); under -race only these run.
 func fullInPartial(c refCase) bool {
-	if raceEnabled || c.longBlocks > 0 {
+	if c.longBlocks > 0 {
 		return false
 	}
 	if c.scenario == "diverge" {
@@ -321,7 +324,8 @@ func opsForSamples(o []int32, fs, n int) int {
 func TestReferenceWithoutResidualCalls(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
 	for _, c := range sortedCases() {
-		if c.longBlocks > 0 || c.rate > 16000 && !strings.HasPrefix(c.name, "capture") {
+		if c.longBlocks > 0 || c.rate > 16000 && !strings.HasPrefix(c.name, "capture") ||
+			raceEnabled && !fullInPartial(c) {
 			continue
 		}
 		t.Run(c.name, func(t *testing.T) {

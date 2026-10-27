@@ -583,6 +583,9 @@ func edges(rate, frame int) signals {
 // they are built for.
 func TestEdgesHitBoundaries(t *testing.T) {
 	for _, rate := range rates {
+		if raceEnabled && rate > 16000 {
+			continue // generator check only; -race adds run time, not coverage
+		}
 		for _, fms := range frameMss {
 			fs := msToSamples(rate, fms)
 			s := edges(rate, fs)

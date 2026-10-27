@@ -766,13 +766,21 @@ first 2 s, which `TestCappedInputsArePrefixes` shows equal the full inputs
 there. These prefixes are weak: the `out` prefix (0.07 to 0.4 s) is mostly
 from before adaptation, every committed `residual` prefix is zero (the
 echo estimate is still empty), and ops after 1 s (the reset, rate changes
-and `diverge` events) do not run. So under `-short` (not `-race`) one
-configuration per scenario is still checked in full: 8 kHz, 10 ms, 64 ms,
-and for `diverge` 16 kHz, 20 ms, 64 ms, which reaches the internal reset.
-Under `-race` the test stays prefix-only to keep the run near 275 s; the
-package has no concurrency, and CI runs the full `go test` on every
-runner. The scenario measurements run one configuration (16 kHz, 10 ms,
-128 ms) in both modes.
+and `diverge` events) do not run. So under `-short` one configuration per
+scenario is still checked in full: 8 kHz, 10 ms, 64 ms, and for `diverge`
+16 kHz, 20 ms, 64 ms, which reaches the internal reset.
+
+Under `-race` only those full checks run, in `TestReferenceEcho` and
+`TestReferenceWithoutResidualCalls`; the other cases are skipped, along
+with the 32 and 48 kHz rows of `TestEdgesHitBoundaries`, and the scenario
+measurements run `farend` only. The package starts no goroutines and uses
+no `sync`, so the race detector adds run time there, not coverage; the
+normal `go test` checks all 395 cases in full. `go test -race ./echo`
+takes 105 s on the M1 Pro, down from 489 s (the coordinator's run of the
+previous handoff). Swapping `q07` and `q03` in the adaptation mask
+(`mdf.go:668`) is caught under `-race` by both reference tests. Under
+`-short` (no race) the scenario measurements run one configuration (16
+kHz, 10 ms, 128 ms).
 
 ## Speech
 

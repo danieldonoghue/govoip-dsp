@@ -241,8 +241,8 @@ func TestScenarioMeasurements(t *testing.T) {
 	var lines []string
 	failed := 0
 	for _, c := range sortedCases() {
-		if c.longBlocks > 0 {
-			continue
+		if c.longBlocks > 0 || raceEnabled && c.scenario != "farend" {
+			continue // under -race only farend: run time, no race coverage
 		}
 		if partialCheck() && !(c.rate == 16000 && c.frameMs == 10 && c.filterMs == 128) {
 			continue
