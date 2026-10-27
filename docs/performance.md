@@ -284,8 +284,10 @@ receive path from 16 kHz back to 48 kHz. Input: the 40 s synthetic call
 scenario (`docs/acceptance/integration.md`) repeated, 10 minutes per
 configuration after 2 s of warm-up.
 
-Mac (MacBookPro18,1, Apple M1 Pro, 10 cores, macOS 27.0.1, Go 1.26.5),
-2026-10-27, load average 2.3 to 3.1 from other processes:
+Mac (MacBookPro18,1, Apple M1 Pro, 10 cores, arm64, macOS 27.0.1, Go
+1.26.5), 2026-10-27, load average 2.3 to 3.1 from other processes. Every
+path is portable Go, so no CPU feature beyond the base arm64 instruction
+set is selected:
 
 ```sh
 CGO_ENABLED=0 go test ./integration -run TestRealTimeBudget -budget -count=1 -v -timeout 60m

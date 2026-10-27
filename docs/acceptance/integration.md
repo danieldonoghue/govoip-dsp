@@ -240,7 +240,16 @@ allocations by other goroutines are no longer counted against it.
 
 The LibriSpeech cache that `make speech` fills holds 20 utterances of one
 speaker (1272). The speech variant uses the utterances of one chapter as
-far end and of another chapter as near end. Its thresholds are unchanged.
+far end and of another chapter as near end, and scales the near end by
+1/4 so that its level is close to the synthetic near end (-36 dBFS on
+active frames, against -33 dBFS). Its thresholds are unchanged.
+
+### Budget input repeats one 40 s repetition (during the implementation)
+
+The 10-minute budget loops one 40 s repetition of the call scenario
+rather than repetitions with new seeds. The work per frame does not
+depend on the seed, so the timing is the same; the bit-exact 10-minute
+cases use new seeds as registered.
 
 ### B1 and B3 fail at 48 kHz, reported as a finding (after measurement)
 
