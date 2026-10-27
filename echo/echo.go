@@ -115,9 +115,9 @@ func (c *Canceller) SetSampleRate(rate int) error {
 // Cancel is speex_echo_cancellation: it removes the echo of far from mic
 // and writes the result to out. mic is the microphone frame and far the
 // loudspeaker frame that the echo in mic comes from; see the package doc
-// for alignment. Each slice must hold exactly FrameSize samples, and out
-// must not overlap mic. Otherwise it returns ErrBufferSize and does
-// nothing.
+// for alignment. Each slice must hold exactly FrameSize samples, or it
+// returns ErrBufferSize and does nothing. out must not overlap mic or far;
+// overlap is not detected.
 func (c *Canceller) Cancel(mic, far, out []int16) error {
 	fs := c.st.frameSize
 	if len(mic) != fs || len(far) != fs || len(out) != fs {
