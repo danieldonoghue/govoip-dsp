@@ -454,3 +454,20 @@ stage in U6, U11 and U12, `docs/usage.md` makes (ii) its main recipe A
 and keeps `Playback`/`Capture` as recipe B for capture and playback
 delivered on separate callbacks; otherwise (i) stays recipe B, with the
 reasons stated.
+
+### Outcome of the two-way measurement, and U6 again (after measurement)
+
+Measured through the simulated call, both variants meet U7 to U12 and
+fail U6: (i) 8.9 and 9.5 dB, (ii) 11.1 and 10.7 dB at 8 and 16 kHz. U6
+keeps its threshold and is pinned again as a reported finding, in both
+variants. In U6, 470 of the 2000 received frames would have needed echo
+of frames not yet sent, so with up to 30 ms of jitter a 32 ms echo is not
+a physical call in this design.
+
+By the rule registered before measuring, (ii) is not clearly better: it
+is better in U6 and in U11 at 16 kHz, but worse in U11 at 8 kHz (by 0.1
+and 0.2 dB) and in U12 (by 0.3 and 1.2 dB). So (i), `Playback` then
+`Capture`, stays recipe B, and `docs/usage.md` keeps its two recipes as
+they are. (ii) avoids (i)'s one-frame lag, which matters only for echoes
+shorter than realistic calls give; the tests keep measuring it
+(`drainWith`) for comparison. Figures in `docs/testing.md`.
