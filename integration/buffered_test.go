@@ -162,6 +162,7 @@ func TestBufferedUnevenTiming(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
 			s := callScenario(rate, 1)
 			frame := rate * frameMs / 1000
 			n := len(s.mic) / frame
@@ -209,6 +210,7 @@ func TestBufferedIdleSender(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
 			n := 16 * rate
 			far := gate(testutil.WhiteNoise(n, 8000, testutil.Seed("integration/idle")), rate, []segment{{2, 14}})
 			noise := testutil.WhiteNoise(n, 30, testutil.Seed("integration/noise"))
@@ -352,6 +354,7 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 func TestNoAllocsBuffered(t *testing.T) {
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
 			b, err := newBufferedCall(rate, 20)
 			if err != nil {
 				t.Fatal(err)
@@ -384,6 +387,7 @@ func TestNoAllocsBuffered(t *testing.T) {
 // TestBufferedLagAndDelay reports the echo stage against the far end's lag,
 // the echo delay and the jitter (reported only, added after a U6 result).
 func TestBufferedLagAndDelay(t *testing.T) {
+	skipUnderRace(t)
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		frame := rate * frameMs / 1000

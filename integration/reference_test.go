@@ -132,6 +132,14 @@ func TestReferenceCaseList(t *testing.T) {
 // committed prefixes: in -short mode and under the race detector.
 func partialCheck() bool { return testing.Short() || raceEnabled }
 
+// skipUnderRace skips single-goroutine work under -race, by the WP7 rule of
+// docs/contracts.md section 9; the normal go test runs it in full.
+func skipUnderRace(t testing.TB) {
+	if raceEnabled {
+		t.Skip("single-goroutine work, skipped under -race (docs/contracts.md section 9); the normal go test runs it")
+	}
+}
+
 // fullInPartial names the cases that partial runs still compare in full:
 // one per echo mode and the resampled chain, each a few seconds of work.
 func fullInPartial(c refCase) bool {

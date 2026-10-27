@@ -90,7 +90,7 @@ func (r *chainRig) step(t testing.TB) {
 // -budget (T1 to T3), else 10 s, checking only that no GC runs.
 func TestRealTimeBudget(t *testing.T) {
 	if raceEnabled && !*budget {
-		t.Skip("timing under the race detector means nothing; the chain's code runs in the other tests")
+		t.Skip("timing under the race detector means nothing; single-goroutine work, skipped under -race (docs/contracts.md section 9)")
 	}
 	seconds := 10
 	if *budget {
@@ -165,6 +165,7 @@ func BenchmarkChain(b *testing.B) {
 func TestNoAllocsChain(t *testing.T) {
 	for _, bc := range budgetConfigs() {
 		t.Run(bc.name, func(t *testing.T) {
+			skipUnderRace(t)
 			r := newChainRig(t, bc, 1)
 			for range 12 * 1000 / bc.frameMs {
 				r.step(t)

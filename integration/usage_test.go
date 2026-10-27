@@ -210,6 +210,7 @@ func TestDrainDropsBacklog(t *testing.T) {
 func TestNoAllocsRecipe(t *testing.T) {
 	for _, netRate := range []int{8000, 16000, 48000} {
 		t.Run(fmt.Sprintf("%dk", netRate/1000), func(t *testing.T) {
+			skipUnderRace(t)
 			c, err := newCall(netRate, 20)
 			if err != nil {
 				t.Fatal(err)

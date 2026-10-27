@@ -147,6 +147,7 @@ func TestPipelineCall(t *testing.T) {
 	cfgs := []cfg{{8000, 10, nil}, {8000, 20, nil}, {16000, 10, nil}, {16000, 20, nil}, {48000, 20, []string{"B1", "B3"}}}
 	for _, k := range cfgs {
 		t.Run(fmt.Sprintf("%dk_%dms", k.netRate/1000, k.frameMs), func(t *testing.T) {
+			skipUnderRace(t)
 			f := measureCall(t, callScenario(k.netRate, 1), k.netRate, k.frameMs)
 			t.Log(f)
 			f.check(t, k.findings...)
@@ -159,6 +160,7 @@ func TestPipelineCall(t *testing.T) {
 func TestPipelineSpeech(t *testing.T) {
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk_20ms", rate/1000), func(t *testing.T) {
+			skipUnderRace(t)
 			s := speechScenario(t, rate)
 			f := measureCall(t, s, rate, 20)
 			t.Logf("far %.1f dBFS, near %.1f dBFS active", must(activeDBFS(s.far, rate)), must(activeDBFS(s.near, rate)))
@@ -179,6 +181,7 @@ func TestReceivePath(t *testing.T) {
 	for _, p := range [][2]int{{8000, 48000}, {16000, 48000}, {48000, 16000}} {
 		in, out := p[0], p[1]
 		t.Run(fmt.Sprintf("%dk_to_%dk", in/1000, out/1000), func(t *testing.T) {
+			skipUnderRace(t)
 			cfg := resample.Config{Channels: 1, InRate: in, OutRate: out, Quality: resample.QualityVoIP}
 			r, err := resample.New(cfg)
 			if err != nil {
@@ -216,6 +219,7 @@ func TestReceivePath(t *testing.T) {
 // TestFinding48k reports the measurements behind the 48 kHz finding of
 // docs/testing.md. It asserts nothing; TestPipelineCall pins the finding.
 func TestFinding48k(t *testing.T) {
+	skipUnderRace(t)
 	s48 := callScenario(48000, 1)
 	for _, q := range []int{resample.QualityVoIP, resample.QualityDesktop, resample.QualityMax} {
 		c, err := newCall(48000, 20)

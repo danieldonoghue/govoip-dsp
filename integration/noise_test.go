@@ -22,6 +22,7 @@ func TestNoiseThroughSendChain(t *testing.T) {
 		for _, g := range gens {
 			for _, amp := range []int16{2000, 600, 200, 60} {
 				t.Run(fmt.Sprintf("%dk_%s_%d", rate/1000, g.name, amp), func(t *testing.T) {
+					skipUnderRace(t)
 					frame := rate / 50
 					pre, err := preprocess.New(preprocess.Config{SampleRate: rate, FrameSize: frame})
 					if err != nil {
