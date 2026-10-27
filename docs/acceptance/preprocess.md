@@ -208,3 +208,36 @@ are equivalent and cannot be caught: `n >= 0` and `n <= MaxFrameSize+1`
 give the same answers, because `fft.Supported` rejects 0 and 4098. The
 criterion now asks for the off-by-ones that change the result, which the
 test catches (`docs/testing.md`). The test is unchanged.
+
+### Reference and sanity tests run in parallel (WP6b)
+
+WP6b lets independent tests and subtests run in parallel, to cut the wall
+time of `go test ./preprocess`, mainly under `-race`. The change touches
+test files only. It is accepted when:
+
+1. **Same cases in every mode.** In the normal run, under `-short` and
+   under `-race`, the same cases run with the same comparisons as before.
+   `go test -v` on `master` and on the branch list the same passed and
+   skipped tests and subtests in each mode. The partial comparisons under
+   `-short` and `-race` stay as `docs/testing.md` states them.
+2. **Comparisons still run.** Changing `qcurve`'s 512 to 511 is still
+   caught by `TestReferenceRun` in the normal run, under `-short` and
+   under `-race`, and changing `min_range` 300 to 301 is still caught in
+   the normal run by `8000_80_vlong`. Each mutation is reverted
+   afterwards.
+3. **No shared mutable state.** Parallel tests and subtests share only
+   data that is read-only after it is made, or data behind a lock. The
+   review shows this from the code for each parallel test, including
+   every package-level variable they reach.
+4. **No new flakiness.** `go test -count=3`, `go test -short -count=3`
+   and `go test -race -count=3` of the package pass. The zero-allocation
+   tests do not run at the same time as parallel tests.
+5. **Measured.** The wall time of `go test`, `go test -short` and
+   `go test -race` of the package is measured on the Mac on `master` and
+   on the branch, on an otherwise idle machine, and recorded in
+   `docs/testing.md` with the date and the core count. There is no
+   numeric target; a change that does not reduce the time is reported as
+   such.
+6. `make check` and `make race` pass.
+
+This changes how the tests are scheduled and relaxes nothing.

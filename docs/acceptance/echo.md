@@ -214,3 +214,35 @@ sample values with the port's own pre-emphasis, which depends only on the
 microphone samples), and `TestEdgesHitBoundaries` checks that they do. It
 runs in all 24 configurations like the other scenarios. This widens the
 tested domain and relaxes nothing.
+
+### Reference tests run in parallel (WP6b)
+
+WP6b makes the independent reference cases run as parallel subtests, to
+cut the wall time of `go test ./echo`. The change touches test files only.
+It is accepted when:
+
+1. **Same cases in every mode.** In the normal run, under `-short` and
+   under `-race`, the same cases run with the same comparisons as before.
+   `go test -v` on `master` and on the branch list the same passed and
+   skipped tests and subtests in each mode. A test that gains subtests
+   is named here, and its subtests are exactly the cases it ran before.
+   The `-race` subset stays as `docs/testing.md` states it.
+2. **Comparisons still run.** Swapping `q07` and `q03` in the adaptation
+   mask (`mdf.go:668`) is still caught by both reference tests, in the
+   normal run and under `-race`. The mutation is reverted afterwards.
+3. **No shared mutable state.** Parallel subtests share only data that is
+   read-only after it is made, or data behind a lock. The review shows
+   this from the code for each parallel test, including the generated
+   inputs and every package-level variable they reach.
+4. **No new flakiness.** `go test -count=3`, `go test -short -count=3`
+   and `go test -race -count=3` of the package pass. The zero-allocation
+   tests do not run at the same time as parallel tests.
+5. **Measured.** The wall time of `go test`, `go test -short` and
+   `go test -race` of the package is measured on the Mac on `master` and
+   on the branch, on an otherwise idle machine, and recorded in
+   `docs/testing.md` with the date and the core count. There is no
+   numeric target; a change that does not reduce the time is reported as
+   such.
+6. `make check` and `make race` pass.
+
+This changes how the tests are scheduled and relaxes nothing.
