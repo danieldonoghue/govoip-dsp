@@ -32,9 +32,8 @@ type tap struct {
 	v   int32
 }
 
-// room returns a synthetic echo path: a bulk delay, a dense 2 ms early part
-// and 48 sparse reflections decaying linearly to tailMs. gain is the Q15
-// peak tap.
+// room returns an echo path: a bulk delay, a dense 2 ms early part and 48
+// sparse reflections decaying linearly to tailMs; gain is the Q15 peak tap.
 func room(rate int, seed string, delayMs, tailMs int, gain int32) []tap {
 	r := testutil.SplitMix64{State: testutil.Seed(seed)}
 	d := rate * delayMs / 1000
@@ -118,9 +117,8 @@ func gate(x []int16, rate int, segs []segment) []int16 {
 	return y
 }
 
-// call holds the inputs of a call scenario: far is what the far end plays,
-// near the talker at the microphone, echo the far end through the echo
-// path, and mic what the microphone hears.
+// callSignals holds a call scenario: the far end, the near talker, the far
+// end through the echo path, and mic, what the microphone hears.
 type callSignals struct {
 	rate                 int
 	far, near, echo, mic []int16
@@ -140,10 +138,8 @@ func callScenario(rate, reps int) callSignals {
 	return callSignals{rate: rate, far: far, near: near, echo: echo, mic: mix(echo, near, noise)}
 }
 
-// speechScenario is the call scenario with LibriSpeech utterances of one
-// chapter as far end and of another chapter as near end, at rate (8 or 16
-// kHz). The cache may hold a single speaker. It skips when the speech files
-// are absent.
+// speechScenario is the call scenario with LibriSpeech chapters as far and
+// near end, at 8 or 16 kHz; it skips without the speech files.
 func speechScenario(t testing.TB, rate int) callSignals {
 	paths := testutil.SpeechFiles(t)
 	n16 := scenarioSeconds * testutil.SpeechRate

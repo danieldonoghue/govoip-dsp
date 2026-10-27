@@ -118,7 +118,7 @@ Every size comes from the rate and the frame duration:
 | SPSC hand-off | 200 ms of network audio | 1600 | 9600 |
 | Output | 2 × frame (one frame per call in practice) | 320 | 640 |
 
-`New` allocates everything here once. Nothing on the per-frame path
+`newCall` allocates everything here once. Nothing on the per-frame path
 allocates (`TestNoAllocsRecipe`). `Example_call` prints the sizes for 8,
 16 and 48 kHz.
 
@@ -156,7 +156,11 @@ every later frame boundary.
 func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 	far func() []int16, deliver func([]int16)) error {
 	if rx.Len() > maxBacklog {
-		rx.Consume(rx.Len() - c.netFrame) // after a stall, keep the newest frame
+		// After a stall keep the newest frame, and skip the far frames of
+		// the dropped ones so that each frame keeps its far frame.
+		for range rx.Consume(rx.Len()-c.netFrame) / c.netFrame {
+			far()
+		}
 	}
 	for rx.Len() >= c.netFrame {
 		rx.Read(mic)
@@ -175,14 +179,20 @@ func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
   was sent.
 - After a stall the SPSC holds a backlog of old audio. `drain` drops all
   but the newest frame (`buffer.SPSC.Consume`, "Dropping a backlog" in the
-  `buffer` package doc). Dropping received frames moves the far end
-  relative to its echo, so the canceller must re-adapt and some echo can
-  pass for a moment.
+  `buffer` package doc), and takes and discards one far frame for each
+  dropped frame, so that if `far` returns the sent frames in order, every
+  processed frame keeps the far frame sent with it. The far end played
+  during the stall then has no echo reference, and the canceller does no
+  delay estimation, so keeping this pairing is the caller's job.
+- A packet that `onPacket` drops has no processed frame, so its far frame
+  must be skipped too; the recipe does not do that. Size the SPSC so that
+  `onPacket` does not drop.
 
 `TestRecipeThroughSPSC` runs this with a network goroutine writing at
 irregular times, at 8, 16 and 48 kHz, under `-race` in `make race`, and
 checks that the output equals the same processors run frame by frame in
-one goroutine. `TestDrainDropsBacklog` checks the backlog drop.
+one goroutine. `TestDrainDropsBacklog` checks the backlog drop and the far
+frames it skips.
 
 ## 4. The per-frame order
 
@@ -239,9 +249,10 @@ func (c *call) process(mic, far, out []int16) (int, error) {
 ```
 
 With 8, 16 and 48 kHz and 10 or 20 ms frames the ratio divides the frame,
-so each call writes exactly one frame (`runDirect` in the tests checks
-this on every call); the queues cover ratios that do not.
-`TestReceivePath` checks that a 20 ms frame per call with an
+so each call writes exactly one frame; the tests check this on every call
+at 8, 16 and 48 kHz with 10 and 20 ms frames. The queues are there for
+ratios that do not divide the frame, such as 44.1 kHz; no such rate is
+tested. `TestReceivePath` checks that a 20 ms frame per call with an
 `OutLen` buffer always consumes the whole frame.
 
 ## What the measurements show

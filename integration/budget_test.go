@@ -32,9 +32,8 @@ func budgetConfigs() []budgetConfig {
 	}
 }
 
-// chainRig is the whole per-frame work of a budget configuration: the
-// send path of a call and, at 48 kHz, the receive path from 16 kHz back to
-// 48 kHz.
+// chainRig is the per-frame work of a budget configuration: the send path
+// and, at 48 kHz, the receive path from 16 kHz back to 48 kHz.
 type chainRig struct {
 	c          *call
 	rx         *resample.Resampler // nil unless the chain resamples
@@ -65,7 +64,7 @@ func newChainRig(t testing.TB, bc budgetConfig) *chainRig {
 			t.Fatal(err)
 		}
 		r.rxOut = make([]int16, r.rx.OutLen(c.frame))
-		_, r.decoded = atRate(t, r.s, c)
+		_, r.decoded = atRate(t, r.s, c, bc.quality)
 	}
 	return r
 }
@@ -73,8 +72,8 @@ func newChainRig(t testing.TB, bc budgetConfig) *chainRig {
 // step runs one network frame through the chain.
 func (r *chainRig) step(t testing.TB) {
 	lo, hi := r.k*r.c.netFrame, (r.k+1)*r.c.netFrame
-	if _, err := r.c.process(r.s.mic[lo:hi], r.s.far[lo:hi], r.out); err != nil {
-		t.Fatal(err)
+	if n, err := r.c.process(r.s.mic[lo:hi], r.s.far[lo:hi], r.out); err != nil || n != r.c.frame {
+		t.Fatalf("process wrote %d samples, want %d: %v", n, r.c.frame, err)
 	}
 	if r.rx != nil {
 		f := r.decoded[r.k*r.c.frame : (r.k+1)*r.c.frame]
@@ -85,10 +84,12 @@ func (r *chainRig) step(t testing.TB) {
 	r.k = (r.k + 1) % r.frames
 }
 
-// TestRealTimeBudget times every frame over 10 minutes of audio per
-// configuration with -budget (criteria T1 to T3), or over 10 s without it,
-// checking only that no garbage collection runs during the timed loop.
+// TestRealTimeBudget times every frame: 10 minutes per configuration with
+// -budget (T1 to T3), else 10 s, checking only that no GC runs.
 func TestRealTimeBudget(t *testing.T) {
+	if raceEnabled && !*budget {
+		t.Skip("timing under the race detector means nothing; the chain's code runs in the other tests")
+	}
 	seconds := 10
 	if *budget {
 		seconds = 600

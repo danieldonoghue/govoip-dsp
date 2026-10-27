@@ -10,9 +10,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/preprocess"
 )
 
-// TestNoiseThroughSendChain passes stationary noise through preprocess
-// (denoise and VAD on) and agc with the VAD decision as speech, and reports
-// the levels and the AGC gain over the last 10 s (criteria N1 and N2).
+// TestNoiseThroughSendChain reports stationary noise through preprocess and
+// agc, with the VAD decision as speech (criteria N1 and N2).
 func TestNoiseThroughSendChain(t *testing.T) {
 	const seconds = 30
 	gens := []struct {
@@ -54,10 +53,9 @@ func TestNoiseThroughSendChain(t *testing.T) {
 								speechFrames++
 							}
 						}
-						// Gain per second, from 1 s on (the AGC delays by 2 ms).
-						if i%rate == 0 && i >= 2*rate {
-							w := out[i-rate : i]
-							maxGain = max(maxGain, dB(energy(w), energy(den[i-rate:i])))
+						// Gain over each whole second from 1 s on, the last included.
+						if end := i + frame; end%rate == 0 && end >= 2*rate {
+							maxGain = max(maxGain, dB(energy(out[end-rate:end]), energy(den[end-rate:end])))
 						}
 					}
 					last := func(x []int16) []int16 { return x[(seconds-10)*rate:] }

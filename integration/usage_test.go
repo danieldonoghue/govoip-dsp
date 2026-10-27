@@ -34,13 +34,16 @@ func onPacket(rx *buffer.SPSC, p []int16) bool {
 	return true
 }
 
-// drain runs on the processing goroutine, for example on each tick of a
-// 20 ms ticker. It processes every whole frame waiting in rx; far returns
-// the far-end frame sent with each one, and deliver takes the output.
+// drain runs on the processing goroutine, for example per 20 ms tick: far
+// gives the frame sent with each received one, deliver takes the output.
 func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 	far func() []int16, deliver func([]int16)) error {
 	if rx.Len() > maxBacklog {
-		rx.Consume(rx.Len() - c.netFrame) // after a stall, keep the newest frame
+		// After a stall keep the newest frame, and skip the far frames of
+		// the dropped ones so that each frame keeps its far frame.
+		for range rx.Consume(rx.Len()-c.netFrame) / c.netFrame {
+			far()
+		}
 	}
 	for rx.Len() >= c.netFrame {
 		rx.Read(mic)
@@ -88,9 +91,8 @@ func runDirect(t testing.TB, c *call, s callSignals) []int16 {
 	return got
 }
 
-// TestRecipeThroughSPSC runs the recipe with a network goroutine that
-// writes packets into the SPSC at irregular times, and checks that the
-// output equals the same processors run frame by frame (criterion U3).
+// TestRecipeThroughSPSC feeds the recipe from a network goroutine at
+// irregular times and compares with a direct frame-by-frame run (U3).
 func TestRecipeThroughSPSC(t *testing.T) {
 	seconds := 10.0
 	if testing.Short() {
@@ -119,6 +121,8 @@ func TestRecipeThroughSPSC(t *testing.T) {
 			frames := len(s.mic) / c.netFrame
 			var stop atomic.Bool
 			var wg sync.WaitGroup
+			defer wg.Wait()
+			defer stop.Store(true) // also when a check fails
 			wg.Add(1)
 			go func() { // the network goroutine
 				defer wg.Done()
@@ -158,8 +162,6 @@ func TestRecipeThroughSPSC(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			stop.Store(true)
-			wg.Wait()
 			if len(got) != len(want) {
 				t.Fatalf("got %d samples through the SPSC, %d directly", len(got), len(want))
 			}
@@ -191,14 +193,15 @@ func TestDrainDropsBacklog(t *testing.T) {
 	}
 	mic := make([]int16, c.netFrame)
 	out := make([]int16, c.outLen())
-	processed := 0
-	far := func() []int16 { return make([]int16, c.netFrame) }
+	processed, farCalls := 0, 0
+	far := func() []int16 { farCalls++; return make([]int16, c.netFrame) }
 	err = c.drain(rx, 3*c.netFrame, mic, out, far, func([]int16) { processed++ })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if processed != 1 || mic[0] != 8 || rx.Len() != 0 {
-		t.Fatalf("processed %d frames, last frame marker %d, %d samples left; want 1, 8, 0", processed, mic[0], rx.Len())
+	if processed != 1 || mic[0] != 8 || rx.Len() != 0 || farCalls != 8 {
+		t.Fatalf("processed %d frames, last frame marker %d, %d samples left, %d far frames taken; want 1, 8, 0, 8",
+			processed, mic[0], rx.Len(), farCalls)
 	}
 }
 
@@ -218,16 +221,27 @@ func TestNoAllocsRecipe(t *testing.T) {
 			s := callScenario(netRate, 1)
 			mic := make([]int16, c.netFrame)
 			out := make([]int16, c.outLen())
-			k := 0
+			k, f := 0, 0
 			frames := len(s.mic) / c.netFrame
-			far := func() []int16 { return s.far[k*c.netFrame : (k+1)*c.netFrame] }
+			far := func() []int16 {
+				f = (f + 1) % frames
+				return s.far[f*c.netFrame : (f+1)*c.netFrame]
+			}
 			deliver := func([]int16) {}
 			step := func() {
-				onPacket(rx, s.mic[k*c.netFrame:(k+1)*c.netFrame])
+				// Every 8th step delivers a burst of 5 packets, so drain
+				// also takes its backlog-drop branch.
+				burst := 1
+				if k%8 == 7 {
+					burst = 5
+				}
+				for range burst {
+					onPacket(rx, s.mic[k*c.netFrame:(k+1)*c.netFrame])
+					k = (k + 1) % frames
+				}
 				if err := c.drain(rx, 3*c.netFrame, mic, out, far, deliver); err != nil {
 					t.Fatal(err)
 				}
-				k = (k + 1) % frames
 			}
 			for range 50 * 12 { // past adaptation: 12 s of far-end speech
 				step()

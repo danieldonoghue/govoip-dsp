@@ -100,10 +100,8 @@ func newCall(netRate, frameMs int) (*call, error) {
 // outLen is the length of the out slice that process needs.
 func (c *call) outLen() int { return 2 * c.frame }
 
-// process takes one network frame of microphone audio and the far-end
-// frame sent at the same time, and writes the cleaned audio at the
-// processing rate to out. It returns the number of samples written: a
-// multiple of the processing frame, normally exactly one frame.
+// process cleans one network frame of mic against the far frame sent with
+// it, and returns the samples written to out: whole processing frames.
 func (c *call) process(mic, far, out []int16) (int, error) {
 	if c.micRS == nil {
 		return c.frame, c.step(mic, far, out[:c.frame])

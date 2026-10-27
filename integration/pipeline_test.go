@@ -14,14 +14,14 @@ import (
 // dBFS): round(32768 * 10^(-1/20)).
 const ceiling = 29205
 
-// atRate returns the microphone and far end at the processing rate, as the
-// call's resamplers produce them: one call per network frame.
-func atRate(t testing.TB, s callSignals, c *call) (mic, far []int16) {
+// atRate returns the microphone and far end at the processing rate, as
+// resamplers of the given quality produce them, one call per network frame.
+func atRate(t testing.TB, s callSignals, c *call, quality int) (mic, far []int16) {
 	if c.netRate == c.rate {
 		return s.mic, s.far
 	}
 	conv := func(x []int16) []int16 {
-		r, err := resample.New(resample.Config{Channels: 1, InRate: c.netRate, OutRate: c.rate, Quality: resample.QualityVoIP})
+		r, err := resample.New(resample.Config{Channels: 1, InRate: c.netRate, OutRate: c.rate, Quality: quality})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func measureCall(t testing.TB, s callSignals, netRate, frameMs int) figures {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mic, far := atRate(t, s, c)
+	mic, far := atRate(t, s, c, resample.QualityVoIP)
 	e := echoOnly(t, c, mic, far)
 	out := runDirect(t, c, s)
 	r := c.rate
@@ -117,9 +117,8 @@ func (f figures) failures() map[string]string {
 	return fail
 }
 
-// check fails t for every failing criterion not in findings, and for every
-// criterion in findings that no longer fails, so a change in either
-// direction shows.
+// check fails t for a failing criterion not in findings, and for one in
+// findings that passes, so a change in either direction shows.
 func (f figures) check(t testing.TB, findings ...string) {
 	t.Helper()
 	fail := f.failures()
@@ -138,9 +137,8 @@ func (f figures) check(t testing.TB, findings ...string) {
 	}
 }
 
-// TestPipelineCall measures the send path on the synthetic call scenario
-// (criteria B1 to B5). On the 48 kHz chain B1 and B3 fail: see
-// docs/testing.md, "integration".
+// TestPipelineCall measures the send path on the synthetic call (B1 to B5).
+// B1 and B3 fail at 48 kHz, a finding reported in docs/testing.md.
 func TestPipelineCall(t *testing.T) {
 	type cfg struct {
 		netRate, frameMs int
@@ -209,5 +207,68 @@ func TestReceivePath(t *testing.T) {
 			testutil.Compare(t, "out", want[:n], got)
 			t.Logf("%d frames of %d samples, buffer %d, wrote %d samples", len(x)/frame, frame, len(buf), len(got))
 		})
+	}
+}
+
+// TestFinding48k reports the measurements behind the 48 kHz finding of
+// docs/testing.md. It asserts nothing; TestPipelineCall pins the finding.
+func TestFinding48k(t *testing.T) {
+	s48 := callScenario(48000, 1)
+	for _, q := range []int{resample.QualityVoIP, resample.QualityDesktop, resample.QualityMax} {
+		c, err := newCall(48000, 20)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mic, far := atRate(t, s48, c, q)
+		e := echoOnly(t, c, mic, far)
+		t.Logf("48 kHz, resampler quality %d: echo stage %.1f dB", q, dB(energy(window(mic, 16000, 8, 14)), energy(window(e, 16000, 8, 14))))
+	}
+	c, err := newCall(48000, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, far := atRate(t, s48, c, resample.QualityVoIP)
+	near, _ := atRate(t, callSignals{mic: s48.near, far: s48.near}, c, resample.QualityVoIP)
+	mic := mix(convolve(far, echoPath(16000)), near, testutil.WhiteNoise(len(far), 30, testutil.Seed("integration/noise")))
+	e := echoOnly(t, c, mic, far)
+	t.Logf("48 kHz signals, echo built at 16 kHz from the resampled far end: echo stage %.1f dB",
+		dB(energy(window(mic, 16000, 8, 14)), energy(window(e, 16000, 8, 14))))
+
+	for _, netRate := range []int{16000, 48000} {
+		c, err := newCall(netRate, 20)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mic, far := atRate(t, callScenario(netRate, 1), c, resample.QualityVoIP)
+		var pre, out []int16
+		o := make([]int16, c.frame)
+		speech := 0
+		for i := 0; i+c.frame <= len(mic); i += c.frame {
+			if err := c.ec.Cancel(mic[i:i+c.frame], far[i:i+c.frame], c.clean); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.ec.Residual(c.residual); err != nil {
+				t.Fatal(err)
+			}
+			v, err := c.pre.RunEcho(c.clean, c.residual)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if v && i >= 2*c.rate && i < 14*c.rate {
+				speech++
+			}
+			pre = append(pre, c.clean...)
+			if err := c.gc.Process(c.clean, o, v); err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, o...)
+		}
+		r := c.rate
+		res, _ := activeDBFS(window(pre, r, 2, 14), r)
+		gain := func(from, to float64) float64 {
+			return dB(energy(window(out, r, from, to)), energy(window(pre, r, from, to)))
+		}
+		t.Logf("network %d Hz: residual echo after preprocess %.1f dBFS (active frames, 2 to 14 s), VAD speech on %d of %d frames there; AGC gain %+.1f dB over 8 to 14 s, %+.1f dB over 18 to 24 s",
+			netRate, res, speech, 12*r/c.frame, gain(8, 14), gain(18, 24))
 	}
 }
