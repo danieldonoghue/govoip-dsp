@@ -80,9 +80,8 @@ func newCall(netRate, frameMs int) (*call, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Scratch buffers for one frame, made once so that the per-frame path
-	// never allocates. The residual spectrum has one value more than the
-	// frame (ResidualLen).
+	// Scratch buffers, made once so the per-frame path never allocates; the
+	// residual spectrum has one value more than the frame (ResidualLen).
 	c.clean = make([]int16, c.frame)
 	c.residual = make([]int32, c.ec.ResidualLen())
 
