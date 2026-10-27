@@ -72,9 +72,9 @@ Run one test with `go test ./resample -run TestName -v`.
 - Call into another package's mechanism; never mirror it. For example, use
   `internal/fixed` for every fixed-point operation instead of re-deriving a
   macro locally.
-- Size to the consumers that exist today (requirements §2, "Sizing rule"). Put a
-  choice between a concrete type and a general mechanism (an interface, a
-  registry, a hook) up for approval before building it.
+- Size to the consumers that exist today (requirements §2, "Sizing rule").
+  Put a choice between a concrete type and a general mechanism (an
+  interface, a registry, a hook) up for approval before building it.
 
 ## Verify before asserting
 
@@ -164,6 +164,9 @@ code is fine while you work, and is removed before a commit.
 - New and changed comments are two lines at most. Leave old comments alone
   unless asked.
 - Required licence headers on derived files are exempt from the two-line limit.
+- Teaching code is exempt from the two-line limit: runnable examples
+  (`Example...` functions) and the recipe code that `docs/usage.md` quotes
+  may explain each step in longer comments. They still never restate the code.
 
 ## Writing
 
