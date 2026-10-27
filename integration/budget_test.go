@@ -43,12 +43,14 @@ type chainRig struct {
 	k, frames  int
 }
 
-func newChainRig(t testing.TB, bc budgetConfig) *chainRig {
+// newChainRig builds the rig on reps repetitions of the call scenario,
+// each with new seeds.
+func newChainRig(t testing.TB, bc budgetConfig, reps int) *chainRig {
 	c, err := newCall(bc.netRate, bc.frameMs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := &chainRig{c: c, s: callScenario(bc.netRate, 1), out: make([]int16, c.outLen())}
+	r := &chainRig{c: c, s: callScenario(bc.netRate, reps), out: make([]int16, c.outLen())}
 	r.frames = len(r.s.mic) / c.netFrame
 	if c.micRS != nil {
 		for _, rs := range []*resample.Resampler{c.micRS, c.farRS} {
@@ -96,7 +98,13 @@ func TestRealTimeBudget(t *testing.T) {
 	}
 	for _, bc := range budgetConfigs() {
 		t.Run(bc.name, func(t *testing.T) {
-			r := newChainRig(t, bc)
+			// With -budget, 16 repetitions cover the warm-up and 10 minutes
+			// without repeating a seed.
+			reps := 1
+			if *budget {
+				reps = 16
+			}
+			r := newChainRig(t, bc, reps)
 			perSecond := 1000 / bc.frameMs
 			for range 2 * perSecond { // warm-up, not counted
 				r.step(t)
@@ -139,7 +147,7 @@ func TestRealTimeBudget(t *testing.T) {
 func BenchmarkChain(b *testing.B) {
 	for _, bc := range budgetConfigs() {
 		b.Run(bc.name, func(b *testing.B) {
-			r := newChainRig(b, bc)
+			r := newChainRig(b, bc, 1)
 			for range 12 * 1000 / bc.frameMs { // past adaptation
 				r.step(b)
 			}
@@ -157,7 +165,7 @@ func BenchmarkChain(b *testing.B) {
 func TestNoAllocsChain(t *testing.T) {
 	for _, bc := range budgetConfigs() {
 		t.Run(bc.name, func(t *testing.T) {
-			r := newChainRig(t, bc)
+			r := newChainRig(t, bc, 1)
 			for range 12 * 1000 / bc.frameMs {
 				r.step(t)
 			}
