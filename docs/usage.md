@@ -271,6 +271,6 @@ tested. `TestReceivePath` checks that a 20 ms frame per call with an
   (16 dB) and the AGC held the near end lower (-33 dBFS), a reported
   finding.
 - On an Apple M1 Pro the 99th percentile of the whole chain is 0.4% to
-  2.5% of the frame duration, and the slowest of 30000 to 60000 frames
-  took 14% to 24% at 48 kHz with 20 ms frames and at quality 10
+  2.5% of the frame duration. The slowest single frame of a 10-minute run
+  varied between runs, up to 65% of a 10 ms frame
   (`docs/performance.md`).

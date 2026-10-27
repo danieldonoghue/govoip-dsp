@@ -303,16 +303,38 @@ CGO_ENABLED=0 go test ./integration -run TestRealTimeBudget -budget -count=1 -v 
 | 48 kHz, 20 ms (quality 3) | 30000 | 196.6 µs (0.98%) | 238.6 µs (1.19%) | 2748 µs | 13.7% |
 | 48 kHz, 10 ms (quality 10) | 60000 | 211.0 µs (2.11%) | 254.3 µs (2.54%) | 2397 µs | 24.0% |
 
-No garbage collection ran in any timed loop; `runtime.MemStats` counted 0
-heap allocations in every loop of this run (the runtime's own background
-goroutines can allocate; `TestNoAllocsChain` checks the chain itself).
+A second run the same day (load average 2.0 to 2.5) repeated p50 within
+2%; p99 moved by up to 18% (16 kHz, 10 ms: 97.9 to 115.0 µs; 8 kHz, 20 ms:
+83.3 to 92.1 µs):
+
+| Configuration | p50 | p99 | Max, share of the frame |
+|---|---|---|---|
+| 8 kHz, 10 ms | 41.8 µs | 52.9 µs | 232 µs, 2.3% |
+| 8 kHz, 20 ms | 70.8 µs | 92.1 µs | 1591 µs, 8.0% |
+| 16 kHz, 10 ms | 84.6 µs | 115.0 µs | 6465 µs, 64.7% |
+| 16 kHz, 20 ms | 141.0 µs | 172.4 µs | 309 µs, 1.5% |
+| 48 kHz, 10 ms (quality 3) | 112.1 µs | 144.8 µs | 705 µs, 7.0% |
+| 48 kHz, 20 ms (quality 3) | 195.5 µs | 237.8 µs | 6580 µs, 32.9% |
+| 48 kHz, 10 ms (quality 10) | 209.5 µs | 241.3 µs | 1958 µs, 19.6% |
+
+No garbage collection ran in any timed loop. `runtime.MemStats` counted 0
+heap allocations in every loop of the first run and 1 in the first loop of
+the second; it counts the runtime's own background goroutines too, and
+`TestNoAllocsChain` checks the chain itself.
 
 Target (`docs/acceptance/integration.md`, T2): p99 at most 10% of the frame
 duration and every frame below the frame duration. Met in every
-configuration. The maxima are single frames well above the p99. Their cause
-was not traced; preemption by other processes is likely but not shown. Go
-is not a hard real-time platform (requirements §16), so these are measured
-tails, not bounds.
+configuration, in both runs. The maxima are single frames far above the
+p99, and they differ between runs by up to 9 times for the same
+configuration. Their cause was not traced; preemption by other processes is
+likely but not shown. Go is not a hard real-time platform (requirements
+§16), so these are measured tails, not bounds.
+
+Frames are timed back to back, without real-time pacing: the loop starts
+the next frame as soon as one ends. A call paced by a 10 or 20 ms clock,
+with the processor idle between frames, may show a different p99 and
+maximum (for example from cache and frequency effects); that has not been
+measured.
 
 **Linux VM: not measured.** The Linux amd64 VMware reference environment
 was not reachable from the machine that ran this work package.
