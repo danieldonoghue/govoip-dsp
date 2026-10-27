@@ -317,14 +317,32 @@ A second run the same day (load average 2.0 to 2.5) repeated p50 within
 | 48 kHz, 20 ms (quality 3) | 195.5 µs | 237.8 µs | 6580 µs, 32.9% |
 | 48 kHz, 10 ms (quality 10) | 209.5 µs | 241.3 µs | 1958 µs, 19.6% |
 
+A third run (2026-10-27, no other agent or check running; `uptime` load
+average 2.50 before, 2.71 after) used new seeds for every 40 s
+repetition (16 repetitions, so no input repeats), as the criteria
+register; the first two runs looped one repetition. p50 stayed within 2%
+of both earlier runs. p99 was lower than both earlier runs in three
+configurations, between them in three, and 2.3% above both in one (16
+kHz, 20 ms: 176.4 against 172.4 µs):
+
+| Configuration | p50 | p99 | Max, share of the frame |
+|---|---|---|---|
+| 8 kHz, 10 ms | 41.7 µs | 50.8 µs | 160 µs, 1.6% |
+| 8 kHz, 20 ms | 70.6 µs | 84.0 µs | 190 µs, 0.95% |
+| 16 kHz, 10 ms | 84.5 µs | 101.4 µs | 223 µs, 2.2% |
+| 16 kHz, 20 ms | 141.0 µs | 176.4 µs | 722 µs, 3.6% |
+| 48 kHz, 10 ms (quality 3) | 111.8 µs | 125.3 µs | 203 µs, 2.0% |
+| 48 kHz, 20 ms (quality 3) | 195.2 µs | 222.5 µs | 363 µs, 1.8% |
+| 48 kHz, 10 ms (quality 10) | 209.3 µs | 243.4 µs | 708 µs, 7.1% |
+
 No garbage collection ran in any timed loop. `runtime.MemStats` counted 0
-heap allocations in every loop of the first run and 1 in the first loop of
-the second; it counts the runtime's own background goroutines too, and
-`TestNoAllocsChain` checks the chain itself.
+heap allocations in every loop of the first and third runs and 1 in the
+first loop of the second; it counts the runtime's own background
+goroutines too, and `TestNoAllocsChain` checks the chain itself.
 
 Target (`docs/acceptance/integration.md`, T2): p99 at most 10% of the frame
 duration and every frame below the frame duration. Met in every
-configuration, in both runs. The maxima are single frames far above the
+configuration, in all three runs. The maxima are single frames far above the
 p99, and they differ between runs by up to 9 times for the same
 configuration. Their cause was not traced; preemption by other processes is
 likely but not shown. Go is not a hard real-time platform (requirements

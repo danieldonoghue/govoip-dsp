@@ -248,10 +248,10 @@ active frames, against -33 dBFS). Its thresholds are unchanged.
 ### Budget input repeats one 40 s repetition (during the implementation)
 
 The 10-minute budget loops one 40 s repetition of the call scenario
-rather than repetitions with new seeds. The timing is expected to be the
-same, because the code path per frame does not depend on the seed, but
-this has not been measured; a run with new seeds per repetition is
-planned. The bit-exact 10-minute cases use new seeds as registered.
+rather than repetitions with new seeds. A later run with new seeds for
+every repetition, as registered, gave p50 within 2% of both looped runs
+(`docs/performance.md`), and `-budget` now uses new seeds. The bit-exact
+10-minute cases use new seeds as registered.
 
 ### B1 and B3 fail at 48 kHz, reported as a finding (after measurement)
 
