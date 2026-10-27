@@ -32,3 +32,10 @@ was written down at the time.
 | [wp5-zero-divisor](wp5-zero-divisor.md) | Zero divisor in the noise suppressor |
 | [wp6-rates-and-shifts](wp6-rates-and-shifts.md) | Echo canceller rates and out-of-range shifts |
 | [wp6b-parallel-tests](wp6b-parallel-tests.md) | Parallel reference subtests |
+| [wp7-agc-noise](wp7-agc-noise.md) | AGC noise after denoise is documented only |
+| [wp7-integration-fixtures](wp7-integration-fixtures.md) | Fixtures for the whole chain |
+| [wp7-race-skips](wp7-race-skips.md) | Single-goroutine tests skipped under -race |
+| [wp7-recipes](wp7-recipes.md) | Two wiring recipes, with `Cancel` for paced sending |
+| [wp7-report-flag](wp7-report-flag.md) | Reported-only measurements behind -report |
+| [wp7-teaching-comments](wp7-teaching-comments.md) | Longer comments in teaching code |
+| [wp7-zero-value-safety](wp7-zero-value-safety.md) | Zero values return ErrConfig |
