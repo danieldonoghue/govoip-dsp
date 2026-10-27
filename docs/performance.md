@@ -317,7 +317,7 @@ A second run the same day (load average 2.0 to 2.5) repeated p50 within
 | 48 kHz, 20 ms (quality 3) | 195.5 µs | 237.8 µs | 6580 µs, 32.9% |
 | 48 kHz, 10 ms (quality 10) | 209.5 µs | 241.3 µs | 1958 µs, 19.6% |
 
-A third run (2026-10-27, no other agent or check running; `uptime` load
+A third run (2026-10-27, no other test or build running; `uptime` load
 average 2.50 before, 2.71 after) used new seeds for every 40 s
 repetition (16 repetitions, so no input repeats), as the criteria
 register; the first two runs looped one repetition. p50 stayed within 2%
@@ -341,12 +341,12 @@ first loop of the second; it counts the runtime's own background
 goroutines too, and `TestNoAllocsChain` checks the chain itself.
 
 Target (`docs/acceptance/integration.md`, T2): p99 at most 10% of the frame
-duration and every frame below the frame duration. Met in every
-configuration, in all three runs. The maxima are single frames far above the
-p99, and they differ between runs by up to 9 times for the same
-configuration. Their cause was not traced; preemption by other processes is
-likely but not shown. Go is not a hard real-time platform (requirements
-§16), so these are measured tails, not bounds.
+duration and every frame below the frame duration. Met in every configuration,
+in all three runs. The maxima are single frames far above the p99, and they
+differ between runs by up to 29 times for the same configuration (16 kHz, 10 ms:
+223 to 6465 µs; 48 kHz, 20 ms: 363 to 2748 µs, 18 times). Their cause was not
+traced; preemption by other processes is likely but not shown. Go is not a hard
+real-time platform (requirements §16), so these are measured tails, not bounds.
 
 Frames are timed back to back, without real-time pacing: the loop starts
 the next frame as soon as one ends. A call paced by a 10 or 20 ms clock,
