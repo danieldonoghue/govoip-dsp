@@ -140,7 +140,10 @@ func callScenario(rate, reps int) callSignals {
 
 // speechScenario is the call scenario with LibriSpeech chapters as far and
 // near end, at 8 or 16 kHz; it skips without the speech files.
-func speechScenario(t testing.TB, rate int) callSignals {
+func speechScenario(t testing.TB, rate int) callSignals { return speechScenarioScaled(t, rate, 4) }
+
+// speechScenarioScaled is speechScenario with the near end divided by div.
+func speechScenarioScaled(t testing.TB, rate, div int) callSignals {
 	paths := testutil.SpeechFiles(t)
 	n16 := scenarioSeconds * testutil.SpeechRate
 	chapter := func(p string) string { return strings.Join(strings.SplitN(filepath.Base(p), "-", 3)[:2], "-") }
@@ -164,7 +167,7 @@ func speechScenario(t testing.TB, rate int) callSignals {
 		far, near = resampleAll(t, far, testutil.SpeechRate, rate), resampleAll(t, near, testutil.SpeechRate, rate)
 	}
 	far = gate(far, rate, farOn)
-	near = gate(testutil.Scale(near, 1, 4), rate, nearOn)
+	near = gate(testutil.Scale(near, 1, div), rate, nearOn)
 	echo := convolve(far, echoPath(rate))
 	noise := testutil.WhiteNoise(len(far), 30, testutil.Seed("integration/noise"))
 	return callSignals{rate: rate, far: far, near: near, echo: echo, mic: mix(echo, near, noise)}

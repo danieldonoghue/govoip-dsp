@@ -164,6 +164,9 @@ func TestPipelineSpeech(t *testing.T) {
 			t.Logf("far %.1f dBFS, near %.1f dBFS active", must(activeDBFS(s.far, rate)), must(activeDBFS(s.near, rate)))
 			t.Log(f)
 			f.check(t)
+			// The near end unscaled, reported only, so the 1/4 is not tuning.
+			u := measureCall(t, speechScenarioScaled(t, rate, 1), rate, 20)
+			t.Logf("near end unscaled: B3 %.1f dBFS, B4 %+.1f dB (%s)", u.nearLevel, u.dtLevel-u.nearLevel, u)
 		})
 	}
 }

@@ -287,3 +287,93 @@ func TestUsageCodeIsTested(t *testing.T) {
 		}
 	}
 }
+
+// TestQueueFullIsReported checks that resampleInto reports a queue too
+// short for the resampler's output instead of dropping samples.
+func TestQueueFullIsReported(t *testing.T) {
+	c, err := newCall(48000, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.micQ, err = buffer.New(buffer.Config{Capacity: c.frame - 1, Overflow: buffer.Reject}); err != nil {
+		t.Fatal(err)
+	}
+	out := make([]int16, c.outLen())
+	if _, err := c.process(make([]int16, c.netFrame), make([]int16, c.netFrame), out); err != errQueueFull {
+		t.Fatalf("process with a short queue returned %v, want errQueueFull", err)
+	}
+}
+
+// TestRecipeDropsUnderRace runs recipe A with bursts that make drain drop
+// a backlog, and checks that every processed frame keeps its far frame.
+func TestRecipeDropsUnderRace(t *testing.T) {
+	c, err := newCall(8000, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rx, err := newRx(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const frames = 400
+	s := callScenario(8000, 1)
+	mic := append([]int16(nil), s.mic[:frames*c.netFrame]...)
+	farAll := append([]int16(nil), s.far[:frames*c.netFrame]...)
+	for k := range frames { // sample 0 of each frame is its index
+		mic[k*c.netFrame], farAll[k*c.netFrame] = int16(k), int16(k)
+	}
+
+	var stop atomic.Bool
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	defer stop.Store(true)
+	wg.Add(1)
+	go func() { // every 50 frames a 140 ms stall, then the frames in a burst
+		defer wg.Done()
+		for k := 0; k < frames && !stop.Load(); k++ {
+			if !onPacket(rx, mic[k*c.netFrame:(k+1)*c.netFrame]) {
+				t.Errorf("frame %d dropped by onPacket", k)
+				return
+			}
+			if k%50 != 49 && k%50 > 6 {
+				time.Sleep(20 * time.Millisecond)
+			}
+			if k%50 == 49 {
+				time.Sleep(140 * time.Millisecond)
+			}
+		}
+	}()
+
+	buf := make([]int16, c.netFrame)
+	out := make([]int16, c.outLen())
+	next, lastFar := 0, -1
+	far := func() []int16 {
+		f := farAll[next*c.netFrame : (next+1)*c.netFrame]
+		lastFar = int(f[0])
+		next++
+		return f
+	}
+	processed, mismatches := 0, 0
+	deliver := func([]int16) {
+		processed++
+		if int(buf[0]) != lastFar {
+			mismatches++
+		}
+	}
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
+	deadline := time.Now().Add(time.Minute)
+	for next < frames && time.Now().Before(deadline) {
+		<-tick.C
+		if err := c.drain(rx, 3*c.netFrame, buf, out, far, deliver); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Logf("%d of %d frames processed, %d dropped by drain, %d far mismatches", processed, frames, frames-processed, mismatches)
+	if mismatches != 0 {
+		t.Errorf("%d processed frames had another frame's far frame", mismatches)
+	}
+	if processed == frames {
+		t.Error("drain dropped nothing; the test did not reach the backlog branch")
+	}
+}
