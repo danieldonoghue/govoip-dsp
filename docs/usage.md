@@ -359,31 +359,51 @@ Does not fit:
   arrived, it queues silence, and the late frame waits for the next
   received frame. The canceller's queue therefore never runs dry or
   overflows, whatever the jitter.
-- **The far end's shift.** `Playback` before `Capture` makes the far end
-  the canceller cancels against one frame later than the received frame.
-  Each time a sent frame arrives after the received frame it belongs
-  with, silence takes its place and every later sent frame moves one
-  frame later; the shift never shrinks. While the sender sends one frame
-  per received frame, it stays at most the largest delay of a sent frame
-  behind its received frame, rounded up to whole frames. A sender pause
-  followed by a burst adds the length of the pause. The shift is bounded
-  by the sent SPSC (200 ms); beyond that `onPacket` drops sent frames.
+- **The far end's lag.** With `Playback` before each `Capture`, received
+  frame k is cancelled against sent frame k-1: one frame of lag
+  (`TestBufferedLagIsOneFrame` checks it bit for bit against `Cancel`).
+  The SpeexDSP header (`speex_echo.h`) speaks of two frames: the queue
+  starts with two frames of silence (`mdf.c:517`, `PLAYBACK_DELAY`), but a
+  `Playback` before the first `Capture` is discarded (`mdf.c:656`), so
+  after the first `Capture` takes one silence frame (`mdf.c:635-640`)
+  each `Capture` finds the frame queued one call earlier; the lag is two
+  frames when `Capture` comes before `Playback`. The first sent frame is
+  lost the same way.
+- **The far end's shift.** Each time a sent frame arrives after the received
+  frame it belongs with, silence takes its place and every later sent frame
+  moves one frame later; the shift never shrinks. While the sender sends one
+  frame per received frame, it stays at most the largest delay of a sent frame
+  behind its received frame, rounded up to whole frames. A sender pause followed
+  by a burst adds the length of the pause. The shift is bounded by the sent SPSC
+  (200 ms); beyond that `onPacket` drops sent frames.
 - **Echo delay.** The canceller models echo delays from that lag to
   the end of its filter (the `echo` package doc, "Stream alignment"). So
-  the echo must return later than about one frame plus the jitter after
-  the frame was sent: with a 32 ms echo and up to 30 ms of jitter the
+  the echo must return later than one frame plus the shift after the
+  frame was sent: with a 32 ms echo and up to 30 ms of jitter the
   echo stage is 0.3 to 0.7 dB (U6, a reported finding). With delays of
   100 and 200 ms it is 19.2 to 25.6 dB (U11, `docs/testing.md`).
-- **Filter length.** `filterMs` must cover the largest echo delay
-  expected plus the echo's tail. U11 uses 256 ms, the longest length the
-  `echo` fixtures test, for a 200 ms delay with a 48 ms tail. A longer
-  filter costs more per frame (`docs/performance.md`).
+- **Filter length.** Choose the shortest `filterMs` that covers the
+  largest echo delay expected plus the echo's tail, not the longest
+  available. A longer filter costs more per frame
+  (`docs/performance.md`) and adapts more slowly; the Speex manual names
+  an over-long tail as a common reason no echo is cancelled. U11 uses
+  256 ms because its longest case, a 200 ms delay with a 48 ms tail,
+  needs 248 ms, and 256 ms is the longest length the `echo` fixtures
+  test; it keeps that one length for its 100 ms case too, so the two
+  cases differ only in the delay.
 - **Changing echo delay.** The delay differs between calls and can change
   within one, for example when a jitter buffer resizes, a route changes,
   clocks drift or the caller moves. The canceller does not estimate the
   delay; after each sudden change it re-converges, and cancellation is
   lost for a while: after a step from 100 to 140 ms, 3.5 s at 8 kHz and
   3.0 s at 16 kHz before the echo stage was at 10 dB again (U11).
+- **No resync, no drift correction.** Recipe B never moves the far end
+  back: its shift only grows, and a slow drift between the clocks of the
+  sent and the received streams over a long call is not corrected. For
+  comparison, PulseAudio's `module-echo-cancel` resynchronises after a
+  large misalignment and corrects slow drift within watermarks. Drift
+  correction here would come from the planned clock-drift controller,
+  stretch item S2 in `docs/architecture.md`, "Work packages".
 - **Typical delays.** Vendor and trade sources (not standards) put the
   delay that VoIP adds at 50 to 80 ms or more, size network echo
   cancellers for 64 ms, up to 128 ms on long paths, and note that the

@@ -838,6 +838,7 @@ One mutation of the test's Go chain, or of the recipe, at a time.
 | recipe B: `drain` queues nothing when no sent frame has arrived | caught by `TestBufferedIdleSender` (U7 -0.0 and 0.2 dB) |
 | recipe B: `drain` queues the previous frame instead of silence | caught by `TestBufferedIdleSender` (U7 -8.2 and -9.1 dB) |
 | recipe B: `deliver` allocates | caught by `TestNoAllocsBuffered` |
+| lag test: reference two frames late instead of one | caught by `TestBufferedLagIsOneFrame` |
 | U11: filter 128 ms instead of 256 ms | caught by `TestBufferedLongDelay` (200 ms delay: -0.2 and 2.1 dB) |
 | recipe A: `resampleInto` ignores the queue result | caught by `TestQueueFullIsReported` |
 | recipe A: backlog drop without skipping far frames, two goroutines | caught by `TestRecipeDropsUnderRace` (343 mismatches) |
@@ -922,6 +923,11 @@ U6 fails at both rates; the test pins it as a reported finding.
 
 1. Without jitter, `drain` equals `Cancel` with the far end one frame
    late: `Playback` before `Capture` delays the far end by one frame.
+   `TestBufferedLagIsOneFrame` checks this bit for bit: received frame k
+   is cancelled against sent frame k-1, and frames 0 and 1 against
+   silence, because a `Playback` before the first `Capture` is discarded
+   (`mdf.c:656`). The SpeexDSP header's two frames of delay is the lag
+   when `Capture` comes before `Playback`.
 2. With jitter, a sent frame that arrives after its received frame is
    replaced by silence, and every later sent frame moves one frame later.
    With jitter of 2 to 10 ms the figures equal those of `Cancel` with the
