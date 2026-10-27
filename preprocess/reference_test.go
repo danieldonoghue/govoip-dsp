@@ -265,6 +265,7 @@ func estimateFrame(f int) bool { return f < 50 || f%4 == 3 }
 func echoOff(f int) bool { return f/25%2 == 1 }
 
 func TestReferenceRun(t *testing.T) {
+	t.Parallel()
 	m := testutil.LoadManifest(t, fixtureDir)
 	cs, gs := buildCases()
 	type groupData struct {

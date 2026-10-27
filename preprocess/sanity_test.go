@@ -35,6 +35,7 @@ func mixAtSNR(clean, noise []int16, snr float64) []int16 {
 }
 
 func TestSanityNoiseReduction(t *testing.T) {
+	t.Parallel()
 	for _, c := range mvpConfigs {
 		rate, n := c[0], c[1]
 		for _, nz := range []struct {
@@ -72,6 +73,7 @@ func reportSpeech(t *testing.T, label string, rate, n int, clean []int16) {
 }
 
 func TestSanitySpeech(t *testing.T) {
+	t.Parallel()
 	const rate = 16000
 	for _, n := range []int{160, 320} {
 		reportSpeech(t, fmt.Sprintf("SpeechLike 16 kHz/%d", n), rate, n, testutil.SpeechLike(30*rate, rate, 12000, 4))
@@ -91,6 +93,7 @@ func TestSanitySpeech(t *testing.T) {
 }
 
 func TestSanityVAD(t *testing.T) {
+	t.Parallel()
 	const rate, n = 16000, 320
 	for _, s := range []struct {
 		name string
