@@ -478,7 +478,7 @@ func (c *call) outLen() int { return 2 * c.frame }
 
 The source's frames reach the processing goroutine through one SPSC with
 room for 200 ms; `drain` drops a backlog after a stall and keeps each
-frame paired. The tests pass `maxBacklog` 3*netFrame (three frames)
+frame paired. The tests pass `maxBacklog` `3*c.netFrame` (three frames)
 where they test the drop (`TestDrainDropsBacklog`, `TestNoAllocsRecipe`,
 `TestRecipeDropsUnderRace`) and `math.MaxInt` where no drop may happen
 (`TestRecipeThroughSPSC`):

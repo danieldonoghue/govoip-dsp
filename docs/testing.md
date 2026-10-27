@@ -902,22 +902,21 @@ nothing; `TestPipelineCall` pins the failures):
 The test pins both failures, so it shows when either changes. Whether to
 change the scenario, the chain or the criteria needs a decision.
 
-**Recipe A, sending paced by the received frames** (`docs/usage.md`;
-criteria U6 to U12). The application writes the audio it wants to send
-into a pending SPSC; for each received frame, `drain` takes at most one
-pending frame, or silence, hands it to the network writer and calls
-`Cancel` with that frame. The tests simulate the call (`simCall`): sent
-frame k plays in the slot of received frame k on the call's clock, the
-microphone signal is built from the frames actually sent, through an
-echo path with the given bulk delay, at the time each received frame
-becomes available, and echo of a frame not yet sent by then is left out
-and counted. The comparison column is the same paced design with the
-frame passed to `Playback` before `Capture`. It was measured on this
-branch at commit 09a990a, whose tests still ran it; the current tests
-run recipe A only and do not regenerate it. Recipe A's column comes from
+**Recipe A, sending paced by the received frames** (`docs/usage.md`; criteria U6
+to U12). The application writes the audio it wants to send into a pending SPSC;
+for each received frame, `drain` takes at most one pending frame, or silence,
+hands it to the network writer and calls `Cancel` with that frame. The tests
+simulate the call (`simCall`): sent frame k plays in the slot of received frame
+k on the call's clock, the microphone signal is built from the frames actually
+sent, through an echo path with the given bulk delay, at the time each received
+frame becomes available, and echo of a frame not yet sent by then is left out
+and counted. The comparison column is the same paced design with the frame
+passed to `Playback` before `Capture`. It was measured at commit 09a990a, whose
+tests still ran it; the current tests run recipe A only and do not regenerate
+it. Recipe A's column comes from
 `go test ./integration -run 'TestPaced|TestNoAllocsPaced' -v -args -report`
-(darwin/arm64, 2026-10-27), 20 ms frames, echo stage over 8 to 14 s
-unless stated:
+(darwin/arm64, 2026-10-27), 20 ms frames, echo stage over 8 to 14 s unless
+stated:
 
 | Criterion | Recipe A, `Cancel`, 8 / 16 kHz | Comparison, `Playback`/`Capture`, 8 / 16 kHz | Threshold |
 |---|---|---|---|
@@ -981,10 +980,13 @@ criteria U6 to U11). For each captured frame, `drain` queues one played
 frame, or silence when none has arrived, with `Playback` before
 `Capture`. The tests feed precomputed microphone and played streams
 whose frames become available with independent seeded delays, as two
-callbacks with their own timing deliver them. From
-`go test ./integration -run 'TestBuffered|TestNoAllocsBuffered' -v`
-(darwin/arm64, 2026-10-27), 20 ms frames, the call scenario (echo 32 ms
-after the played frame):
+callbacks with their own timing deliver them. Darwin/arm64, 2026-10-27,
+20 ms frames, the call scenario (echo 32 ms after the played frame),
+from:
+
+```sh
+go test ./integration -run 'TestBuffered|TestNoAllocsBuffered' -v -args -report
+```
 
 | Criterion | 8 kHz | 16 kHz | Threshold |
 |---|---|---|---|
@@ -1172,12 +1174,12 @@ adds for packages that start goroutines: `TestPipelineCall`,
 `TestBufferedLagIsOneFrame`, and the `TestNoAllocs*` tests. Each skip names the
 rule, so `go test -v -race ./integration` lists them. The tests that start
 goroutines (`TestRecipeThroughSPSC`, `TestRecipeDropsUnderRace`,
-`TestPacedFourGoroutines` with both variants, `TestBufferedTwoGoroutines`) run
-in full, `TestPacedWriterFull` runs too, and `TestReferencePairing` runs as
-under `-short`. The normal `go test` runs everything. Measured on the M1 Pro,
-one run each, 2026-10-27: `go test -race -count=1 -timeout 20m ./integration`
-took 620.6 s before the skips (load average 1.89 before, 1.63 after) and 88.2 s
-with them (1.58 before, 1.81 after). Both runs predate the paced recipe, its
+`TestPacedFourGoroutines`, `TestBufferedTwoGoroutines`) run in full,
+`TestPacedWriterFull` runs too, and `TestReferencePairing` runs as under
+`-short`. The normal `go test` runs everything. Measured on the M1 Pro, one run
+each, 2026-10-27: `go test -race -count=1 -timeout 20m ./integration` took 620.6
+s before the skips (load average 1.89 before, 1.63 after) and 88.2 s with them
+(1.58 before, 1.81 after). Both runs predate the paced recipe, its
 four-goroutine test with two variants and `TestPacedWriterFull`, and
 `TestBufferedLongDelay` and `TestBufferedLagIsOneFrame`; the last `make race` of
 this branch, not on a quiet machine, took `integration` 101 s.
@@ -1199,10 +1201,15 @@ Where the time of `integration` goes, from one run each of
 | `TestRealTimeBudget` (10 s, without `-budget`) | 7.0 s (7%) | skipped |
 | `TestPipelineCall` | 5.0 s (5%) | skipped |
 
-The three goroutine tests of the recipes run at about real time: their
-producers sleep between frames over 8 to 10 s of audio, so most of their
-time is waiting, not computing. `TestScenarioIsPrefixSafe` spends its time
-generating the 10-minute inputs. Every other test takes under 2.5 s.
+`TestBufferedTwoGoroutines`, `TestPacedFourGoroutines` and
+`TestRecipeDropsUnderRace` run at about real time: their producers sleep up to
+40 ms between frames (or stall for 140 ms) over 8 to 10 s of audio, so most of
+their time is waiting, not computing. `TestRecipeThroughSPSC` is different: its
+producer sleeps on one attempt in four, for at most 0.5 ms, so it is bound by
+the chain's computation, which the race detector slows ten to eleven times (its
+subtests: 0.27, 0.62 and 1.62 s at 8, 16 and 48 kHz normally, 2.85, 6.42 and
+17.78 s with `-race`). `TestScenarioIsPrefixSafe` spends its time generating the
+10-minute inputs. Every other test takes under 2.5 s.
 
 CI and the Makefile run the full and race test runs with `-timeout 20m`
 instead of Go's default of 10 minutes per package. On CI runners the normal
@@ -1226,7 +1233,7 @@ work-package hand-off:
 make report    # CGO_ENABLED=0 go test ./integration -count=1 -timeout 20m -v -args -report
 ```
 
-The reported figures in this file were produced with the flag.
+The reported figures in this file are reproduced with the flag.
 
 ## Speech
 
