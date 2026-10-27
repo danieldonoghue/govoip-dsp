@@ -434,3 +434,23 @@ passed to `Playback`, and taking more than one pending frame for one
 received frame, must each be caught. A test with the application, the
 network reader, the writer and the processing goroutine running
 concurrently replays the observed order and passes under `-race`.
+
+### Recipe B measured two ways (after review, before measuring)
+
+With the processing goroutine choosing the sent frame and processing the
+received frame in one step, sending and receiving are in step there, and
+the Speex manual prefers `speex_echo_cancellation` for that case. So the
+recipe is measured two ways against the same criteria, U6 to U12 with
+their thresholds, through the same simulated call:
+
+1. **(i)** `Playback` with the frame handed to the writer, then `Capture`
+   with the received frame.
+2. **(ii)** `Cancel(mic, sent, out)` with the frame just handed to the
+   writer as `far`.
+
+Both are reported side by side, with the effect of (i)'s one-frame lag.
+If (ii) meets every criterion that (i) meets and is better on the echo
+stage in U6, U11 and U12, `docs/usage.md` makes (ii) its main recipe A
+and keeps `Playback`/`Capture` as recipe B for capture and playback
+delivered on separate callbacks; otherwise (i) stays recipe B, with the
+reasons stated.
