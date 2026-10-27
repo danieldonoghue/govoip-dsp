@@ -8,7 +8,7 @@ CROSS_TARGETS ?= linux/arm linux/riscv64 linux/ppc64le linux/s390x \
 	linux/mips64le freebsd/amd64 darwin/amd64 windows/arm64 wasip1/wasm
 
 .PHONY: help check fmt-check vet test test-purego staticcheck deps-guard race \
-	bench fixtures fixtures-host cross speech
+	bench fixtures fixtures-host cross speech hooks
 
 .DEFAULT_GOAL := help
 
@@ -17,6 +17,9 @@ help: ## List the targets with a short description (the default)
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 check: fmt-check vet test test-purego deps-guard staticcheck ## Run every pre-merge check
+
+hooks: ## Run make check before every git push (once per clone)
+	git config core.hooksPath .githooks
 
 fmt-check: ## Fail if any file needs gofmt
 	@out="$$(gofmt -l .)"; if [ -n "$$out" ]; then \

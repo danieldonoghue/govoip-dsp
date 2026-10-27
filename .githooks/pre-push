@@ -1,0 +1,25 @@
+#!/bin/sh
+# Runs make check before every push (make hooks enables it). It tests the
+# working tree, so it pushes only the checked-out commit with no local changes.
+set -eu
+
+head=$(git rev-parse HEAD)
+pushing=0
+while read -r local_ref local_sha _; do
+	case $local_sha in
+	*[!0]*) ;;
+	*) continue ;; # deleting a remote ref
+	esac
+	if [ "$local_sha" != "$head" ]; then
+		echo "pre-push: $local_ref is not the checked-out commit; check it out first" >&2
+		exit 1
+	fi
+	pushing=1
+done
+[ "$pushing" = 1 ] || exit 0
+
+if [ -n "$(git status --porcelain)" ]; then
+	echo "pre-push: commit or stash local changes first; make check tests the working tree" >&2
+	exit 1
+fi
+exec make check

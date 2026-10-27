@@ -82,6 +82,7 @@ and does not allocate.
 
 ```sh
 make help    # list every target
+make hooks   # once per clone: run make check before every git push
 make check   # gofmt, vet, tests (also with -tags purego), dependency guard, staticcheck
 make race    # race detector
 make bench   # short benchmarks
