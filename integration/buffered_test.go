@@ -35,6 +35,8 @@ type bufferedCall struct {
 // newBufferedCall makes the processors of one call at rate Hz (8000 or
 // 16000), frames of frameMs and an echo filter of filterMs milliseconds.
 func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
+	// No resampler here: the echo canceller supports 8 and 16 kHz, so the
+	// network must run at one of them.
 	if rate != 8000 && rate != 16000 {
 		return nil, fmt.Errorf("call: %d Hz; the echo canceller supports 8 and 16 kHz only", rate)
 	}
@@ -43,6 +45,8 @@ func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", b.frame)
 	}
 	var err error
+	// The filter must cover the largest echo delay plus its tail; a longer
+	// one costs more and adapts more slowly, so filterMs is the caller's.
 	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate * filterMs / 1000, SampleRate: rate})
 	if err != nil {
 		return nil, err
@@ -51,7 +55,7 @@ func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.pre.SetVAD(true)
+	b.pre.SetVAD(true) // the VAD decision tells the AGC which frames are speech
 	b.gc, err = agc.New(agc.DefaultConfig(rate))
 	if err != nil {
 		return nil, err
@@ -67,6 +71,8 @@ func (b *bufferedCall) played(far []int16) error { return b.ec.Playback(far) }
 
 // received cleans a received frame against the queued sent frames.
 func (b *bufferedCall) received(mic, out []int16) error {
+	// Capture cancels mic against the oldest frame Playback queued: the one
+	// sent with the previous received frame.
 	if err := b.ec.Capture(mic, b.echoed); err != nil {
 		return err
 	}
@@ -83,7 +89,11 @@ func (b *bufferedCall) receivedWith(mic, far, out []int16) error {
 
 // finish runs the rest of the send path on the canceller's output.
 func (b *bufferedCall) finish(out []int16) error {
+	// Keep the canceller's output in echoed and work on a copy, because the
+	// preprocessor rewrites its frame in place.
 	copy(b.clean, b.echoed)
+	// The residual is the echo the canceller left in this frame; read it
+	// now, before the next frame replaces it.
 	if err := b.ec.Residual(b.residual); err != nil {
 		return err
 	}
@@ -91,23 +101,35 @@ func (b *bufferedCall) finish(out []int16) error {
 	if err != nil {
 		return err
 	}
+	// The AGC raises the gain only on speech frames.
 	return b.gc.Process(b.clean, out, speech)
 }
 
 // drain runs on the processing goroutine. For each received frame it sends
 // at most one pending frame, or silence, and passes the same frame to played.
 func (b *bufferedCall) drain(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
-	for range rx.Len() / b.frame { // bounds the work of this call
+	// One step per received frame waiting now; frames that arrive while
+	// this runs wait for the next call, so the work is bounded.
+	for range rx.Len() / b.frame {
+		// Exactly one frame is sent per received frame, so sending runs at
+		// the call's own pace, whatever the application writes.
 		switch {
 		case toWriter.Free() < b.frame:
-			clear(far) // the writer is behind: send nothing, keep the pending frame
+			// The writer is behind: send nothing, keep the pending frame,
+			// and tell the canceller that silence was played.
+			clear(far)
 		case pending.Len() >= b.frame:
 			pending.Read(far)
 			toWriter.Write(far)
 		default:
-			clear(far) // nothing to send: send silence
+			// Nothing to send: send silence. Queuing it too keeps the
+			// canceller's queue from running dry, so it goes on cancelling
+			// the echo tail of what was sent before.
+			clear(far)
 			toWriter.Write(far)
 		}
+		// Playback gets exactly the frame just handed to the writer, so the
+		// far end the canceller sees is what the call hears.
 		if err := b.played(far); err != nil {
 			return err
 		}
@@ -154,9 +176,13 @@ func (b *bufferedCall) drainVariant(pending, rx, toWriter *buffer.SPSC, far, mic
 // newBufferedHandoffs makes the three hand-offs: pending audio with room for
 // pendingMs, and the received and the to-send frames with room for 200 ms.
 func newBufferedHandoffs(b *bufferedCall, pendingMs int) (pending, rx, toWriter *buffer.SPSC, err error) {
+	// pending holds what the application wants to send, so its size is the
+	// longest burst it may write at once (rate*ms/1000 samples).
 	if pending, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate * pendingMs / 1000}); err != nil {
 		return nil, nil, nil, err
 	}
+	// rx and toWriter each hold 200 ms (rate/5 samples): room for a stall
+	// of the processing goroutine or of the writer.
 	if rx, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate / 5}); err != nil {
 		return nil, nil, nil, err
 	}

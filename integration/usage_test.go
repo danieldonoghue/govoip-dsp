@@ -21,12 +21,16 @@ import (
 // newRx makes the hand-off from the network goroutine to the processing
 // goroutine: room for 200 ms of network audio.
 func newRx(c *call) (*buffer.SPSC, error) {
+	// netRate/5 samples is 200 ms of network audio: room for a stall of
+	// about ten 20 ms frames before onPacket has to drop.
 	return buffer.NewSPSC(buffer.SPSCConfig{Capacity: c.netRate / 5})
 }
 
 // onPacket runs on the network goroutine for each received frame. It
 // stores the whole frame or none of it, so the buffer holds whole frames.
 func onPacket(rx *buffer.SPSC, p []int16) bool {
+	// SPSC.Write stores as much as fits. A partial frame would shift every
+	// later frame boundary, so store the whole frame or nothing.
 	if rx.Free() < len(p) {
 		return false // the processor is behind: drop this packet
 	}
@@ -38,6 +42,8 @@ func onPacket(rx *buffer.SPSC, p []int16) bool {
 // gives the frame sent with each received one, deliver takes the output.
 func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 	far func() []int16, deliver func([]int16)) error {
+	// After a stall, old audio is useless for a live call: drop to the
+	// newest frame instead of processing a growing backlog.
 	if rx.Len() > maxBacklog {
 		// After a stall keep the newest frame, and skip the far frames of
 		// the dropped ones so that each frame keeps its far frame.
@@ -45,6 +51,8 @@ func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 			far()
 		}
 	}
+	// Each received frame is processed with the frame sent at the same
+	// time, which far returns in order.
 	for rx.Len() >= c.netFrame {
 		rx.Read(mic)
 		n, err := c.process(mic, far(), out)

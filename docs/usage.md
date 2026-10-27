@@ -96,14 +96,20 @@ the same way.
 
 ```go
 func newCall(netRate, frameMs int) (*call, error) {
+	// Process at the network rate when the echo canceller supports it, so
+	// nothing is resampled; otherwise resample to 16 kHz.
 	rate := netRate
 	if rate != 8000 && rate != 16000 {
 		rate = 16000 // the echo canceller supports 8 and 16 kHz only
 	}
+	// A frame is the same duration at both rates, so one network frame
+	// becomes one processing frame (20 ms: 160 samples at 8 kHz).
 	c := &call{
 		netRate: netRate, rate: rate,
 		netFrame: netRate * frameMs / 1000, frame: rate * frameMs / 1000,
 	}
+	// The preprocessor's FFT needs a supported frame size; check it before
+	// building anything, so a bad frame duration fails here, not mid-call.
 	if !preprocess.SupportedFrameSize(c.frame) {
 		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", c.frame)
 	}
@@ -121,14 +127,20 @@ func newCall(netRate, frameMs int) (*call, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The VAD decision is what tells the AGC which frames are speech.
 	c.pre.SetVAD(true) // denoise is on by default
 	c.gc, err = agc.New(agc.DefaultConfig(rate))
 	if err != nil {
 		return nil, err
 	}
+	// Scratch buffers for one frame, made once so that the per-frame path
+	// never allocates. The residual spectrum has one value more than the
+	// frame (ResidualLen).
 	c.clean = make([]int16, c.frame)
 	c.residual = make([]int32, c.ec.ResidualLen())
 
+	// Resampling only where the network rate is not 8 or 16 kHz: one
+	// resampler per stream, because each keeps its own filter history.
 	if rate != netRate {
 		rs := resample.Config{Channels: 1, InRate: netRate, OutRate: rate, Quality: resample.QualityVoIP}
 		if c.micRS, err = resample.New(rs); err != nil {
@@ -137,6 +149,8 @@ func newCall(netRate, frameMs int) (*call, error) {
 		if c.farRS, err = resample.New(rs); err != nil {
 			return nil, err
 		}
+		// OutLen gives the output space one call needs to consume a whole
+		// network frame, so no input is ever left behind.
 		c.rsOut = make([]int16, c.micRS.OutLen(c.netFrame))
 		// Less than one frame waits between calls, plus one call's output.
 		q := buffer.Config{Capacity: c.frame + len(c.rsOut), Overflow: buffer.Reject}
@@ -180,12 +194,16 @@ more per frame; `docs/performance.md` has the figures.
 
 ```go
 func newRx(c *call) (*buffer.SPSC, error) {
+	// netRate/5 samples is 200 ms of network audio: room for a stall of
+	// about ten 20 ms frames before onPacket has to drop.
 	return buffer.NewSPSC(buffer.SPSCConfig{Capacity: c.netRate / 5})
 }
 ```
 
 ```go
 func onPacket(rx *buffer.SPSC, p []int16) bool {
+	// SPSC.Write stores as much as fits. A partial frame would shift every
+	// later frame boundary, so store the whole frame or nothing.
 	if rx.Free() < len(p) {
 		return false // the processor is behind: drop this packet
 	}
@@ -203,6 +221,8 @@ every later frame boundary.
 ```go
 func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 	far func() []int16, deliver func([]int16)) error {
+	// After a stall, old audio is useless for a live call: drop to the
+	// newest frame instead of processing a growing backlog.
 	if rx.Len() > maxBacklog {
 		// After a stall keep the newest frame, and skip the far frames of
 		// the dropped ones so that each frame keeps its far frame.
@@ -210,6 +230,8 @@ func (c *call) drain(rx *buffer.SPSC, maxBacklog int, mic, out []int16,
 			far()
 		}
 	}
+	// Each received frame is processed with the frame sent at the same
+	// time, which far returns in order.
 	for rx.Len() >= c.netFrame {
 		rx.Read(mic)
 		n, err := c.process(mic, far(), out)
@@ -245,16 +267,23 @@ frames it skips.
 
 ```go
 func (c *call) step(mic, far, out []int16) error {
+	// Remove the echo of far, the frame sent at the same time, from mic.
 	if err := c.ec.Cancel(mic, far, c.clean); err != nil {
 		return err
 	}
+	// The residual is the echo that Cancel could not remove from this very
+	// frame, so it must be read after Cancel and before the next one.
 	if err := c.ec.Residual(c.residual); err != nil {
 		return err
 	}
+	// The preprocessor suppresses noise and that residual echo in place,
+	// and decides whether the frame is speech.
 	speech, err := c.pre.RunEcho(c.clean, c.residual)
 	if err != nil {
 		return err
 	}
+	// The AGC raises the gain only on speech frames, so the VAD decision
+	// keeps it from turning up pauses.
 	return c.gc.Process(c.clean, out, speech)
 }
 ```
@@ -275,15 +304,20 @@ to 16 kHz, each through its own resampler, and runs `step` once per whole
 
 ```go
 func (c *call) process(mic, far, out []int16) (int, error) {
+	// Without resampling a network frame is a processing frame.
 	if c.micRS == nil {
 		return c.frame, c.step(mic, far, out[:c.frame])
 	}
+	// Resample both streams the same way, so that they stay paired sample
+	// for sample, and queue the results until a whole frame is there.
 	if err := c.resampleInto(c.micRS, c.micQ, mic); err != nil {
 		return 0, err
 	}
 	if err := c.resampleInto(c.farRS, c.farQ, far); err != nil {
 		return 0, err
 	}
+	// The echo canceller and the preprocessor take whole frames only. Both
+	// queues hold the same number of samples, so checking one is enough.
 	n := 0
 	for c.micQ.Len() >= c.frame && n+c.frame <= len(out) {
 		c.micQ.Read(c.micBuf)
@@ -303,6 +337,8 @@ errors:
 
 ```go
 func (c *call) resampleInto(r *resample.Resampler, q *buffer.Ring, x []int16) error {
+	// A resampler may leave input unread when its output is full; with
+	// rsOut sized by OutLen that cannot happen, so it is reported as an error.
 	read, written, err := r.Process(x, c.rsOut)
 	if err != nil {
 		return err
@@ -310,6 +346,8 @@ func (c *call) resampleInto(r *resample.Resampler, q *buffer.Ring, x []int16) er
 	if read != len(x) {
 		return errShortRead
 	}
+	// The queue is sized so that it always has room; a short write would
+	// drop samples and unpair the two streams, so it is reported too.
 	if q.Write(c.rsOut[:written]) != written {
 		return errQueueFull
 	}
@@ -455,6 +493,8 @@ the recipe.
 
 ```go
 func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
+	// No resampler here: the echo canceller supports 8 and 16 kHz, so the
+	// network must run at one of them.
 	if rate != 8000 && rate != 16000 {
 		return nil, fmt.Errorf("call: %d Hz; the echo canceller supports 8 and 16 kHz only", rate)
 	}
@@ -463,6 +503,8 @@ func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", b.frame)
 	}
 	var err error
+	// The filter must cover the largest echo delay plus its tail; a longer
+	// one costs more and adapts more slowly, so filterMs is the caller's.
 	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate * filterMs / 1000, SampleRate: rate})
 	if err != nil {
 		return nil, err
@@ -471,7 +513,7 @@ func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.pre.SetVAD(true)
+	b.pre.SetVAD(true) // the VAD decision tells the AGC which frames are speech
 	b.gc, err = agc.New(agc.DefaultConfig(rate))
 	if err != nil {
 		return nil, err
@@ -485,9 +527,13 @@ func newBufferedCall(rate, frameMs, filterMs int) (*bufferedCall, error) {
 
 ```go
 func newBufferedHandoffs(b *bufferedCall, pendingMs int) (pending, rx, toWriter *buffer.SPSC, err error) {
+	// pending holds what the application wants to send, so its size is the
+	// longest burst it may write at once (rate*ms/1000 samples).
 	if pending, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate * pendingMs / 1000}); err != nil {
 		return nil, nil, nil, err
 	}
+	// rx and toWriter each hold 200 ms (rate/5 samples): room for a stall
+	// of the processing goroutine or of the writer.
 	if rx, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: b.rate / 5}); err != nil {
 		return nil, nil, nil, err
 	}
@@ -507,6 +553,8 @@ func (b *bufferedCall) played(far []int16) error { return b.ec.Playback(far) }
 
 ```go
 func (b *bufferedCall) received(mic, out []int16) error {
+	// Capture cancels mic against the oldest frame Playback queued: the one
+	// sent with the previous received frame.
 	if err := b.ec.Capture(mic, b.echoed); err != nil {
 		return err
 	}
@@ -516,7 +564,11 @@ func (b *bufferedCall) received(mic, out []int16) error {
 
 ```go
 func (b *bufferedCall) finish(out []int16) error {
+	// Keep the canceller's output in echoed and work on a copy, because the
+	// preprocessor rewrites its frame in place.
 	copy(b.clean, b.echoed)
+	// The residual is the echo the canceller left in this frame; read it
+	// now, before the next frame replaces it.
 	if err := b.ec.Residual(b.residual); err != nil {
 		return err
 	}
@@ -524,6 +576,7 @@ func (b *bufferedCall) finish(out []int16) error {
 	if err != nil {
 		return err
 	}
+	// The AGC raises the gain only on speech frames.
 	return b.gc.Process(b.clean, out, speech)
 }
 ```
@@ -536,17 +589,28 @@ canceller's output in `echoed`, which the tests measure.
 
 ```go
 func (b *bufferedCall) drain(pending, rx, toWriter *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
-	for range rx.Len() / b.frame { // bounds the work of this call
+	// One step per received frame waiting now; frames that arrive while
+	// this runs wait for the next call, so the work is bounded.
+	for range rx.Len() / b.frame {
+		// Exactly one frame is sent per received frame, so sending runs at
+		// the call's own pace, whatever the application writes.
 		switch {
 		case toWriter.Free() < b.frame:
-			clear(far) // the writer is behind: send nothing, keep the pending frame
+			// The writer is behind: send nothing, keep the pending frame,
+			// and tell the canceller that silence was played.
+			clear(far)
 		case pending.Len() >= b.frame:
 			pending.Read(far)
 			toWriter.Write(far)
 		default:
-			clear(far) // nothing to send: send silence
+			// Nothing to send: send silence. Queuing it too keeps the
+			// canceller's queue from running dry, so it goes on cancelling
+			// the echo tail of what was sent before.
+			clear(far)
 			toWriter.Write(far)
 		}
+		// Playback gets exactly the frame just handed to the writer, so the
+		// far end the canceller sees is what the call hears.
 		if err := b.played(far); err != nil {
 			return err
 		}
