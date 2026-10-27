@@ -1182,6 +1182,28 @@ four-goroutine test with two variants and `TestPacedWriterFull`, and
 `TestBufferedLongDelay` and `TestBufferedLagIsOneFrame`; the last `make race` of
 this branch, not on a quiet machine, took `integration` 101 s.
 
+Where the time of `integration` goes, from one run each of
+`go test -count=1 -json ./integration` (104.0 s) and the same with
+`-race -timeout 20m` (103.0 s), M1 Pro, 2026-10-27, load average 2.8 to
+3.8 from other processes:
+
+| Test | Normal | With `-race` |
+|---|---|---|
+| `TestReferencePairing` | 21.5 s (21%) | 38.4 s (37%) |
+| `TestRecipeThroughSPSC` | 2.5 s (2%) | 27.1 s (26%) |
+| `TestBufferedTwoGoroutines` | 10.5 s (10%) | 12.4 s (12%) |
+| `TestPacedFourGoroutines` | 10.4 s (10%) | 12.2 s (12%) |
+| `TestRecipeDropsUnderRace` | 8.4 s (8%) | 9.5 s (9%) |
+| `TestScenarioIsPrefixSafe` | 10.6 s (10%) | skipped |
+| `TestNoAllocsChain` | 7.0 s (7%) | skipped |
+| `TestRealTimeBudget` (10 s, without `-budget`) | 7.0 s (7%) | skipped |
+| `TestPipelineCall` | 5.0 s (5%) | skipped |
+
+The three goroutine tests of the recipes run at about real time: their
+producers sleep between frames over 8 to 10 s of audio, so most of their
+time is waiting, not computing. `TestScenarioIsPrefixSafe` spends its time
+generating the 10-minute inputs. Every other test takes under 2.5 s.
+
 CI and the Makefile run the full and race test runs with `-timeout 20m`
 instead of Go's default of 10 minutes per package. On CI runners the normal
 `echo` test has taken up to 516 s (windows-2025) and the `preprocess` race
