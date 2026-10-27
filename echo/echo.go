@@ -24,7 +24,7 @@ const (
 	// transforms of at most 4096 samples, and the window is two frames.
 	MaxFrameSize = fft.MaxSize / 2
 	// MaxFilterLength bounds the filter length in samples, and so the
-	// memory a Canceller uses (about 14 bytes per sample of filter).
+	// memory a Canceller uses (about 16 bytes per sample of filter).
 	MaxFilterLength = 64 * 1024
 	// MinSampleRate and MaxSampleRate bound the sampling rate in Hz.
 	MinSampleRate = 8000
@@ -47,8 +47,8 @@ type Config struct {
 	// such that internal/fft supports 2*FrameSize (for example 80, 160,
 	// 320 or 480: 10 ms at 8, 16, 32 or 48 kHz).
 	FrameSize int
-	// FilterLength is the echo tail the filter models, in samples, 1 to
-	// MaxFilterLength. It is rounded up to a whole number of frames.
+	// FilterLength is the echo tail the filter models, in samples: 1 to
+	// MaxFilterLength and at most 32767 frames, rounded up to whole frames.
 	FilterLength int
 	// SampleRate is the sampling rate in Hz, MinSampleRate to
 	// MaxSampleRate. It sets the adaptation constants and the DC notch.

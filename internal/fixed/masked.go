@@ -11,11 +11,8 @@
 
 package fixed
 
-// Masked variants. In C a shift count outside [0, 31] is undefined. The
-// reference build compiles the variable shifts of these operations in
-// mdf.c to scalar AArch64 LSLV and ASRV on 32-bit registers, which use the
-// count modulo 32. These functions reproduce that for every exponent. Where
-// the unmasked function is defined they are equal to it.
+// Masked variants take shift counts modulo 32, as the scalar LSLV and ASRV
+// the reference build uses in mdf.c do; elsewhere they equal the originals.
 
 // VShr32Masked is VSHR32 with the count taken modulo 32.
 func VShr32Masked(a int32, shift int) int32 {

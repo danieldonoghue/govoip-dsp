@@ -144,9 +144,21 @@ func TestReferenceEcho(t *testing.T) {
 			c.base += "_short"
 		}
 		t.Run(c.name, func(t *testing.T) {
-			runReferenceCase(t, m, c, true)
+			runReferenceCase(t, m, c, true, partialCheck() && !fullInPartial(c))
 		})
 	}
+}
+
+// fullInPartial reports whether a -short run still checks c in full: one
+// configuration per scenario, one that reaches the internal reset for diverge.
+func fullInPartial(c refCase) bool {
+	if raceEnabled || c.longBlocks > 0 {
+		return false
+	}
+	if c.scenario == "diverge" {
+		return c.rate == 16000 && c.frameMs == 20 && c.filterMs == 64
+	}
+	return c.rate == 8000 && c.frameMs == 10 && c.filterMs == 64
 }
 
 // sink receives one stream of a case. In a full run it feeds a chunk-hash
@@ -194,19 +206,19 @@ func (k *sink[T]) done() {
 	testutil.Compare(k.t, k.s.Name+" (committed prefix)", want, k.got[:len(want)])
 }
 
-// runReferenceCase checks every stream of case c: all chunk hashes in a
-// full run, the committed prefixes of out and residual in a partial run
-// (partialCheck). With residual false it skips the Residual calls and
-// checks only out, which shows that Residual does not change later output.
-func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual bool) {
+// runReferenceCase checks every stream of c by chunk hashes, or with partial
+// the committed prefixes; without residual it skips Residual calls.
+func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual, partial bool) {
 	mc := m.Case(t, c.name)
-	s := refInputs(c)
+	s := inputs(c)
+	if partial {
+		s = refInputs(c)
+	}
 	o := ops(c, s)
 	ec, err := New(Config{FrameSize: c.frame, FilterLength: c.filter, SampleRate: c.rate})
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial := partialCheck()
 	limitOps := len(o) / 2
 	if partial {
 		limitOps = min(limitOps, opsForSamples(o, c.frame, sec(c.rate, shortSeconds)))
@@ -313,7 +325,7 @@ func TestReferenceWithoutResidualCalls(t *testing.T) {
 			continue
 		}
 		t.Run(c.name, func(t *testing.T) {
-			runReferenceCase(t, m, c, false)
+			runReferenceCase(t, m, c, false, partialCheck() && !fullInPartial(c))
 		})
 	}
 }

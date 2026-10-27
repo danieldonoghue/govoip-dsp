@@ -11,15 +11,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/fixed"
 )
 
-// State tracing, for finding where the port first diverges from the
-// reference. Produce a trace with the driver (docs/testing.md, "echo"):
-//
-//	HARNESS_ECHO_TRACE=<dir> HARNESS_ECHO_TRACE_CASE=<case> [HARNESS_ECHO_DUMP_OP=<k>] \
-//	    reference/build/<mode>/bin/echo <scratch-out> reference/build/in/echo
-//
-// then run the reference test with GOVOIP_ECHO_TRACE=<dir> (and
-// GOVOIP_ECHO_DUMP_OP=<k> for an element-wise comparison of op k). The test
-// reports the first op after which a state variable differs.
+// State tracing against a driver trace, to find the first diverging call and
+// variable; docs/testing.md ("echo") gives the commands.
 
 const (
 	traceEnv  = "GOVOIP_ECHO_TRACE"

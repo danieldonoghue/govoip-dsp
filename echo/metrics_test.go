@@ -12,9 +12,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 )
 
-// Scenario measurements (docs/acceptance/echo.md, "Scenario
-// measurements"). The figures are pinned in testdata/metrics.golden; run
-// with -update-metrics to rewrite it after an intended change.
+// Scenario measurements (docs/acceptance/echo.md), pinned in
+// testdata/metrics.golden; -update-metrics rewrites it after an intended change.
 
 var updateMetrics = flag.Bool("update-metrics", false, "rewrite testdata/metrics.golden")
 

@@ -4,10 +4,12 @@
 //
 // Parity: bit-exact with SpeexDSP 1.2.1 speex_echo_cancellation,
 // speex_echo_capture, speex_echo_playback, speex_echo_state_reset,
-// speex_echo_get_residual and the speex_echo_ctl requests (FIXED_POINT)
-// for every configuration New accepts, as checked against the reference
-// harness at 8, 16, 32 and 48 kHz with 10 and 20 ms frames and 64, 128 and
-// 256 ms filters (testdata/speexdsp/echo, docs/acceptance/echo.md).
+// speex_echo_get_residual and the speex_echo_ctl requests (FIXED_POINT),
+// as checked against the reference harness at 8, 16, 32 and 48 kHz with 10
+// and 20 ms frames and 64, 128 and 256 ms filters (testdata/speexdsp/echo,
+// docs/acceptance/echo.md). One deviation, which no fixture reaches: where
+// a FLOAT_MUL32 shift count leaves [-31, 31], the two reference compilers
+// disagree, and the port saturates (docs/algorithms.md).
 //
 // # Configuration
 //
@@ -21,17 +23,19 @@
 // with SetSampleRate, as SPEEX_ECHO_SET_SAMPLING_RATE does.
 //
 // Supported rates: 8 and 16 kHz only. Resample higher rates down first.
-// New accepts rates up to 48 kHz and stays bit-exact there, but two
-// defects of the reference make it cancel poorly:
+// New accepts rates up to 48 kHz and stays bit-exact there, but the
+// reference cancels poorly above 16 kHz. Two reference defects contribute:
 //
 //   - DIV32_16 truncates the rate to 16 bits where the adaptation
 //     constants are derived (mdf.c:1233-1236), so above 32767 Hz (44.1
 //     and 48 kHz) spec_average, beta0 and beta_max are negative.
 //   - The 32-bit energy sums of mdf_inner_prod overflow on ordinary speech
-//     with 640- and 960-sample frames (20 ms at 32 and 48 kHz), so the
-//     reference resets itself every few seconds.
+//     with frames of 480 samples or more (10 ms at 48 kHz, 20 ms at 32 and
+//     48 kHz), so the reference resets itself every few seconds.
 //
-// docs/algorithms.md gives the measured effect.
+// At 32 kHz with 10 ms frames neither applies and the measured cancellation
+// is still weak; that cause has not been investigated. docs/algorithms.md
+// gives the measured effect.
 //
 // # Stream alignment
 //
@@ -57,7 +61,8 @@
 // after. The filter models echo delays from there to about FilterLength()
 // later; echo that arrives sooner is not cancelled. In detail:
 //
-//   - Playback calls before the first Capture are discarded.
+//   - Playback calls before the first Capture after New or Reset (including
+//     the canceller's own internal reset) are discarded.
 //   - Up to three frames are queued; a Playback with three queued frames
 //     is discarded.
 //   - A Playback into an empty queue is queued twice.
@@ -88,12 +93,13 @@
 // history, the power estimates, the adaptation state and the playback
 // queue. Like the reference it keeps the sampling rate, the per-block
 // adaptation weights learned once the filter has adapted (prop in mdf.c),
-// the leak estimate and the older half of the echo estimate that Residual
+// the leak estimate and the newer half of the echo estimate that Residual
 // reads. So after Reset, Cancel gives the same output as a new Canceller
-// only if the filter had not adapted before; Residual reads stale values
-// until the next Cancel. The canceller also resets itself, as the
-// reference does, when its energy checks fail (for example after an
-// arithmetic overflow on full-scale input).
+// only if the filter had not adapted before, and Residual keeps reporting
+// the echo from before the Reset until the filter adapts again. The
+// canceller also resets itself, as the reference does, when its energy
+// checks fail (for example after an arithmetic overflow on full-scale
+// input).
 //
 // # Concurrency and allocation
 //

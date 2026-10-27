@@ -193,9 +193,9 @@ func TestResetState(t *testing.T) {
 			t.Errorf("Reset did not clear %s", name)
 		}
 	}
-	// last_y: only the older half is kept.
+	// last_y: only the newer half is kept.
 	if slices.ContainsFunc(c.st.lastY[:80], func(v int16) bool { return v != 0 }) {
-		t.Error("Reset kept the newer half of last_y")
+		t.Error("Reset kept the older half of last_y")
 	}
 }
 

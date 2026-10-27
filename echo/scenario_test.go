@@ -490,11 +490,8 @@ func notchRadius(rate int) int16 {
 	return q0992
 }
 
-// edges builds boundary inputs (docs/acceptance/echo.md, "Changes"): a far
-// frame whose energy sits exactly on the adaptation threshold of
-// mdf.c:1153, microphone samples at the saturation test of mdf.c:973, and
-// microphone samples whose pre-emphasis output is exactly ±32767
-// (mdf.c:728-739). Rate changes follow in the op stream (edgeRates).
+// edges builds the boundary inputs of docs/acceptance/echo.md ("Changes"):
+// mdf.c:1153, :973 and :728-739; rate changes follow in the op stream.
 func edges(rate, frame int) signals {
 	n := func(s float64) int { return sec(rate, s) }
 	total := n(16)
@@ -502,9 +499,8 @@ func edges(rate, frame int) signals {
 	copy(far[n(0.5):], speech(rate, total-n(0.5), farAmp, "far"))
 	p15 := func(v int16) int16 { return int16((16384 + int32(q09)*int32(v)) >> 15) }
 
-	// Frame 3: Sxx is twice the inner product of the pre-emphasised frame
-	// (mdf.c:786 and :1044); place it between the thresholds for 999 and
-	// 1000 so the comparison at mdf.c:1153 is decided by one unit.
+	// Frame 3: Sxx, twice the frame's inner product (mdf.c:786, :1044), lies
+	// between the 999 and 1000 thresholds of mdf.c:1153.
 	nn := 2 * frame
 	thr := (nn * 1000) >> 6
 	target := thr / 2
