@@ -7,7 +7,6 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
-      - 'prompts/**'
       - 'LICENSE'
       - 'LICENSES/**'
       - '**/doc.go'
@@ -15,7 +14,6 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
-      - 'prompts/**'
       - 'LICENSE'
       - 'LICENSES/**'
       - '**/doc.go'

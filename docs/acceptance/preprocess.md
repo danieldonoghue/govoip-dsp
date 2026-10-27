@@ -131,8 +131,8 @@ are without a residual.
    fuzz test over frame contents, residual contents (any `int32`) and
    settings runs without failure.
 7. Every division the port makes either has a divisor shown nonzero for every
-   input, tested at the closest boundary, or is listed, with how a zero can
-   arise, under "Open questions" in `docs/status.md` (contracts section 8).
+   input, tested at the closest boundary, or is raised for a decision, with
+   how a zero can arise (contracts section 8).
 8. No method allocates after `New` (`testutil.AssertNoAllocs`).
 9. `Reset` gives the output of a fresh instance with the same settings.
 10. Switching between `Run` and `RunEcho` matches the C sequence of setting and
@@ -192,8 +192,8 @@ The review reached a zero divisor in `compute_gain_floor` through
 `RunEcho`. `reference/drivers/preprocess_zero.c` records that input against
 the reference (with a stand-in for `speex_echo_get_residual`), so the
 behaviour at a zero divisor is compared with the canonical arm64 build
-rather than only with a Go unit test. Criterion 7 is unchanged: the site is
-listed under "Open questions" in `docs/status.md`.
+rather than only with a Go unit test. Criterion 7 is unchanged: the site
+was raised for a decision (ADR `wp5-zero-divisor`).
 
 ### Criterion 11 added (WP5b)
 

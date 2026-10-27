@@ -141,8 +141,8 @@ Targets:
 
 ## SPSC backlog drop (WP2b)
 
-Pre-registered before the WP2b test and documentation changes. The owner
-chose to add no API: the consumer drops a backlog with `SPSC.Consume(n)`
+Pre-registered before the WP2b test and documentation changes. No API is
+added: the consumer drops a backlog with `SPSC.Consume(n)`
 without reading it first, and keeps only the newest k samples with
 `Consume(Len() - k)`. The criteria below are added to those above; none of
 those changes.
@@ -221,8 +221,7 @@ those changes.
    criteria and change none of them; they were committed before any WP2b
    test or documentation change.
 4. **WP2b review additions** (D2a and D8). The independent review found
-   that no test showed a drop expiring a held read view, which the brief
-   requires, and that disabling the keep-newest branch of the stress test
+   that no test showed a drop expiring a held read view, which the WP2b
+   scope requires, and that disabling the keep-newest branch of the stress test
    went unnoticed. Both criteria are added before the tests that meet them.
-5. **WP2b examples** (D9). Added at the owner's request, before the
-   examples are written.
+5. **WP2b examples** (D9). Added before the examples are written.

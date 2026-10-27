@@ -36,6 +36,50 @@ other jobs. A cache miss downloads about 338 MB from OpenSLR, which happens
 when the script changes or when GitHub has evicted the cache after 7 days
 without use.
 
+## Reference parity summary
+
+Which configurations of each bit-exact component match the reference, and
+any root-caused exceptions. `buffer` and `agc` are own designs, tested
+against behavioural criteria (Strategy, item 2). The ADRs cited are in
+[decisions/](decisions/README.md).
+
+- **WP0 `internal/fixed`:** bit-exact with the container harness (clang 19,
+  linux/arm64) on all 69 cases of `testdata/speexdsp/fixed`, and the Apple
+  clang 21 host build gives identical hashes. Excluded inputs, where C is
+  undefined, are listed in `docs/acceptance/fixed.md`. No exceptions.
+- **WP3 `internal/fft`:** bit-exact with the container harness (clang 19,
+  linux/arm64) on all 79 cases of `testdata/speexdsp/fft`: 12 signals at
+  each MVP size (160, 320, 640, 960, 1280, 1920), the twiddle tables, and a
+  sweep over all 427 supported sizes. The Apple clang 21 host build gives
+  identical hashes. No exceptions.
+- **WP1 `resample`:** bit-exact with the container harness (clang 19,
+  linux/arm64) on all 816 cases of `testdata/speexdsp/resample`: every
+  quality over every pairing of 8, 16, 24, 32, 44.1, 48 and 96 kHz and 10
+  fractional ratios, with all 652 sinc tables equal entry for entry
+  (Go `math.Sin` against glibc and macOS libm); stereo, `float32`,
+  strided, mixed and event cases; constructor failures. The Apple clang 21
+  host build gives identical hashes. No exceptions. Go-only deviations
+  where C is undefined or stalls are listed in
+  `docs/acceptance/resample.md`.
+- **WP5 `preprocess`:** bit-exact with the container harness (clang 19,
+  linux/arm64) on all 310 cases of `testdata/speexdsp/preprocess` (rates 8,
+  16, 32 and 48 kHz at 10 and 20 ms; denoise and VAD on and off; suppress
+  levels and VAD thresholds; edge signals; `EstimateUpdate`; PSD getters;
+  runs of 60 s, 120 s and 210 s; echo residuals from the C `mdf.c`; nine
+  other rate and frame-size pairs; window and filterbank tables and a rate
+  sweep; settings) and the case of `testdata/speexdsp/preprocess_zero`.
+  The Apple clang 21 host build gives identical hashes. No exceptions. The
+  one reachable zero divisor matches the canonical arm64 build (ADR
+  `wp5-zero-divisor`).
+- **WP6 `echo`:** bit-exact with the container harness (clang 19,
+  linux/arm64) on all 395 cases of `testdata/speexdsp/echo`: 16 scenarios
+  at 8, 16, 32 and 48 kHz, 10 and 20 ms frames and 64, 128 and 256 ms
+  filters, eight 60 s and two 10-minute runs, and the pseudo-float probe.
+  The Apple clang 21 host build gives identical hashes. Supported at 8 and
+  16 kHz only (ADR `wp6-rates-and-shifts`). One deviation that no fixture
+  reaches: `FLOAT_MUL32` shift counts outside [-31, 31] saturate (same
+  ADR).
+
 ## Reference harness
 
 `reference/` builds one C driver per component against the pinned SpeexDSP
@@ -780,6 +824,11 @@ about 105 s on the M1 Pro (2026-10-27). Swapping `q07` and `q03` in the
 adaptation mask (`mdf.go:668`) is caught under `-race` by both reference tests.
 Under `-short` (no race) the scenario measurements run one configuration (16
 kHz, 10 ms, 128 ms).
+
+CI and the Makefile run the full and race test runs with `-timeout 20m`
+instead of Go's default of 10 minutes per package. On CI runners the normal
+`echo` test has taken up to 516 s (windows-2025) and the `preprocess` race
+run up to 436 s (ubuntu-24.04), too close to the default.
 
 ## Speech
 

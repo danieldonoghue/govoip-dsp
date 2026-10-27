@@ -1,7 +1,9 @@
 # Architecture
 
 This document describes how the packages fit together. Components add their
-own sections as they land; status is in [status.md](status.md).
+own sections as they land. Component status is in the
+[README](../README.md#component-status); the work packages that build them
+are listed [at the end](#work-packages).
 
 ## Packages
 
@@ -69,3 +71,56 @@ goroutine at a time, with no locks. The only type designed for two
 goroutines is the SPSC ring buffer in `buffer`, which hands audio between the
 audio path and a device or network goroutine without blocking either side
 (requirements §16).
+
+## Work packages
+
+The library is built in numbered work packages (WP). Commit messages,
+acceptance criteria and ADR names cite them, for example
+`docs/decisions/wp0-harness.md`. A suffix letter (WP1b) marks a follow-up
+to the same component. S1 to S5 are stretch items, which start after WP9.
+
+| WP | Scope | Paths | Depends on | Parity | Status |
+|---|---|---|---|---|---|
+| WP0 | Foundation: fixed-point arithmetic, test support, reference harness, CI, docs skeleton | `internal/fixed`, `internal/testutil`, `reference/`, repository root | none | bit-exact (`internal/fixed`) | `internal/fixed` Validated, `internal/testutil` Implemented |
+| WP0b | `internal/fixed` documentation: stated approximation errors | `internal/fixed` | WP0 | n/a | Validated |
+| WP1 | Resampler | `resample` | WP0 | bit-exact | Validated |
+| WP1b | Resampler resource-cap test | `resample` | WP1 | bit-exact | Validated |
+| WP1c | Resampler output bound, `OutLen` | `resample` | WP1 | extension | Validated |
+| WP2 | Ring buffers | `buffer` | WP0 | none (own design) | Validated |
+| WP2b | SPSC backlog drop, `Consume` | `buffer` | WP2 | none (own design) | Validated |
+| WP3 | FFT | `internal/fft` | WP0 | bit-exact | Validated |
+| WP4 | AGC | `agc` | WP0 | behavioural | Validated (design v2) |
+| WP5 | Noise suppression and VAD | `preprocess` | WP3 | bit-exact | Validated |
+| WP5b | Preprocess frame-size check, `SupportedFrameSize` | `preprocess` | WP5 | bit-exact | Validated |
+| WP6 | Echo canceller (MDF) | `echo` | WP3 | bit-exact | Validated |
+| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | n/a | Planned |
+| WP8 | Developer documentation | package docs, examples, root package `govoipdsp`, `docs/` | WP7 | n/a | Planned |
+| WP9 | Performance | `internal/kernels`, hot paths | WP8 | bit-exact with the portable code | Planned |
+| S1 | Jitter buffer | `jitter` | WP9 | to be decided | Planned |
+| S2 | Clock-drift controller | `resample` extension | WP9 | behavioural | Planned |
+| S3 | SIMD kernels | `internal/kernels` | WP7 | bit-exact with the portable code | Replaced by WP9 |
+| S4 | Multichannel echo cancellation | `echo` | WP9 | bit-exact | Planned |
+| S5 | Dereverberation (extension) | `preprocess` or a new package | WP9 | behavioural | Planned |
+
+Status levels are defined in
+[requirements §14](requirements.md#14-status-levels).
+
+## Future work
+
+Recorded so it is not lost; none of it is scheduled.
+
+1. **`FrameLen(rate, d)` helper.** Samples per frame for a rate and a
+   frame duration. Still to decide: whether several packages need it, and
+   where a shared helper belongs. Until then callers write
+   `rate * ms / 1000`.
+2. **slin byte conversion.** Little-endian `[]byte` to `[]int16` and back
+   belongs in the planned codec repository
+   ([ADR `codecs-separate-repo`](decisions/codecs-separate-repo.md)).
+3. **AGC noise input.** If WP7 shows residual noise above the AGC gate after
+   `preprocess`, the preprocess noise estimate could be fed to `agc`, which
+   changes the `agc` API
+   ([ADR `wp4-noise-protection`](decisions/wp4-noise-protection.md)).
+4. **Parallel reference subtests.** `t.Parallel()` in the `echo` reference
+   subtests, and in the `preprocess` reference tests that do not use it
+   yet, would cut wall time with the same coverage, and could let CI drop
+   `-timeout 20m` ([testing.md](testing.md#race-detector-and-short-mode)).

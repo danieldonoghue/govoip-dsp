@@ -242,8 +242,8 @@ per sample, about 2 µs per 480-sample frame; 10 µs leaves a factor of five.
 
 ## Design v2 (level-estimator redesign)
 
-The owner chose to redesign the level estimator (2026-10-26) after design
-v1 above failed P4. Design v1 stays on record as the fallback: its last code
+The level estimator was redesigned (2026-10-26) after design v1 above
+failed P4. Design v1 stays on record as the fallback: its last code
 state is the commit "agc: check the ceiling and exact gain limits in more
 acceptance tests", and its measurements stay in "Results". Design v2 is
 judged against the same criteria and the same threshold numbers, with
@@ -332,8 +332,8 @@ frame of alignment. R5 is the condition the 3-frame rule was chosen for.
 
 ### Regression guards for design v2 (G)
 
-Registered on 2026-10-26 at the owner's request, **after** design v2 was
-measured on these files. They are regression guards, not acceptance
+Registered on 2026-10-26, **after** design v2 was measured on these
+files. They are regression guards, not acceptance
 evidence: they exist to catch a revert of two design choices that no
 acceptance criterion separates, the +13 dB cut threshold and the order-4
 power mean.
@@ -350,8 +350,8 @@ of margin at −20 dBFS.
 
 ### Regression guards for the cut threshold (G5, G6)
 
-Registered on 2026-10-26 at the owner's request, **after** measuring design
-v2. The owner accepted that steps of +10 to +13 dB do not cut. These guards
+Registered on 2026-10-26, **after** measuring design v2. Steps of +10 to
++13 dB that do not cut are accepted (ADR `wp4-step-response`). These guards
 pin the +13 dB cut threshold from above (G5) and the accepted overshoot of
 the steps just below it (G6). They are regression guards, not acceptance
 evidence.
@@ -377,7 +377,7 @@ catch.
 
 ### Noise-floor safeguard (NF), trial
 
-Registered on 2026-10-26 at the owner's request, before implementation.
+Registered on 2026-10-26, before implementation.
 The safeguard is kept only if every registered criterion (C, P, S, T, N,
 Q, R, G) still passes and N4 passes; otherwise it is reverted and the
 limit is documented as it stands.
@@ -405,10 +405,10 @@ with no pauses, so they may fail. That is measured, not assumed.
 
 ### Stationary noise with the speech flag set (N5)
 
-Registered on 2026-10-26 at the owner's request, **after** measuring design
-v2. WP5 found that the SpeexDSP 1.2.1 fixed-point VAD reports speech on
-every frame of stationary noise, so `speech` from `preprocess` does not
-protect the AGC against steady background noise.
+Registered on 2026-10-26, **after** measuring design v2. WP5 found that
+the SpeexDSP 1.2.1 fixed-point VAD reports speech on every frame of
+stationary noise, so `speech` from `preprocess` does not protect the AGC
+against steady background noise.
 
 | ID | Test | Threshold |
 |---|---|---|
@@ -471,12 +471,12 @@ the gate keeps 0 dB, and noise above it is driven to −23.98 to
    drops a rule without saying so. For C4, `G_f` is taken on every frame,
    because the −44 dBFS segment is only 6 dB above the gate, so the
    "10 dB above the gate" rule in "Measurement" would leave no frame to
-   measure. Both changes 2 and 3 are put to the owner in `docs/status.md`.
-5. **Owner decision on changes 2 and 3** (2026-10-26, relayed by the
-   coordinator). The owner confirmed change 2 (C4 measured on the gain, as
-   corrected by change 4) and change 3 (N1 pink noise scaled so that every
-   frame is below the gate). The limitation that the original N1 pink
-   signal shows stays documented in `agc/doc.go` and `docs/algorithms.md`.
+   measure. Both changes 2 and 3 were put up for confirmation.
+5. **Decision on changes 2 and 3** (2026-10-26). Change 2 (C4 measured on
+   the gain, as corrected by change 4) and change 3 (N1 pink noise scaled
+   so that every frame is below the gate) are confirmed. The
+   limitation that the original N1 pink signal shows stays documented in
+   `agc/doc.go` and `docs/algorithms.md`.
 6. **Design v2 corrections after its independent review** (2026-10-26).
    No threshold or test signal changes. The design text in "Design v2"
    changes as follows, for the reasons measured by the review and

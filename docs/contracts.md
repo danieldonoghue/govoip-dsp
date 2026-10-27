@@ -5,8 +5,8 @@ is [requirements.md](requirements.md); this file says how to meet it the same
 way everywhere.
 
 **Editing rule:** append-only. Add new sections at the end, marked with the
-work package that adds them. To change an existing contract, propose it under
-"Open questions" in [status.md](status.md).
+work package that adds them. To change an existing contract, propose the
+change for approval.
 
 ## 1. Packages and files
 
@@ -68,8 +68,8 @@ Rules:
 4. Extensions (requirements §4.5) are explicit `Config` fields or separate
    types. The zero value of every extension field selects the
    compatibility path.
-5. Choosing an interface, registry or hook over a concrete type needs the
-   owner's approval (requirements §2) before it is built.
+5. Choosing an interface, registry or hook over a concrete type needs
+   approval (requirements §2) before it is built.
 
 ## 3. Samples and conversion
 
@@ -169,11 +169,11 @@ an entry in `THIRD_PARTY_NOTICES.md`.
 - Division by zero is undefined in C. On the canonical arm64 reference it
   yields 0 without trapping; on amd64 it traps; the `internal/fixed` divisions
   panic, except `Div32x16OrZero` and `PDiv32x16OrZero`, which return 0 as the
-  arm64 reference does (owner decision 13). For every division a port makes,
-  show from the upstream code that the divisor cannot be zero for any input, and
-  test the boundary that comes closest. If a zero divisor is reachable, do not
-  add a guard silently: record it under "Open questions" in `docs/status.md`,
-  because the reference itself has no defined result there.
+  arm64 reference does (ADR `wp5-zero-divisor`). For every division a port
+  makes, show from the upstream code that the divisor cannot be zero for any
+  input, and test the boundary that comes closest. If a zero divisor is
+  reachable, do not add a guard silently: raise it for a decision, because
+  the reference itself has no defined result there.
 
 ## 9. Tests, benchmarks and shared helpers
 
@@ -390,9 +390,9 @@ Conditions:
 
 Alternatives considered: `preprocess` holding a `*echo.Canceller` (mirrors
 the C pointer, but couples the packages and stops WP5 testing without WP6),
-or an interface with a `Residual` method (needs owner approval, and adds
-nothing the slice does not give). The owner confirmed the slice hand-off
-(owner decision 2 in `docs/status.md`).
+or an interface with a `Residual` method (needs approval, and adds nothing
+the slice does not give). The slice hand-off is confirmed (ADR
+`wp0-residual-handoff`).
 
 ## 13. Internal FFT (WP3)
 

@@ -1,12 +1,12 @@
 # govoip-dsp requirements
 
-This is the stable specification for `govoip-dsp`. All agents and contributors
-work from it. Work-package briefs in [`prompts/`](../prompts/) say *what to build next*; this
-document says *what "correct" means*. If a brief and this document conflict,
-this document wins; raise the conflict in [`docs/status.md`](status.md) rather than
-resolving it silently.
+This is the stable specification for `govoip-dsp`. All contributors work
+from it. It says *what "correct" means*; the work packages listed in
+[architecture.md](architecture.md#work-packages) say what is built when. If a
+plan and this document conflict, this document wins; raise the conflict
+rather than resolving it silently.
 
-Changes to this file require the project owner's approval.
+Changes to this file require approval.
 
 ---
 
@@ -67,21 +67,21 @@ The project is not a CGO wrapper and does not reproduce the C API mechanically.
    those controls as if they worked.
 
 Performance work (item 3, WP9) follows the developer documentation (WP8).
-The other stretch items start only after WP9 is merged, and after the project
-owner has reviewed WP7's final report.
+The other stretch items start only after WP9 is merged and the integration
+results of WP7 have been reviewed.
 
 ### Sizing rule
 
 For a ported component, the reference API sets the compatibility scope. For
 everything else, build what a current consumer needs and record the rest as
 future work. A choice between a concrete type and a general mechanism (an
-interface, a registry, a hook) goes to the project owner before it is built.
+interface, a registry, a hook) needs approval before it is built.
 
 ### Out of scope
 
 RTP parsing, codecs, codec-specific PLC, neural models, hard real-time
 guarantees. Codecs are planned for a separate repository, one package per
-codec (`docs/decisions/owner-codecs-separate-repo.md`).
+codec (`docs/decisions/codecs-separate-repo.md`).
 
 ---
 
@@ -132,7 +132,7 @@ codec (`docs/decisions/owner-codecs-separate-repo.md`).
 - Cross-package contracts (for example the echo → preprocess residual-echo
   coupling) are defined in `docs/contracts.md`, which the foundation work
   package (WP0) creates and owns. Prefer concrete types; an interface needs
-  owner approval (§2).
+  approval (§2).
 
 ---
 
@@ -183,9 +183,10 @@ codec (`docs/decisions/owner-codecs-separate-repo.md`).
   regenerated locally.
 - `make fixtures` (or a documented script) regenerates everything. Ordinary
   `go test` and CI never need a C compiler or network access.
-- If the agent cannot fetch upstream or run a C compiler, it must not invent
-  fixtures. It implements the component, marks parity as **unverified** in
-  `docs/status.md`, and continues.
+- If upstream cannot be fetched or no C compiler can run, never invent
+  fixtures. Implement the component, mark its parity as **unverified** in the
+  README component table and the parity summary in `docs/testing.md`, and
+  continue.
 
 ### 4.3 Porting rules for bit-exactness
 
@@ -227,7 +228,7 @@ The traps are:
   implementation (§9) and tested with signal metrics.
 - Never relax a bit-exact requirement because a test fails. Investigate, find
   the divergence point (first differing sample and the state that produced it),
-  fix it or document a root-caused exception approved by the project owner.
+  fix it or document a root-caused exception, which needs approval.
 
 ### 4.5 Compatibility vs extensions
 
@@ -340,8 +341,8 @@ The traps are:
 - **`jitter`:** port of `jitter.c` semantics (timestamp-based playout,
   reordering, late/duplicate/missing handling, adaptive delay, statistics),
   independent of RTP parsing and codecs. Loss is reported as a concrete "packet
-  missing" result for the caller to conceal; any hook needs owner approval (§2).
-  Parity class decided in its brief (`jitter.c` uses some `float`).
+  missing" result for the caller to conceal; any hook needs approval (§2).
+  Parity class decided when the work starts (`jitter.c` uses some `float`).
 - **Drift controller:** extension that adjusts the resampler ratio gradually
   from caller-supplied observations (queue-depth error, timestamps, or an
   external rate estimate), bounded and audibly smooth. Must not change
@@ -462,7 +463,7 @@ image changes only by a deliberate commit that updates this list and
 `.github/workflows/ci.yml` together.
 
 CI does not run for a change that touches only documentation: Markdown files,
-`docs/`, `prompts/`, `LICENSE` and `LICENSES/`. A change that also touches
+`docs/`, `LICENSE` and `LICENSES/`. A change that also touches
 anything else runs the full workflow.
 
 - gofmt check, vet, staticcheck, `CGO_ENABLED=0 go test ./...` on every runner.
@@ -510,9 +511,7 @@ Never report a platform as tested because it cross-compiled.
 
 | Path | Contents |
 |---|---|
-| `CLAUDE.md` | Working rules for agents |
-| `PROMPT.md` | Work packages and how to launch agents |
-| `prompts/` | One brief per work package |
+| `CLAUDE.md` | Working rules for contributors and coding agents |
 | `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md` | Project front matter |
 | `LICENSES/` | Third-party licence texts |
 | `Makefile`, `go.mod` | Build entry points: check, test, race, bench, fixtures |
@@ -524,11 +523,10 @@ Never report a platform as tested because it cross-compiled.
 | `reference/` | C harness, `config.h`, scripts (no Go files) |
 | `testdata/speexdsp/` | Committed fixtures and manifests |
 | `docs/requirements.md` | This file |
-| `docs/status.md` | Coordination board and implementation status |
 | `docs/contracts.md` | Cross-package interfaces and conventions (created by WP0) |
 | `docs/acceptance/` | Pre-registered acceptance criteria |
 | `docs/architecture.md`, `algorithms.md`, `performance.md`, `testing.md` | Reference documentation |
-| `docs/decisions/` | Architecture decision records (ADRs) |
+| `docs/decisions/` | Architecture decision records (ADRs), indexed in its README |
 | `.github/workflows/` | CI |
 
 Create packages only when there is code for them. `go.mod` targets the oldest Go
@@ -541,17 +539,18 @@ as of October 2026); CI tests both supported releases.
 
 - **README:** what the library is, the no-CGO design, the SpeexDSP 1.2.1
   fixed-point compatibility statement, supported platforms (tested vs
-  build-only), component status table (linking `docs/status.md`), install, a
+  build-only), component status table (levels as in §14), install, a
   minimal example, how to run tests and benchmarks, limitations, licence.
 - **architecture.md:** packages, data flow, typical VoIP pipeline ordering
   (capture → echo → preprocess → agc → encode; decode → jitter → resample →
-  playback), dispatch, and how the clock-drift, jitter, resampling, latency and
-  echo-alignment problems differ.
+  playback), dispatch, how the clock-drift, jitter, resampling, latency and
+  echo-alignment problems differ, and the work packages.
 - **algorithms.md:** per component: algorithm, reference behaviour, parameters,
   latency, numerical notes, known deviations.
 - **performance.md:** measured results with environment and commands.
-- **testing.md:** strategy, harness, fixture provenance, UB-sanitiser findings,
-  libm findings, fuzzing, special requirements.
+- **testing.md:** strategy, reference parity summary, harness, fixture
+  provenance, UB-sanitiser findings, libm findings, fuzzing, special
+  requirements.
 - **ADRs** for significant decisions.
 - **Developer documentation (WP8):** GitHub is the primary form: Markdown
   pages in `docs/` with Mermaid diagrams and flow charts, and a glossary that
@@ -566,11 +565,13 @@ as of October 2026); CI tests both supported releases.
 
 ## 14. Status levels
 
-Each component in `docs/status.md` is one of: **Planned**, **In progress**,
+Each component in the README status table and each work package in
+`docs/architecture.md` is one of: **Planned**, **In progress**,
 **Implemented** (functional, unit-tested), **Validated** (meets its
 pre-registered acceptance criteria, including bit-exact fixtures where
-applicable), **Optimised** (kernels validated and benchmarked). Compiling is
-never validation.
+applicable), **Optimised** (kernels validated and benchmarked). A planned
+work package can instead be replaced by another. Compiling is never
+validation.
 
 ---
 
@@ -640,5 +641,5 @@ guarantees.
 - Never mark something tested on a platform where it was only cross-compiled.
 - Never ship stubs or advertise planned features as done.
 - If time runs out, leave the branch building and passing, finish or cleanly
-  back out the current unit, and record exactly what remains in
-  `docs/status.md`.
+  back out the current unit, and record exactly what remains in the review
+  request.

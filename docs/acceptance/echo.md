@@ -90,14 +90,14 @@ microphone unless stated.
 1. Every case matches: committed prefixes element by element, and the
    SHA-256 of every chunk of every stream, including the input streams.
 2. The canonical fixtures come from the pinned Linux container
-   (linux/arm64, owner decision 1). The host clang build gives identical
-   hashes, or each difference is documented as a finding in
+   (linux/arm64, ADR `wp0-reference-build`). The host clang build gives
+   identical hashes, or each difference is documented as a finding in
    `docs/testing.md`.
 3. The `-fsanitize=undefined` build gives identical outputs to the plain
    build, and its reports in `mdf.c` are listed in `docs/testing.md`. For
    every report on a path that affects output, the Go behaviour on that
    input is shown to equal the canonical reference, or the case is raised
-   with the owner.
+   for a decision.
 4. Committed fixtures stay within requirements §4.2: no file above 1 MB, and
    the echo fixtures below 6 MB in total. Long runs commit only a prefix.
 5. Under `-short` and `-race` the reference test compares a leading part of
@@ -126,8 +126,8 @@ microphone unless stated.
 5. Every division the port makes is listed in the package's design notes
    (`docs/algorithms.md`) with the argument that its divisor is nonzero for
    every input, or with the test that shows the closest boundary. A
-   reachable zero divisor is raised under "Open questions" in
-   `docs/status.md`, not guarded silently (contracts section 8).
+   reachable zero divisor is raised for a decision, not guarded silently
+   (contracts section 8).
 6. Calling `Residual` any number of times does not change any later output:
    every scenario gives identical outputs with and without `Residual`
    calls, and two calls in a row give identical spectra.
@@ -176,7 +176,7 @@ visible. Sanity floors, which apply at 8 and 16 kHz only:
 
 Other scenarios, and every scenario at 32 and 48 kHz, are reported without a
 floor. A floor that fails while the port is bit-exact is a finding about the
-reference, reported to the owner; it is not fixed by changing the
+reference, reported as such; it is not fixed by changing the
 compatibility path.
 
 **Speech**: a LibriSpeech scenario at 16 kHz (one utterance as far end,

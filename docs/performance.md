@@ -219,9 +219,9 @@ CGO_ENABLED=0 go test -run '^$' -bench 'AGCProcess|AGCNew' -benchmem -count 1 ./
 ```
 
 `DefaultConfig` at each rate, on full-scale `SpeechLike` input, so the
-limiter and the level estimate both run. Other agents were running at the
-same time (load average 15 to 37 on 10 cores), so the ranges are wide and
-the numbers are upper bounds.
+limiter and the level estimate both run. Other processes were running at
+the same time (load average 15 to 37 on 10 cores), so the ranges are wide
+and the numbers are upper bounds.
 
 | Benchmark | v1 median (range) ns/op | v2 median (range) ns/op | allocs/op |
 |---|---|---|---|

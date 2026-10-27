@@ -1,4 +1,4 @@
-# ADR wp0-dependencies: dependency policy
+# ADR wp0-dependencies: Dependency policy
 
 - **Status:** accepted (requirements §11); recorded by WP0.
 - **Date:** 2026-10-26

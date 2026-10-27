@@ -1,7 +1,6 @@
-# ADR owner-codecs-separate-repo: codecs live in a separate repository
+# ADR codecs-separate-repo: Codecs live in a separate repository
 
-- **Status:** accepted by the project owner; the work is planned, not
-  started.
+- **Status:** accepted; the work is planned, not started.
 - **Date:** 2026-10-26
 
 ## Context
@@ -25,7 +24,7 @@ scope.
    transcodes, and AudioSocket delivers slin, so the Go side may need only
    slin or G.711 at first.
 4. A shared codec interface is a general mechanism. Under the sizing rule
-   (requirements §2) it goes to the owner before it is built.
+   (requirements §2) it needs approval before it is built.
 
 ## Candidates
 

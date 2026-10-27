@@ -1,4 +1,4 @@
-# ADR wp0-harness: reference harness and fixture format
+# ADR wp0-harness: Reference harness and fixture format
 
 - **Status:** accepted by WP0.
 - **Date:** 2026-10-26
@@ -52,7 +52,7 @@ alone has 69 cases of up to 10^7 inputs, about 7 GB of raw streams.
 - **A Go program writing the manifest from raw C output.** Needs gigabytes
   of intermediate files per run, and splits the format between two
   programs.
-- **A weaker checksum (FNV, CRC).** Cheaper in C, but requirements §4.2 and
-  the briefs name SHA-256.
+- **A weaker checksum (FNV, CRC).** Cheaper in C, but requirements §4.2
+  names SHA-256.
 - **cgo calls into SpeexDSP from tests.** Violates the no-C-in-`go test`
   rule.

@@ -1,7 +1,6 @@
-# ADR wp0-reference-build: reference build configuration and toolchain
+# ADR wp0-reference-build: Reference build configuration and toolchain
 
-- **Status:** accepted by WP0; the owner confirmed the container
-  architecture (owner decision 1).
+- **Status:** accepted by WP0.
 - **Date:** 2026-10-26
 
 ## Context
@@ -24,7 +23,7 @@ architecture.
    manifest digest
    (`sha256:a66b19aa552f595b4ab276c6b4f9b24fa4546632c5ecd88cccdced4a6866323a`),
    with `clang-19=1:19.1.7-3+b1` and `libclang-rt-19-dev` at the same
-   version. It runs natively on the owner's Apple Silicon Mac and on GitHub's
+   version. It runs natively on Apple Silicon Macs and on GitHub's
    `ubuntu-24.04-arm` runner, which the fixture workflow uses.
 3. The sanitizer build is `-O2 -ffp-contract=off -fsanitize=undefined`,
    without `-fwrapv`: with `-fwrapv`, clang 19 reports no signed overflow and
@@ -51,8 +50,9 @@ architecture.
 
 - **linux/amd64 container.** Matches the second reference environment's
   architecture, but runs only under emulation on the Mac, and emulation may
-  hide CPU features that select libm variants. The owner chose linux/arm64
-  (`docs/status.md`, "Owner decisions").
+  hide CPU features that select libm variants. linux/arm64 was chosen
+  because it runs natively on Apple Silicon Macs and on GitHub's arm64
+  runner.
 - **GCC instead of clang.** Equally valid C, but the host compiler is clang,
   so a clang container keeps one compiler family and isolates OS and libm as
   the variables.

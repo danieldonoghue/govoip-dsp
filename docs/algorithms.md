@@ -42,9 +42,9 @@ to `|M|` in [16384, 32767]. It trades precision (about 14 bits) for range.
 - Where C is undefined (division by zero, oversized shift counts, out-of-range
   float to `int16` conversion) Go follows its own rules; see the package doc.
   The exceptions follow the compiled reference: the `...OrZero` divisions return
-  0 (owner decision 13), and the `...Masked` functions take shift counts modulo
-  32 (owner decision 18). `QConst16` saturates out-of-range results; no literal
-  in the fixed-point build is out of range.
+  0 (ADR `wp5-zero-divisor`), and the `...Masked` functions take shift counts
+  modulo 32 (ADR `wp6-rates-and-shifts`). `QConst16` saturates out-of-range
+  results; no literal in the fixed-point build is out of range.
 
 **Latency.** None; every function is pure.
 
@@ -545,7 +545,7 @@ which happens through the wraps above and the -32768 of `DIV32_16_Q8`.
   review found none in 1.28 million frames of random input checked
   against C.
 
-The owner accepted this policy (owner decision 13 in `docs/status.md`).
+This policy is accepted (ADR `wp5-zero-divisor`).
 
 **Sanity results** (`go test ./preprocess -run Sanity -v`, 2026-10-26),
 reported, not thresholded:
@@ -687,8 +687,8 @@ first `2K` output samples of a stream are zero.
   long-term, whose loudest frames just cross the −50 dBFS gate, reaches +23.16
   dB (N4, reported; design v1 reached +9.99 dB because it rose more slowly).
   Noise whose frames all stay below the gate keeps 0 dB. Raising `GateLevel`
-  above the noise is the only protection. The owner accepted this
-  (2026-10-26). The AGC belongs after `preprocess` with denoising on,
+  above the noise is the only protection. This is accepted (ADR
+  `wp4-noise-protection`). The AGC belongs after `preprocess` with denoising on,
   which lowers stationary noise before the AGC sees it; callers set
   `GateLevel` above the residual noise. At the default suppression
   (−15 dB), `preprocess` reduced white noise at −35 dBFS by 13.3 to 14.1 dB
@@ -717,9 +717,9 @@ first `2K` output samples of a stream are zero.
   0.48, 0.57 and 0.67 s (measured on a sine from −44 dBFS). All four
   exceed the 1.0 s that C1 allows for the registered +20 dB step, and +11
   to +13 dB exceed T3's 0.45 s. It is the cost of the +13 dB threshold,
-  which keeps ordinary speech from triggering cuts. The owner accepted it
-  (2026-10-26); guards G5 (a +14 dB step cuts) and G6 (these times plus at
-  most 0.05 s) pin it.
+  which keeps ordinary speech from triggering cuts. It is accepted (ADR
+  `wp4-step-response`); guards G5 (a +14 dB step cuts) and G6 (these
+  times plus at most 0.05 s) pin it.
 - **Small steps down.** A downward step smaller than 6 dB does not trigger
   the reset, so only the slow order-4 mean follows it. Measured on a sine:
   a −5 dB step takes 5.21 s to come within 2 dB of the target and 7.76 s to
@@ -779,7 +779,7 @@ variable learning rate of Valin (2007). Per frame of `F` samples, with
 microphone and one loudspeaker. Nine FFTs of `N` points per frame (seven
 for `M = 1`).
 
-**Supported rates.** 8 and 16 kHz only (owner decision, 2026-10-26).
+**Supported rates.** 8 and 16 kHz only (ADR `wp6-rates-and-shifts`).
 Callers resample higher rates down first. The port accepts rates up to
 48 kHz and is bit-exact there, but the two reference defects below make
 the canceller weak at 32 and 48 kHz (see "Measured behaviour"). A
@@ -839,9 +839,9 @@ count outside [-31, 31] the C result depends on the compiler and the bin,
 and no single Go behaviour matches both builds. The port uses the unmasked
 `FloatMul32`, which equals clang 19's vector lanes. No fixture reaches
 such a count (the sanitizer reports none at `pseudofloat.h:243`). The
-owner accepted this on 2026-10-26: saturation is a documented deviation
-where the two reference compilers disagree, and is unreachable in the
-fixtures.
+choice is accepted (ADR `wp6-rates-and-shifts`): saturation is a
+documented deviation where the two reference compilers disagree, and is
+unreachable in the fixtures.
 
 **Divisions.** Every division the port makes, and why its divisor is not 0:
 

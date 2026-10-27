@@ -218,7 +218,7 @@ Targets:
    reference build wraps and, in at least one measured case (8000:8000 quality
    0, then `set_rate(4000000000, 1)`, then 100 input and 100 output frames),
    produces 8 zeros where Go produces 1; the output is zeros either way.
-5. **Go-only resource cap** (owner decision, 2026-10-26, after review;
+5. **Go-only resource cap** (decided 2026-10-26, after review;
    pre-registered here before its implementation). Justification: the
    reference limits allow filters of about 10^9 table entries and 2 GB
    allocations, and in Go a failed allocation is fatal, not an error.
@@ -263,7 +263,7 @@ Targets:
      of accepted changes can hold more: measured 1.14 times the cap.
    - Added `TestCapBoundary`, which pins that a need of exactly the cap
      fits.
-7. **Deterministic rejection check** (WP1b, owner-approved; pre-registered
+7. **Deterministic rejection check** (WP1b, approved; pre-registered
    before the test change). Justification: CI run 40386500404 failed on
    windows-2025 with Go 1.26, where `TestResourceCap` reported a rejection
    of 256 channels, 100000:1, quality 10 after 64.57 ms against the 10 ms
@@ -285,7 +285,7 @@ Targets:
    1 s backstop, so only the allocation bound catches it without the cap.
    Each setter case now gets its own resampler, so that no case can reuse
    buffers that an earlier case grew.
-9. **Extension: `MaxOut` (WP1c, owner-approved; pre-registered before its
+9. **Extension: `MaxOut` (WP1c, approved; pre-registered before its
    implementation).** Justification: callers should not have to guess
    output buffer sizes. `(*Resampler).MaxOut(inFrames int) int` returns
    an upper bound on the output frames per channel that one process call
@@ -355,7 +355,7 @@ Targets:
     for the `int16` methods only: there the slack is exactly 0. For the
     `float32` methods with `inFrames` = 0, a call writes nothing, and the
     bound (still sound) is reported but not required to be tight.
-12. **Testable examples (WP1c, owner-approved addition; pre-registered
+12. **Testable examples (WP1c, approved addition; pre-registered
     before they are written).** `resample/example_test.go`, package
     `resample_test`, with deterministic `// Output:` comments that
     `go test` checks:
@@ -378,7 +378,7 @@ Targets:
       strong upsampling (for example 1:1000 with 3·10^6 input frames) the
       true need is larger, and a call then cannot consume all its input.
       Upstream has the same limit on one call.
-14. **Rename (owner decision, 2026-10-26).** `MaxOut` is renamed `OutLen`,
+14. **Rename (decided 2026-10-26).** `MaxOut` is renamed `OutLen`,
     "the output length to offer one call", because for `inFrames` > 0 a
     call writes at most one frame less than the value. The criteria of
     changes 9 to 13 apply to `OutLen` unchanged; their text keeps the old
