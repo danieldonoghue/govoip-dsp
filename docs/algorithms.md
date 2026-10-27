@@ -694,7 +694,8 @@ first `2K` output samples of a stream are zero.
   (−15 dB), `preprocess` reduced white noise at −35 dBFS by 13.3 to 14.1 dB
   but pink noise at −37 dBFS by only 3.7 to 5.8 dB (section
   "Preprocessor", sanity results), so the residual depends on the noise.
-  WP7 measures the real chain.
+  `docs/testing.md`, "Whole-chain measurements", has the measurements of
+  the real chain.
 - **A noise-floor safeguard was tried and rejected.** Allowing a rise only
   on frames more than 10 dB above a 1.5 s minimum-statistics floor failed
   C2 to C6, because a steady sine or white noise sits at its own floor,

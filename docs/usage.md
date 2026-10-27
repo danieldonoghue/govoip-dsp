@@ -745,7 +745,8 @@ Tests:
   (a reported finding). It also reports a 100 ms output pause followed
   by a burst (U10, with `-report`).
 - `TestBufferedLongDelay`: echo delays of 100 and 200 ms with a 256 ms
-  filter must reach 15 dB (U11).
+  filter must reach 15 dB (U11); it also reports the recovery after a
+  step from 100 to 140 ms (with `-report`).
 - `TestBufferedIdleSender`: silence queued after the output stops,
   against captures with nothing queued (U7).
 - `TestBufferedTwoGoroutines`: both callbacks as goroutines, compared with
@@ -759,7 +760,8 @@ Tests:
 
 ## What the measurements show
 
-`docs/testing.md`, section "`integration`", has the figures. In short:
+`docs/testing.md`, section "Whole-chain measurements", has the figures.
+In short:
 
 - At 8 and 16 kHz the in-step wiring passes every pipeline criterion of
   `docs/acceptance/integration.md` on the synthetic call and on

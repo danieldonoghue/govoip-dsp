@@ -1,16 +1,17 @@
 # Testing
 
 How govoip-dsp is tested, where the reference data comes from, and what the
-reference harness has found. Each component owns its section; the general
-sections belong to WP0.
+reference harness has found. Within each part, every component has its own
+section.
 
 ## Strategy
 
 1. **Bit-exact components** are compared with SpeexDSP 1.2.1 (FIXED_POINT)
    through fixtures that the C reference harness produces. A mismatch is a
    bug until it is root-caused (requirements §4.4).
-2. **Behavioural components** (`buffer`, `agc`) are tested against
-   pre-registered criteria in `docs/acceptance/`.
+2. **Behavioural components** (`buffer`, `agc`) and the whole chain
+   (`integration`) are tested against pre-registered criteria in
+   `docs/acceptance/`.
 3. **Every component** also has unit, boundary, reset, chunking,
    allocation, and (for `float32` entry points) non-finite tests
    (requirements §8), plus sanity signal tests reported in human terms.
@@ -21,6 +22,8 @@ sections belong to WP0.
 
 ```sh
 make check           # gofmt, vet, CGO_ENABLED=0 tests, purego tests, deps guard, staticcheck
+make check-short     # the quick checks: gofmt, vet, go test -short, deps guard, staticcheck
+make hooks           # once per clone: run make check-short before every git push
 make race            # go test -race ./...
 go test -short ./... # shorter reference runs; see "Race detector and short mode"
 make fixtures        # regenerate fixtures (Docker or host clang, network once)
@@ -79,6 +82,14 @@ against behavioural criteria (Strategy, item 2). The ADRs cited are in
   16 kHz only (ADR `wp6-rates-and-shifts`). One deviation that no fixture
   reaches: `FLOAT_MUL32` shift counts outside [-31, 31] saturate (same
   ADR).
+- **WP7 `integration`:** the echo and preprocess pairing through
+  `SET_ECHO_STATE`, plus 48 to 16 kHz resampling, is bit-exact with the
+  container harness (clang 19, linux/arm64) on all 12 cases of
+  `testdata/speexdsp/integration`, and so are the per-frame paths of both
+  recipes of `docs/usage.md` on the four 20 ms cases at 8 and 16 kHz
+  (`TestReferenceRecipes`: canceller output, residual, preprocess output
+  and VAD decision; not the AGC or the SPSC hand-offs). The Apple clang 21
+  host build gives identical hashes. No exceptions.
 
 ## Reference harness
 
@@ -210,7 +221,7 @@ architecture and the SHA-256 of `config.h`.
 - Sanitizer builds (container and host) give identical outputs to the
   plain build, with 67 reports each.
 - Go side: `go test ./echo` passes on darwin/arm64 against the container
-  fixtures (181 to 255 s across runs).
+  fixtures (about 50 s on the M1 Pro; "Race detector and short mode").
 
 **State trace.** The driver writes a per-call trace of every
 `SpeexEchoState` variable (one FNV-1a hash per variable after every op)
@@ -388,8 +399,8 @@ and match exactly.
 
 ## libm findings
 
-None yet. `internal/fixed` uses no libm. Components with float
-initialisation record theirs here.
+`internal/fixed` uses no libm. The components with floating-point
+initialisation record their findings below.
 
 ### `resample` (WP1)
 
@@ -415,6 +426,8 @@ tables are still compared with the harness.
 
 Run on a scratch copy with `go test -short ./internal/fixed` (first chunk of
 each stream only), so these are a lower bound on what the full test catches.
+The `TestInlining` row, which skips under `-short`, runs without it
+(`go test ./internal/fixed -run TestInlining -count=1`).
 
 | Mutation | Result |
 |---|---|
@@ -433,7 +446,7 @@ each stream only), so these are a lower bound on what the full test catches.
 | `QConst16` rounding offset 0.5 → 0.25 | caught (`qconst16`) |
 | `FloatExtract32` rounding term `1<<(s-1)` → `1<<s` | caught (`float_extract32`) |
 | `Sqrt` final shift `7-k` → `6-k` | caught (`sqrt`) |
-| `TestInlining` with `Sqrt` (which does not inline) added to the list | caught |
+| `TestInlining` with `Sqrt` (which does not inline) added to the list | caught (`Sqrt does not inline`, 2026-10-27) |
 | `Word2Int` (integer) bounds -32767/32766 → -32768/32767 | not caught: equivalent for integers |
 | `PShr32` rewritten without changing its value | not caught: equivalent, as intended |
 | `FloatSqrt` exponent `e>>1` → `e/2` | not caught: equivalent, e is even there |
@@ -490,8 +503,8 @@ nine signals; the inputs were added for them (`docs/acceptance/fft.md`,
 
 ### `buffer` (WP2)
 
-Run on a scratch copy of the package on the Mac (darwin/arm64, GOMAXPROCS 10),
-against the final code. The four ordering mutations ran with
+Run on a scratch copy of the package on the Mac (darwin/arm64, GOMAXPROCS 10).
+The four ordering mutations ran with
 `go test -race -run 'TestStressSPSC|TestResetSPSC'` and again without `-race`;
 the source mutations ran with `-run TestWaitFreeSource`; the rest ran the whole
 package (with `-race` for the SPSC index mutations).
@@ -527,8 +540,7 @@ reports a lost, a duplicated and a stale sample. The independent review ran
 six further mutations of its own (a re-loaded `w` in `Read`, index stores
 between the two wrap segments on each side, a write view one sample too
 large, `Reset` zeroing only `w`, `count` with `>`): all caught. Its
-seventh, the `goto` and `atomic.AddUint32` row above, was not caught by the
-first `TestWaitFreeSource`; the test was extended and now catches it.
+seventh is the `goto` and `atomic.AddUint32` row above.
 
 #### `buffer` backlog drop (WP2b)
 
@@ -549,8 +561,8 @@ with the tests named, under `-race` unless noted.
 The drop path shares its code with the view path, so the WP2 tests already
 catch most of these mutations. The stress test adds detection of the
 clip-to-`Cap` mutation through its drops, and its keep-newest requirement
-catches the disabled branch. The WP2 mutation table above was rerun with the
-WP2b code (`spsc.go` unchanged): same results.
+catches the disabled branch. The WP2 mutation table above gives the same
+results on the code with the drop path (`spsc.go` unchanged).
 
 ### `resample` (WP1)
 
@@ -858,7 +870,8 @@ One mutation of the test's Go chain, or of a recipe, at a time.
 ## Whole-chain measurements (`integration`, WP7)
 
 From `go test ./integration -run 'TestPipeline|TestNoise' -v`
-(darwin/arm64, 2026-10-27). Definitions and thresholds are in
+(darwin/arm64, 2026-10-27). The `TestFinding48k` figures are reproduced
+with `go test ./integration -run TestFinding48k -v -args -report`. Definitions and thresholds are in
 `docs/acceptance/integration.md`: B1 is the echo stage over 8 to 14 s,
 B2 the echo through the whole chain over 8 to 14 s and 36 to 40 s, B3
 the near-end output level (active 20 ms frames, 18 to 24 s), B4 the
@@ -899,8 +912,10 @@ nothing; `TestPipelineCall` pins the failures):
    end starts at 14 s, the gain is +0.7 dB, against +7.2 dB at 16 kHz. So
    B3 fails as a consequence of B1.
 
-The test pins both failures, so it shows when either changes. Whether to
-change the scenario, the chain or the criteria needs a decision.
+`TestPipelineCall` keeps both thresholds and lists B1 and B3 of this
+configuration as reported findings: it fails if either starts to pass, so a
+change in either direction shows. The cause is still to be traced
+(`docs/architecture.md`, "Future work", item 5).
 
 **Recipe A, sending paced by the received frames** (`docs/usage.md`; criteria U6
 to U12). The application writes the audio it wants to send into a pending SPSC;
@@ -1129,8 +1144,8 @@ the last one.
 
 Wall time of `go test -count=1` of one package at a time, with the test
 binaries built beforehand, median of three runs on the M1 Pro (10 cores,
-macOS, Go 1.26.5, 2026-10-27). "Serial" is the test files of `master` at
-`05b676c`, where every case ran one at a time.
+macOS, Go 1.26.5, 2026-10-27). "Serial" is the test files at commit
+`05b676c`, which run every case one at a time.
 
 | Package, mode | Serial | Parallel |
 |---|---|---|
@@ -1166,23 +1181,26 @@ Under `-race`, `integration` also skips its single-goroutine measurement and
 allocation tests, case by case, by the rule that `docs/contracts.md` section 9
 adds for packages that start goroutines: `TestPipelineCall`,
 `TestPipelineSpeech`, `TestReceivePath`, `TestNoiseThroughSendChain`,
-`TestFinding48k`, `TestScenarioIsPrefixSafe`, `TestReferenceRecipes`,
-`TestRealTimeBudget`, the recipe A tests `TestPacedUnevenTiming`,
-`TestPacedIdleSender`, `TestPacedBurstSender`, `TestPacedDelaySweep` and
-`TestPacedLongDelay`, the recipe B tests `TestBufferedUnevenTiming`,
-`TestBufferedIdleSender`, `TestBufferedLagAndDelay`, `TestBufferedLongDelay` and
-`TestBufferedLagIsOneFrame`, and the `TestNoAllocs*` tests. Each skip names the
-rule, so `go test -v -race ./integration` lists them. The tests that start
-goroutines (`TestRecipeThroughSPSC`, `TestRecipeDropsUnderRace`,
-`TestPacedFourGoroutines`, `TestBufferedTwoGoroutines`) run in full,
-`TestPacedWriterFull` runs too, and `TestReferencePairing` runs as under
-`-short`. The normal `go test` runs everything. Measured on the M1 Pro, one run
-each, 2026-10-27: `go test -race -count=1 -timeout 20m ./integration` took 620.6
-s before the skips (load average 1.89 before, 1.63 after) and 88.2 s with them
-(1.58 before, 1.81 after). Both runs predate the paced recipe, its
-four-goroutine test with two variants and `TestPacedWriterFull`, and
-`TestBufferedLongDelay` and `TestBufferedLagIsOneFrame`; the last `make race` of
-this branch, not on a quiet machine, took `integration` 101 s.
+`TestFinding48k`, `TestScenarioIsPrefixSafe`, `TestReferenceRecipes`, the
+recipe A tests `TestPacedUnevenTiming`, `TestPacedIdleSender`,
+`TestPacedBurstSender`, `TestPacedDelaySweep` and `TestPacedLongDelay`, the
+recipe B tests `TestBufferedUnevenTiming`, `TestBufferedIdleSender`,
+`TestBufferedLagAndDelay`, `TestBufferedLongDelay` and
+`TestBufferedLagIsOneFrame`, and the `TestNoAllocs*` tests.
+`TestRealTimeBudget` skips under `-race` unless `-budget` is set. Each skip
+names the rule, so `go test -v -race ./integration` lists them. What runs
+under `-race`:
+
+1. The tests that start goroutines, in full: `TestRecipeThroughSPSC`,
+   `TestRecipeDropsUnderRace`, `TestPacedFourGoroutines` and
+   `TestBufferedTwoGoroutines`.
+2. `TestReferencePairing`, as under `-short`.
+3. The short checks: `TestPacedWriterFull`, `TestDrainDropsBacklog`,
+   `TestQueueFullIsReported`, `TestUsageCodeIsTested`,
+   `TestReferenceCaseList` and `Example_call`.
+
+The normal `go test` runs everything. The run times of `-race` before and
+after the skips are in ADR `wp7-race-skips`.
 
 Where the time of `integration` goes, from one run each of
 `go test -count=1 -json ./integration` (104.0 s) and the same with
@@ -1212,9 +1230,17 @@ subtests: 0.27, 0.62 and 1.62 s at 8, 16 and 48 kHz normally, 2.85, 6.42 and
 10-minute inputs. Every other test takes under 2.5 s.
 
 CI and the Makefile run the full and race test runs with `-timeout 20m`
-instead of Go's default of 10 minutes per package. On CI runners the normal
-`echo` test has taken up to 516 s (windows-2025) and the `preprocess` race
-run up to 436 s (ubuntu-24.04), too close to the default.
+instead of Go's default of 10 minutes per package. In CI run 40535964139
+(2026-10-27, commit `c17e9c9`), per job:
+
+| Package, run | Time per job |
+|---|---|
+| `echo`, normal | 133 to 250 s (most: windows-2025, Go 1.26.x) |
+| `echo`, `-tags purego` | 145 to 272 s (most: windows-2025, Go 1.26.x) |
+| `echo`, `-race` | 138 s (macos-15), 217 s (ubuntu-24.04) |
+| `preprocess`, normal | 26 to 50 s |
+| `preprocess`, `-tags purego` | 33 to 75 s |
+| `preprocess`, `-race` | 182 s (macos-15), 248 s (ubuntu-24.04) |
 
 ## Reported-only measurements (`-report`)
 
@@ -1226,8 +1252,7 @@ a reason naming the flag. They are `TestPacedDelaySweep`,
 `TestPacedUnevenTiming` and `TestBufferedUnevenTiming` (the pause and
 burst, U10) and of `TestPipelineSpeech` (the unscaled near end). Every
 registered threshold and pinned finding runs in the normal `go test`. Run
-them when the figures in this file are to be refreshed, for example at a
-work-package hand-off:
+them to refresh the figures in this file:
 
 ```sh
 make report    # CGO_ENABLED=0 go test ./integration -count=1 -timeout 20m -v -args -report
@@ -1263,9 +1288,8 @@ against -27.9 and -26.8 dBFS, +1.0 and +0.6 dB with the 1/4 scaling.
 
 ## Fuzzing
 
-Each component adds its fuzz targets here. `internal/fixed` has none: its
-functions are pure, and the exhaustive and 10^7-input comparisons cover
-their domains.
+`internal/fixed` has no fuzz target: its functions are pure, and the
+exhaustive and 10^7-input comparisons cover their domains.
 
 `internal/fft` has `FuzzTransform`: any supported size, any input and a wrong
 length in either slice, for both directions. It checks that a wrong length gives
@@ -1281,24 +1305,23 @@ failure in either.
 `FuzzRing` (both policies) and `FuzzSPSC` (one goroutine) decode an operation
 sequence and compare the buffer with a slice-queue model after every operation;
 `FuzzChunksRing` checks chunk-partition invariance. Seeds are in
-`buffer/testdata/fuzz/`. Run on the Mac on 2026-10-26 against the final code,
-with `go test -run '^$' -fuzz '^<target>$' -fuzztime <t> -parallel 4 ./buffer`:
+`buffer/testdata/fuzz/`. Run on the Mac on 2026-10-26 with the command
+below. The 10-minute runs need `-timeout 15m`, since the default 10-minute
+test timeout would end them; the 3-minute run was made without it:
 
-| Target | Time | Executions | Failures |
-|---|---|---|---|
-| `FuzzRing` | 10 min | 27,972,227 | none |
-| `FuzzSPSC` | 10 min | 9,290,639 | none |
-| `FuzzChunksRing` | 3 min | 2,201,674 | none |
-
-With the WP2b drop and keep-newest operations (operation codes now taken
-modulo 12, so the committed seeds decode to different sequences than when
-they were added), run again on 2026-10-26 with `-timeout 15m` added (the
-default 10-minute test timeout would end a 10-minute run):
+```sh
+go test -run '^$' -fuzz '^<target>$' -fuzztime <t> -parallel 4 -timeout 15m ./buffer
+```
 
 | Target | Time | Executions | Failures |
 |---|---|---|---|
 | `FuzzRing` | 10 min | 29,757,663 | none |
 | `FuzzSPSC` | 10 min | 37,028,094 | none |
+| `FuzzChunksRing` | 3 min | 2,201,674 | none |
+
+`FuzzRing` and `FuzzSPSC` take operation codes modulo 12, so a committed
+seed added before the drop and keep-newest operations decodes to a
+different sequence than when it was added.
 
 ### `resample` (WP1)
 
@@ -1314,12 +1337,11 @@ default 10-minute test timeout would end a 10-minute run):
   `math.MaxInt` and spread between, and sequences of process, rate, quality,
   reset and skip-zeros calls; checks that nothing panics and that invalid
   arguments are rejected. Fuzzed for 5 minutes on the Mac (5144408 executions),
-  no failure. The independent review found a panic (ratios of 2^31 and more
-  after a rejected change) and a hang (strides near `math.MaxInt`) outside the
-  first version of this domain; against the code before their fix, the widened
-  target finds the panic within 2 minutes, and the stride version finds the old
-  stride panic within 1 s; both inputs are kept as seeds. A re-review measured
-  372k executions in 45 s with no failure.
+  no failure. With the panic (ratios of 2^31 and more after a rejected
+  change) and the stride panic (strides near `math.MaxInt`) that this domain covers
+  restored in the code, the target finds the panic within 2 minutes and the
+  stride panic within 1 s; both inputs are seeds. A further 45 s run gave
+  372k executions, no failure.
 - `FuzzOutLen`: channel counts 1 to 3, ratios with denominators up to 200
   (downsampling by up to 8), qualities, events (quality and rate changes,
   a rejected change, `Reset`, `SkipZeros`) and calls of 0 to 1275 frames
@@ -1351,7 +1373,9 @@ executions; design v2 (after its review corrections) 587,550 and 4,437,804
 executions. The seed corpora are the `f.Add` calls; the fuzzer found
 nothing to commit to `agc/testdata/fuzz/`.
 
-`echo` has `FuzzCanceller`: a random configuration (frame sizes 1 to 480,
+### `echo` (WP6)
+
+`FuzzCanceller`: a random configuration (frame sizes 1 to 480,
 filter lengths, rates including 32767, 32768 and 44100), then a random
 sequence of `Cancel`, `Playback`, `Capture`, `Reset`, `SetSampleRate`,
 `Residual`, `ImpulseResponse` and wrong-length calls, with samples from the

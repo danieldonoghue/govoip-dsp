@@ -355,7 +355,7 @@ maximum (for example from cache and frequency effects); that has not been
 measured.
 
 **Linux VM: not measured.** The Linux amd64 VMware reference environment
-was not reachable from the machine that ran this work package.
+has not been measured.
 
 `BenchmarkChain/<configuration>` reports the same work per frame for
 `make bench`.
