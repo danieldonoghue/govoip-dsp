@@ -34,8 +34,8 @@
 // to 256 taps times the downsampling factor, so the cap allows
 // downsampling by about 21000 to 32000 (mono, quality 10). The cap bounds
 // each configuration; since buffers only grow, a sequence of changes can
-// hold somewhat more (measured: 1.14 times the cap). Frames may be any length; a call
-// may consume and produce nothing.
+// hold somewhat more (measured: 1.14 times the cap). Frames may be any
+// length; a call may consume and produce nothing.
 //
 // # Chunking and output exhaustion
 //
@@ -89,9 +89,9 @@
 // kept. A setting equal to the current one does nothing. They may allocate.
 // An ErrAllocFailed from the cap changes nothing; one from the reference's
 // ratio or table limits leaves the resampler outputting zeros until a
-// later change succeeds (see ErrAllocFailed). If SetRateFrac returns ErrOverflow, nothing
-// changes; C changes part of its state there, after which its behaviour is
-// undefined. The channel count needs a new Resampler.
+// later change succeeds (see ErrAllocFailed). If SetRateFrac returns
+// ErrOverflow, nothing changes; C changes part of its state there, after
+// which its behaviour is undefined. The channel count needs a new Resampler.
 //
 // Reset is speex_resampler_reset_mem: it keeps the rates, ratio and quality
 // and restarts the stream. For a mono stream, output after Reset equals
