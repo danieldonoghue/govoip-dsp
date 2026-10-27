@@ -353,3 +353,29 @@ with `t.Skip` naming the rule, the measurement tests (B, N, U6, U7, U10,
 allocation tests, case by case where they have cases. The normal
 `go test` is unchanged. P5 still holds under `-race` in the cases it
 names; no criterion threshold changes.
+
+### U6 kept, U11 added for longer echo delays (after review)
+
+A decision after the U6 result keeps U6 exactly as registered, as a
+pinned finding: it marks the shortest echo delay recipe B can cancel.
+U11 is registered here, before it is measured.
+
+**U11. Longer echo delays.** The call scenario at 8 and 16 kHz with 20 ms
+frames, its echo path moved to a bulk delay of 100 ms and of 200 ms (the
+early part and the reflections follow it as in "Signals", so the path
+ends 48 ms after the bulk delay), each frame of both streams up to 30 ms
+late as in U6, through the real `drain`. The echo filter is 256 ms, the
+longest the `echo` fixtures test, which covers the 200 ms delay plus its
+48 ms tail.
+
+1. The echo stage over 8 to 14 s, as B1 measures it, is at least 15 dB
+   for both delays at both rates. The threshold is the one U6 registered
+   before any figure with a longer delay existed: the B1 floor of 20 dB
+   less 5 dB for the buffered mode's frame of lag; it stays above the
+   10 dB floor of the `echo` criteria (`docs/acceptance/echo.md`, "Scenario
+   measurements").
+2. **Delay step**, reported without a threshold: the bulk delay steps
+   from 100 ms to 140 ms at 8 s. Reported: the time from the step to the
+   start of the first 0.5 s window, before 14 s, whose echo stage is at
+   least 10 dB, as the `echo` criteria define convergence; "not reached"
+   is a valid result.
