@@ -486,3 +486,30 @@ physical 32 ms case without jitter (7.6 and 11.9 dB) that (ii) passes
 jitter the sweep gave (i) 15.1 dB against (ii) 21.0 dB with a 200 ms
 filter. The count of frames that needed echo of unsent frames is a lower
 bound, because the simulation models no network delay.
+
+### Recipe A is the paced recipe with `Cancel` (decision after review)
+
+A decision after review makes the `Cancel` variant of the paced recipe
+recipe A, the main recipe: the application paces its sending off the
+received frames (at most one pending frame, or silence, per received
+frame, handed to the writer) and the processing goroutine calls
+`Cancel(mic, sent, out)` with the frame just sent. The reasons are the
+measured ones: it passes the 32 ms case without jitter (23.9 and 20.3 dB
+at 8 and 16 kHz, against 7.6 and 11.9 dB with `Playback` and `Capture`);
+it gave 21.0 against 15.1 dB at 16 kHz with a 100 ms echo, jitter and a
+200 ms filter; it was worse only by 0.1 to 1.2 dB, in U11 at 8 kHz and
+in U12; and it follows the Speex manual's advice for audio that is in
+step. This decision supersedes the choosing rule of "Recipe B measured
+two ways".
+
+The earlier in-step recipe (a source that delivers each received frame
+with the frame sent at the same time) becomes a note within recipe A,
+with its tests. Recipe B becomes the `Playback`/`Capture` recipe for
+capture and playback delivered on separate callbacks with their own
+timing, using the one-for-one `drain` of "Recipe B queues one sent frame
+per received frame", and keeps its measurements, stated for that case.
+
+No threshold changes and every figure stays reported. U6 to U12 apply to
+recipe A as registered: U6 fails (11.1 and 10.7 dB) and stays pinned; U7
+to U12 pass. U6, U7 to U11 also stay with recipe B, as measured for its
+one-for-one `drain`; U12 does not apply to it, since it does not send.
