@@ -153,6 +153,10 @@ func TestReferencePairing(t *testing.T) {
 			if params.NetRate != c.netRate || params.Rate != c.rate || params.Frame != c.frame || params.Filter != c.filter {
 				t.Fatalf("manifest params %+v do not match the Go case %+v", params, c)
 			}
+			if partialCheck() && c.reps > 1 {
+				// One repetition covers the prefixes (TestScenarioIsPrefixSafe).
+				c.reps, c.inputBase = 1, fmt.Sprintf("call_%dk_1", c.netRate/1000)
+			}
 			runPairing(t, m, mc, c, inputs(c), params.Frames, partialCheck())
 		})
 	}
@@ -313,4 +317,19 @@ func b2i(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// TestScenarioIsPrefixSafe checks that one repetition of the call scenario
+// is the start of a longer run, so partial runs may generate only that.
+func TestScenarioIsPrefixSafe(t *testing.T) {
+	if partialCheck() {
+		t.Skip("generates the 10-minute inputs; runs in the normal go test")
+	}
+	for _, rate := range []int{8000, 16000} {
+		short, long := callScenario(rate, 1), callScenario(rate, 15)
+		n := len(short.mic)
+		if !slices.Equal(short.mic, long.mic[:n]) || !slices.Equal(short.far, long.far[:n]) {
+			t.Errorf("%d Hz: one repetition is not a prefix of fifteen", rate)
+		}
+	}
 }
