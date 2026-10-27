@@ -63,13 +63,26 @@ func Example_call() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		rx, err := newRx(c)
+		if err != nil {
+			log.Fatal(err)
+		}
 		fmt.Printf("network %d Hz: %d-sample frames, processing %d Hz: %d-sample frames, echo filter %d samples\n",
 			netRate, c.netFrame, c.rate, c.frame, c.ec.FilterLength())
+		queue := 0
+		if c.micQ != nil {
+			queue = c.micQ.Cap()
+		}
+		fmt.Printf("  residual %d, resampler output %d, queues %d, SPSC %d, output %d\n",
+			len(c.residual), len(c.rsOut), queue, rx.Cap(), c.outLen())
 	}
 	// Output:
 	// network 8000 Hz: 160-sample frames, processing 8000 Hz: 160-sample frames, echo filter 1600 samples
+	//   residual 161, resampler output 0, queues 0, SPSC 1600, output 320
 	// network 16000 Hz: 320-sample frames, processing 16000 Hz: 320-sample frames, echo filter 3200 samples
+	//   residual 321, resampler output 0, queues 0, SPSC 3200, output 640
 	// network 48000 Hz: 960-sample frames, processing 16000 Hz: 320-sample frames, echo filter 3200 samples
+	//   residual 321, resampler output 321, queues 641, SPSC 9600, output 640
 }
 
 // runDirect runs the call scenario through c frame by frame in one

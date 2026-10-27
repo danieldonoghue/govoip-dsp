@@ -369,7 +369,9 @@ func TestNoAllocsBuffered(t *testing.T) {
 			deliver := func([]int16) {}
 			k := 0
 			tick := func() {
-				onPacket(sent, s.far[k*b.frame:(k+1)*b.frame])
+				if k%4 != 3 { // every 4th tick has no sent frame, so drain queues silence
+					onPacket(sent, s.far[k*b.frame:(k+1)*b.frame])
+				}
 				onPacket(rx, s.mic[k*b.frame:(k+1)*b.frame])
 				if err := b.drain(sent, rx, fb, mb, out, deliver); err != nil {
 					t.Fatal(err)
@@ -391,7 +393,7 @@ func TestBufferedLagAndDelay(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		frame := rate * frameMs / 1000
-		for _, delayMs := range []int{32, 100} {
+		for _, delayMs := range []int{32, 40, 50, 60, 80, 100} {
 			base := callScenario(rate, 1)
 			mic := mix(convolve(base.far, room(rate, "integration/path", delayMs, delayMs+48, 16384)), base.near,
 				testutil.WhiteNoise(len(base.far), 30, testutil.Seed("integration/noise")))

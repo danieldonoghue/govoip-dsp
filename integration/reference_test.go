@@ -339,7 +339,8 @@ func b2i(b bool) int {
 // TestScenarioIsPrefixSafe checks that one repetition of the call scenario
 // is the start of a longer run, so partial runs may generate only that.
 func TestScenarioIsPrefixSafe(t *testing.T) {
-	if partialCheck() {
+	skipUnderRace(t)
+	if testing.Short() {
 		t.Skip("generates the 10-minute inputs; runs in the normal go test")
 	}
 	for _, rate := range []int{8000, 16000} {

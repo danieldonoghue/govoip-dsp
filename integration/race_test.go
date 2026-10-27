@@ -2,6 +2,6 @@
 
 package integration
 
-// The race detector slows the chain tenfold or more, so the reference test
-// then compares the committed prefixes only.
+// Under the race detector, single-goroutine tests skip (skipUnderRace) and
+// the pairing test compares prefixes plus three full cases.
 const raceEnabled = true
