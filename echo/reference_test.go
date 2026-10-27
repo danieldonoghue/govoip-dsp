@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/danieldonoghue/govoip-dsp/internal/fixed"
@@ -28,39 +29,61 @@ func sortedCases() []refCase {
 	return cs
 }
 
-var (
-	lastBase    string
-	lastSignals signals
-)
-
-// inputs returns c's signals, regenerating only when the base changes.
-func inputs(c refCase) signals {
-	if c.base != lastBase {
-		lastBase, lastSignals = c.base, gen{}.inputs(c)
-	}
-	return lastSignals
-}
-
-var (
-	lastCappedBase    string
-	lastCappedSignals signals
-)
-
-// refInputs returns the inputs of a reference run: the full signals, or in
-// a partial run signals generated only over their first shortSeconds+1 s.
-func refInputs(c refCase) signals {
-	if !partialCheck() {
-		return inputs(c)
-	}
-	if c.base != lastCappedBase {
-		lastCappedBase, lastCappedSignals = c.base, partialGen(c.rate).inputs(c)
-	}
-	return lastCappedSignals
-}
-
 // partialGen generates inputs only over the first shortSeconds+1 s, for
 // the partial runs.
 func partialGen(rate int) gen { return gen{limit: sec(rate, shortSeconds+1)} }
+
+// inputCache shares the inputs of each base among parallel subtests. An
+// entry is generated on first use and dropped after its last user.
+type inputCache struct {
+	mu      sync.Mutex
+	entries map[cacheKey]*cacheEntry
+}
+
+type cacheKey struct {
+	base    string
+	partial bool
+}
+
+type cacheEntry struct {
+	once  sync.Once
+	s     signals
+	users int
+}
+
+func newInputCache() *inputCache { return &inputCache{entries: map[cacheKey]*cacheEntry{}} }
+
+// hold registers t as a user of c's inputs; call it before t.Parallel. The
+// result returns the inputs, which the caller must not modify.
+func (ic *inputCache) hold(t *testing.T, c refCase, partial bool) func() signals {
+	k := cacheKey{c.base, partial}
+	ic.mu.Lock()
+	e := ic.entries[k]
+	if e == nil {
+		e = &cacheEntry{}
+		ic.entries[k] = e
+	}
+	e.users++
+	ic.mu.Unlock()
+	t.Cleanup(func() {
+		ic.mu.Lock()
+		if e.users--; e.users == 0 {
+			delete(ic.entries, k)
+			e.s = signals{} // the testing package keeps this closure until the test ends
+		}
+		ic.mu.Unlock()
+	})
+	return func() signals {
+		e.once.Do(func() {
+			g := gen{}
+			if partial {
+				g = partialGen(c.rate)
+			}
+			e.s = g.inputs(c)
+		})
+		return e.s
+	}
+}
 
 // TestCappedInputsArePrefixes checks that capped generation, used by
 // partial runs, gives exactly the leading samples of the full inputs.
@@ -74,7 +97,7 @@ func TestCappedInputsArePrefixes(t *testing.T) {
 			continue
 		}
 		seen[c.base] = true
-		full := inputs(c)
+		full := gen{}.inputs(c)
 		capped := partialGen(c.rate).inputs(c)
 		n := sec(c.rate, shortSeconds+1)
 		if !slices.Equal(full.mic[:n], capped.mic[:n]) || !slices.Equal(full.far[:n], capped.far[:n]) ||
@@ -96,13 +119,13 @@ func TestHarnessInputs(t *testing.T) {
 		}
 	}
 	var list strings.Builder
-	written := map[string]bool{}
+	var s signals
+	last := ""
 	for _, c := range sortedCases() {
-		s := inputs(c)
-		if !written[c.base] {
+		if c.base != last {
+			last, s = c.base, gen{}.inputs(c)
 			write(c.base+".mic.raw", testutil.EncodeLE(nil, s.mic))
 			write(c.base+".far.raw", testutil.EncodeLE(nil, s.far))
-			written[c.base] = true
 		}
 		write(c.name+".ops.raw", testutil.EncodeLE(nil, ops(c, s)))
 		fmt.Fprintf(&list, "%s %d %d %d %s %d %d\n", c.name, c.frame, c.filter, c.rate, c.base, c.outPrefix, c.resPrefix)
@@ -137,6 +160,7 @@ func TestReferenceCaseList(t *testing.T) {
 
 func TestReferenceEcho(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
+	ic := newInputCache()
 	for _, c := range sortedCases() {
 		if raceEnabled && !fullInPartial(c) {
 			continue // no goroutines here: -race adds run time, not coverage
@@ -147,7 +171,10 @@ func TestReferenceEcho(t *testing.T) {
 			c.base += "_short"
 		}
 		t.Run(c.name, func(t *testing.T) {
-			runReferenceCase(t, m, c, true, partialCheck() && !fullInPartial(c))
+			partial := partialCheck() && !fullInPartial(c)
+			s := ic.hold(t, c, partial)
+			t.Parallel()
+			runReferenceCase(t, m, c, s(), true, partial)
 		})
 	}
 }
@@ -211,12 +238,8 @@ func (k *sink[T]) done() {
 
 // runReferenceCase checks every stream of c by chunk hashes, or with partial
 // the committed prefixes; without residual it skips Residual calls.
-func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, residual, partial bool) {
+func runReferenceCase(t *testing.T, m *testutil.Manifest, c refCase, s signals, residual, partial bool) {
 	mc := m.Case(t, c.name)
-	s := inputs(c)
-	if partial {
-		s = refInputs(c)
-	}
 	o := ops(c, s)
 	ec, err := New(Config{FrameSize: c.frame, FilterLength: c.filter, SampleRate: c.rate})
 	if err != nil {
@@ -323,13 +346,17 @@ func opsForSamples(o []int32, fs, n int) int {
 
 func TestReferenceWithoutResidualCalls(t *testing.T) {
 	m := testutil.LoadManifest(t, fixtureDir)
+	ic := newInputCache()
 	for _, c := range sortedCases() {
 		if c.longBlocks > 0 || c.rate > 16000 && !strings.HasPrefix(c.name, "capture") ||
 			raceEnabled && !fullInPartial(c) {
 			continue
 		}
 		t.Run(c.name, func(t *testing.T) {
-			runReferenceCase(t, m, c, false, partialCheck() && !fullInPartial(c))
+			partial := partialCheck() && !fullInPartial(c)
+			s := ic.hold(t, c, partial)
+			t.Parallel()
+			runReferenceCase(t, m, c, s(), false, partial)
 		})
 	}
 }

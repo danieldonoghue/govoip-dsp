@@ -238,8 +238,7 @@ func (f figures) String() string {
 // testdata/metrics.golden. Under -short and -race it measures one
 // configuration.
 func TestScenarioMeasurements(t *testing.T) {
-	var lines []string
-	failed := 0
+	var cs []refCase
 	for _, c := range sortedCases() {
 		if c.longBlocks > 0 || raceEnabled && c.scenario != "farend" {
 			continue // under -race only farend: run time, no race coverage
@@ -247,7 +246,27 @@ func TestScenarioMeasurements(t *testing.T) {
 		if partialCheck() && !(c.rate == 16000 && c.frameMs == 10 && c.filterMs == 128) {
 			continue
 		}
-		f := measure(t, c, inputs(c))
+		cs = append(cs, c)
+	}
+	// Each case writes only its own elements; t.Run returns after all of them.
+	figs := make([]figures, len(cs))
+	ran := make([]bool, len(cs))
+	ic := newInputCache()
+	t.Run("measure", func(t *testing.T) {
+		for i, c := range cs {
+			t.Run(c.name, func(t *testing.T) {
+				s := ic.hold(t, c, false)
+				t.Parallel()
+				figs[i], ran[i] = measure(t, c, s()), true
+			})
+		}
+	})
+	var lines []string
+	for i, c := range cs {
+		if !ran[i] {
+			continue
+		}
+		f := figs[i]
 		lines = append(lines, c.name+f.String())
 		if c.rate > 16000 {
 			continue
@@ -257,24 +276,21 @@ func TestScenarioMeasurements(t *testing.T) {
 		case "farend", "ir_short":
 			if !f.hasSteady || f.steady < 10 || f.converge < 0 || f.converge > 8 {
 				t.Errorf("%s: steady-state ERLE %.2f dB, convergence %.1f s; floor 10 dB within 8 s", c.name, f.steady, f.converge)
-				failed++
 			}
 		case "nearend":
 			if !f.hasNear || math.Abs(f.nearChange) > 2 {
 				t.Errorf("%s: near-end level change %.2f dB; floor ±2 dB", c.name, f.nearChange)
-				failed++
 			}
 		case "doubletalk":
 			if !f.hasDT || f.dtOut-f.dtIn < 3 {
 				t.Errorf("%s: double-talk gain %.2f dB; floor 3 dB", c.name, f.dtOut-f.dtIn)
-				failed++
 			}
 		}
 	}
 	got := strings.Join(lines, "\n") + "\n"
 	if *updateMetrics {
-		if partialCheck() {
-			t.Fatal("-update-metrics needs a full run (no -short, no -race)")
+		if partialCheck() || len(lines) < len(cs) {
+			t.Fatal("-update-metrics needs a full run (no -short, no -race) of every case")
 		}
 		if err := os.WriteFile(metricsGolden, []byte(got), 0o644); err != nil {
 			t.Fatal(err)
@@ -294,7 +310,7 @@ func TestScenarioMeasurements(t *testing.T) {
 			t.Errorf("figures changed:\n got  %s\n want %s", l, w)
 		}
 	}
-	if !partialCheck() && len(lines) != len(want) {
+	if !partialCheck() && len(lines) == len(cs) && len(lines) != len(want) {
 		t.Errorf("%d measured cases, %d in %s", len(lines), len(want), metricsGolden)
 	}
 }
@@ -306,7 +322,7 @@ func TestDivergeReachesReset(t *testing.T) {
 		if c.scenario != "diverge" || c.rate != 16000 || c.frameMs != 20 || c.filterMs != 128 {
 			continue
 		}
-		s := inputs(c)
+		s := gen{}.inputs(c)
 		ec := mustNew(t, c.frame, c.filter, c.rate)
 		out := make([]int16, c.frame)
 		resets := 0
