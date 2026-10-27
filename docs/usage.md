@@ -248,6 +248,26 @@ func (c *call) process(mic, far, out []int16) (int, error) {
 }
 ```
 
+`resampleInto` checks that each resampler consumed the whole frame and
+that its queue took every sample; the sizes of `newCall` rule out both
+errors:
+
+```go
+func (c *call) resampleInto(r *resample.Resampler, q *buffer.Ring, x []int16) error {
+	read, written, err := r.Process(x, c.rsOut)
+	if err != nil {
+		return err
+	}
+	if read != len(x) {
+		return errShortRead
+	}
+	if q.Write(c.rsOut[:written]) != written {
+		return errQueueFull
+	}
+	return nil
+}
+```
+
 With 8, 16 and 48 kHz and 10 or 20 ms frames the ratio divides the frame,
 so each call writes exactly one frame; the tests check this on every call
 at 8, 16 and 48 kHz with 10 and 20 ms frames. The queues are there for

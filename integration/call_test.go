@@ -14,9 +14,11 @@ import (
 // This file is the recipe of docs/usage.md; TestUsageCodeIsTested checks
 // that every Go block there appears here or in usage_test.go verbatim.
 
-// errShortRead is returned if a resampler leaves input unread, which
-// OutLen sizing rules out.
-var errShortRead = errors.New("call: resampler left input unread")
+// Sentinel errors that the buffer sizes of newCall rule out.
+var (
+	errShortRead = errors.New("call: resampler left input unread")
+	errQueueFull = errors.New("call: resampled queue full")
+)
 
 // call is the send path of one call: every processor and buffer it needs,
 // made once, used from one goroutine.
@@ -132,7 +134,9 @@ func (c *call) resampleInto(r *resample.Resampler, q *buffer.Ring, x []int16) er
 	if read != len(x) {
 		return errShortRead
 	}
-	q.Write(c.rsOut[:written])
+	if q.Write(c.rsOut[:written]) != written {
+		return errQueueFull
+	}
 	return nil
 }
 
