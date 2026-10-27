@@ -223,4 +223,31 @@ Recorded with commands and real output:
 
 ## Changes
 
-None yet.
+### T3 split into the chain's allocations and the process's (during the implementation)
+
+T3 was measured with `runtime.MemStats`, whose `Mallocs` counts the
+allocations of every goroutine. The first 10 s run counted one allocation
+in the 8 kHz, 10 ms loop. A memory profile at rate 1 traced it to the
+runtime's background scavenger (`runtime.bgscavenge`, growing its timer
+heap), not to the chain, while `testutil.AssertNoAllocs` on the same step
+reported zero. T3 is now: zero allocations per frame by the chain
+(`TestNoAllocsChain`, `testutil.AssertNoAllocs` after warm-up), and zero
+garbage collections during the timed loop. The process-wide allocation
+count is still reported with T1. The chain property is unchanged; only
+allocations by other goroutines are no longer counted against it.
+
+### Speech variant uses two chapters of one speaker (during the implementation)
+
+The LibriSpeech cache that `make speech` fills holds 20 utterances of one
+speaker (1272). The speech variant uses the utterances of one chapter as
+far end and of another chapter as near end. Its thresholds are unchanged.
+
+### B1 and B3 fail on the 48 kHz chain, reported as a finding (after the first measurement)
+
+On the 48 kHz chain with 20 ms frames, B1 measured 15.9 dB (floor 20) and
+B3 -33.1 dBFS (window -30 to -18). The test keeps both thresholds. It
+lists these two criteria for that configuration as reported findings, and
+fails if either of them starts to pass, or if any other criterion fails,
+so a change in either direction shows. The measured cause is in
+`docs/testing.md`. Whether to change the scenario, the chain or the
+criteria needs a decision.
