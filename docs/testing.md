@@ -817,7 +817,7 @@ twice (`docs/acceptance/echo.md`, "Changes").
 
 ### `integration` (WP7)
 
-One mutation of the test's Go chain, or of the recipe, at a time.
+One mutation of the test's Go chain, or of a recipe, at a time.
 
 | Mutation | Result |
 |---|---|
@@ -827,12 +827,12 @@ One mutation of the test's Go chain, or of the recipe, at a time.
 | one output sample flipped at frame 10, under `-short` | caught by the three cases compared in full; before they were added, not caught |
 | one VAD decision flipped at frame 150, under `-short` | caught |
 | resampler quality 4 instead of 3 in the resampled cases | caught |
-| recipe: one far frame skipped per received frame | caught by `TestRecipeThroughSPSC` |
-| recipe: `onPacket` stores one sample fewer | caught by `TestRecipeThroughSPSC` (short output after its 1 minute deadline) and `TestDrainDropsBacklog` |
-| recipe: backlog drop without skipping the dropped frames' far frames | caught by `TestDrainDropsBacklog` |
-| recipe: backlog drop keeps the oldest frame | caught by `TestDrainDropsBacklog` |
-| recipe: `deliver` allocates | caught by `TestNoAllocsRecipe` |
-| recipe: AGC `speech` always true instead of the VAD decision | not caught by `TestRecipeThroughSPSC`: over its 10 s the VAD is false only on frames below the AGC gate, so the output is the same |
+| in-step wiring: one far frame skipped per received frame | caught by `TestRecipeThroughSPSC` |
+| in-step wiring: `onPacket` stores one sample fewer | caught by `TestRecipeThroughSPSC` (short output after its 1 minute deadline) and `TestDrainDropsBacklog` |
+| in-step wiring: backlog drop without skipping the dropped frames' far frames | caught by `TestDrainDropsBacklog` |
+| in-step wiring: backlog drop keeps the oldest frame | caught by `TestDrainDropsBacklog` |
+| in-step wiring: `deliver` allocates | caught by `TestNoAllocsRecipe` |
+| in-step wiring: AGC `speech` always true instead of the VAD decision | not caught by `TestRecipeThroughSPSC`: over its 10 s the VAD is false only on frames below the AGC gate, so the output is the same |
 | `docs/usage.md`: one changed code line | caught by `TestUsageCodeIsTested` |
 | recipe A: the writer gets the previous frame, `Cancel` the new one | caught by `TestPacedBurstSender` (replay differs) |
 | recipe A: `drain` takes two pending frames for one received frame | caught by `TestPacedFourGoroutines` (sent frame 0 is application frame 1) |
@@ -849,6 +849,9 @@ One mutation of the test's Go chain, or of the recipe, at a time.
 | recipe B: `deliver` allocates | caught by `TestNoAllocsBuffered` |
 | recipe B, lag test: reference two frames late instead of one | caught by `TestBufferedLagIsOneFrame` |
 | recipe B, U11: filter 128 ms instead of 256 ms | caught by `TestBufferedLongDelay` (200 ms delay: -0.2 dB) |
+| recipe A: `Run` in place of `RunEcho` | caught by `TestReferenceRecipes` (preprocess output differs) |
+| recipe A: `Residual` read before `Cancel` | caught by `TestReferenceRecipes` (residual differs) |
+| recipe B: `Run` in place of `RunEcho` | caught by `TestReferenceRecipes` (preprocess output differs) |
 | in-step wiring: `resampleInto` ignores the queue result | caught by `TestQueueFullIsReported` |
 | in-step wiring: backlog drop without skipping far frames, two goroutines | caught by `TestRecipeDropsUnderRace` (343 mismatches) |
 
@@ -908,9 +911,11 @@ frame k plays in the slot of received frame k on the call's clock, the
 microphone signal is built from the frames actually sent, through an
 echo path with the given bulk delay, at the time each received frame
 becomes available, and echo of a frame not yet sent by then is left out
-and counted. Every case also runs the comparison variant `drainQueued`,
-which passes the same frame to `Playback` before `Capture`. From
-`go test ./integration -run 'TestPaced|TestNoAllocsPaced' -v`
+and counted. The comparison column is the same paced design with the
+frame passed to `Playback` before `Capture`. It was measured on this
+branch at commit 09a990a, whose tests still ran it; the current tests
+run recipe A only and do not regenerate it. Recipe A's column comes from
+`go test ./integration -run 'TestPaced|TestNoAllocsPaced' -v -args -report`
 (darwin/arm64, 2026-10-27), 20 ms frames, echo stage over 8 to 14 s
 unless stated:
 
@@ -931,9 +936,10 @@ unless stated:
 U6 fails for recipe A; the test pins it as a reported finding. The echo
 delay counts from the slot of the received frame a sent frame goes with,
 so it includes the time until that frame is sent: the received frame's
-own 20 ms, its jitter of up to 30 ms and the wait for the next 20 ms
-drain tick, up to about 70 ms. An echo shorter than that partly comes
-from frames not yet sent: in U6, 470 of the 2000 received frames would
+own 20 ms plus up to 40 ms until the drain tick after its jittered
+arrival, so at most 60 ms; in the sweep below, 60 ms and more count no
+missing frame. An echo shorter than that partly comes from frames not
+yet sent: in U6, 470 of the 2000 received frames would
 have needed such echo, so with that jitter the case is not a physical
 call. The count is a lower bound, because the simulation models no
 network delay between the writer and the call. The physical 32 ms case
@@ -948,12 +954,14 @@ the same counterfactual, which shows what sending silence gains.
 avoids the comparison variant's one-frame lag. That lag costs most with short
 echoes (the 32 ms case above), and also at 16 kHz with a 100 ms echo and jitter,
 where the sweep's 200 ms filter gave 21.0 dB for recipe A against 15.1 dB, and
-U11's 256 ms filter 20.1 against 19.3 dB. Recipe A was worse only by 0.1 to 1.2
-dB, in U11 at 8 kHz and in U12, and it follows the Speex manual's advice for
-audio in step.
+U11's 256 ms filter 20.1 against 19.3 dB. On the registered criteria recipe A
+was worse only by 0.1 to 1.2 dB, in U11 at 8 kHz and in U12; in the sweep it was
+worse in some cells, by up to 2.0 dB at 60 ms and by 0.2 to 0.8 dB at 40 and 80
+ms. It follows the Speex manual's advice for audio in step.
 
 Delay sweep through the simulated call, reported only
-(`TestPacedDelaySweep`, 200 ms filter), recipe A / comparison:
+(`TestPacedDelaySweep`, run with `-report`, 200 ms filter), recipe A /
+comparison (the comparison measured at 09a990a):
 
 | Echo delay | 8 kHz, no jitter | 8 kHz, 0 to 30 ms | 16 kHz, no jitter | 16 kHz, 0 to 30 ms |
 |---|---|---|---|---|
@@ -965,8 +973,8 @@ Delay sweep through the simulated call, reported only
 | 100 ms | 25.0 / 24.7 | 25.3 / 24.4 | 21.3 / 19.1 | 21.0 / 15.1 |
 
 With up to 30 ms of jitter, 40 and 50 ms count 16 received frames with
-echo of frames not yet sent, so their figures include that much
-non-physical echo, and 32 ms 470; 60 ms and more count none.
+echo of frames not yet sent, so 16 frames lack part of their echo, and
+32 ms 470; 60 ms and more count none.
 
 **Recipe B, separate capture and playback callbacks** (`docs/usage.md`;
 criteria U6 to U11). For each captured frame, `drain` queues one played
@@ -991,8 +999,8 @@ after the played frame):
 | U11: step 100 to 140 ms, time back to 10 dB | 3.5 s | 3.0 s | reported |
 
 U6 fails at both rates; the test pins it as a reported finding.
-`TestBufferedLagAndDelay` (reported only) gives the echo stage over 8 to
-14 s:
+`TestBufferedLagAndDelay` (reported only, run with `-report`) gives the
+echo stage over 8 to 14 s:
 
 | Echo delay | 8 kHz, no jitter | 8 kHz, 0 to 30 ms jitter | 16 kHz, no jitter | 16 kHz, 0 to 30 ms jitter |
 |---|---|---|---|---|
@@ -1156,28 +1164,47 @@ Under `-race`, `integration` also skips its single-goroutine measurement and
 allocation tests, case by case, by the rule that `docs/contracts.md` section 9
 adds for packages that start goroutines: `TestPipelineCall`,
 `TestPipelineSpeech`, `TestReceivePath`, `TestNoiseThroughSendChain`,
-`TestFinding48k`, `TestScenarioIsPrefixSafe`, `TestRealTimeBudget`, the recipe A
-tests `TestPacedUnevenTiming`, `TestPacedIdleSender`, `TestPacedBurstSender`,
-`TestPacedDelaySweep` and `TestPacedLongDelay`, the recipe B tests
-`TestBufferedUnevenTiming`, `TestBufferedIdleSender`, `TestBufferedLagAndDelay`,
-`TestBufferedLongDelay` and `TestBufferedLagIsOneFrame`, and the `TestNoAllocs*`
-tests. Each skip names the rule, so `go test -v -race ./integration` lists them.
-The tests that start goroutines (`TestRecipeThroughSPSC`,
-`TestRecipeDropsUnderRace`, `TestPacedFourGoroutines` with both variants,
-`TestBufferedTwoGoroutines`) run in full, `TestPacedWriterFull` runs too, and
-`TestReferencePairing` runs as under `-short`. The normal `go test` runs
-everything. Measured on the M1 Pro, one run each, 2026-10-27:
-`go test -race -count=1 -timeout 20m ./integration` took 620.6 s before the
-skips (load average 1.89 before, 1.63 after) and 88.2 s with them (1.58 before,
-1.81 after). Both runs predate the paced recipe, its four-goroutine test with
-two variants and `TestPacedWriterFull`, and `TestBufferedLongDelay` and
-`TestBufferedLagIsOneFrame`; the last `make race` of this branch, not on a quiet
-machine, took `integration` 101 s.
+`TestFinding48k`, `TestScenarioIsPrefixSafe`, `TestReferenceRecipes`,
+`TestRealTimeBudget`, the recipe A tests `TestPacedUnevenTiming`,
+`TestPacedIdleSender`, `TestPacedBurstSender`, `TestPacedDelaySweep` and
+`TestPacedLongDelay`, the recipe B tests `TestBufferedUnevenTiming`,
+`TestBufferedIdleSender`, `TestBufferedLagAndDelay`, `TestBufferedLongDelay` and
+`TestBufferedLagIsOneFrame`, and the `TestNoAllocs*` tests. Each skip names the
+rule, so `go test -v -race ./integration` lists them. The tests that start
+goroutines (`TestRecipeThroughSPSC`, `TestRecipeDropsUnderRace`,
+`TestPacedFourGoroutines` with both variants, `TestBufferedTwoGoroutines`) run
+in full, `TestPacedWriterFull` runs too, and `TestReferencePairing` runs as
+under `-short`. The normal `go test` runs everything. Measured on the M1 Pro,
+one run each, 2026-10-27: `go test -race -count=1 -timeout 20m ./integration`
+took 620.6 s before the skips (load average 1.89 before, 1.63 after) and 88.2 s
+with them (1.58 before, 1.81 after). Both runs predate the paced recipe, its
+four-goroutine test with two variants and `TestPacedWriterFull`, and
+`TestBufferedLongDelay` and `TestBufferedLagIsOneFrame`; the last `make race` of
+this branch, not on a quiet machine, took `integration` 101 s.
 
 CI and the Makefile run the full and race test runs with `-timeout 20m`
 instead of Go's default of 10 minutes per package. On CI runners the normal
 `echo` test has taken up to 516 s (windows-2025) and the `preprocess` race
 run up to 436 s (ubuntu-24.04), too close to the default.
+
+## Reported-only measurements (`-report`)
+
+Tests and subtests in `integration` that only report figures and check no
+threshold run only with the test flag `-report`; without it they skip with
+a reason naming the flag. They are `TestPacedDelaySweep`,
+`TestBufferedLagAndDelay`, `TestFinding48k`, the delay-step subtests of
+`TestPacedLongDelay` and `TestBufferedLongDelay`, and the reported parts of
+`TestPacedUnevenTiming` and `TestBufferedUnevenTiming` (the pause and
+burst, U10) and of `TestPipelineSpeech` (the unscaled near end). Every
+registered threshold and pinned finding runs in the normal `go test`. Run
+them when the figures in this file are to be refreshed, for example at a
+work-package hand-off:
+
+```sh
+make report    # CGO_ENABLED=0 go test ./integration -count=1 -timeout 20m -v -args -report
+```
+
+The reported figures in this file were produced with the flag.
 
 ## Speech
 

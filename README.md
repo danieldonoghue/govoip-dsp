@@ -41,7 +41,7 @@ documentation (WP8) is next. See the table below and the
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Echo canceller | `echo` | Validated (bit-exact with SpeexDSP 1.2.1; supported at 8 and 16 kHz) |
 | Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz, and both recipes of [docs/usage.md](docs/usage.md) fail U6, a 32 ms echo with up to 30 ms of jitter ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
-| Developer documentation | root package `govoipdsp`, `docs/` | Planned (WP8); [docs/usage.md](docs/usage.md) is a tested wiring recipe |
+| Developer documentation | root package `govoipdsp`, `docs/` | Planned (WP8); [docs/usage.md](docs/usage.md) holds tested wiring recipes |
 
 Status levels are defined in
 [requirements §14](docs/requirements.md#14-status-levels). Decisions are

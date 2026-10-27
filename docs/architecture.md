@@ -17,7 +17,7 @@ are listed [at the end](#work-packages).
 | `internal/fixed` | Fixed-point arithmetic shared by the ports | Bit-exact with the SpeexDSP macros |
 | `internal/fft` | Fixed-point real FFT | Bit-exact with KISS FFT via `fftwrap.c` |
 | `internal/testutil` | Test signals, metrics, fixture loader | Test-only |
-| `integration` | Tests of the whole chain and the recipe of [usage.md](usage.md) | Test-only; the echo and preprocess pairing is bit-exact with the C chain |
+| `integration` | Tests of the whole chain and the recipes of [usage.md](usage.md) | Test-only; the echo and preprocess pairing is bit-exact with the C chain |
 | `internal/kernels` (planned, WP9) | Architecture-specific kernels | Must be bit-exact with the portable code |
 
 The public packages do not import each other. Shared arithmetic lives in
@@ -46,8 +46,8 @@ flowchart LR
 4. On the receive path, `jitter` (stretch) turns packets into a steady frame
    stream and `resample` converts to the device rate.
 
-[usage.md](usage.md) is a tested recipe for one call: the processors, the
-buffer sizes, the per-frame order and the goroutine hand-off.
+[usage.md](usage.md) gives tested recipes for one call: the processors,
+the buffer sizes, the per-frame order and the goroutine hand-offs.
 
 ## Five timing problems that look alike
 
