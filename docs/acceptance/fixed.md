@@ -7,9 +7,8 @@ after the first implementation commit need a written justification in the
 ## Parity class
 
 **Bit-exact** with SpeexDSP 1.2.1 (commit `1b28a0f6`), FIXED_POINT build, no
-`FIXED_DEBUG`, generic macros (`fixed_generic.h`, no ARM or Blackfin
-overrides), compiled by the reference harness with `-O2 -fwrapv
--ffp-contract=off`.
+`FIXED_DEBUG`, generic macros (`fixed_generic.h`, no ARM or Blackfin overrides),
+compiled by the reference harness with `-O2 -fwrapv -ffp-contract=off`.
 
 Every Go function must return, for every input in its tested domain, exactly
 the value the C macro or inline function returns in the harness build. For a C

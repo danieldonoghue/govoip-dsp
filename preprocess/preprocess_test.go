@@ -82,7 +82,7 @@ func TestNewErrors(t *testing.T) {
 	}
 }
 
-// The filterbank init divides by bankDivisor (filterbank.c:85) and by
+// The filterbank init divides by bankDivisor (filterbank.c:96) and by
 // mel_interval; the rate range is exactly where both are nonzero.
 func TestFilterbankDivisors(t *testing.T) {
 	for r := int32(1); r < MinSampleRate; r++ {

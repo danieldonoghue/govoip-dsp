@@ -37,9 +37,8 @@ func (r *Resampler) OutLen(inFrames int) int {
 	return int(min(best, maxFrames))
 }
 
-// outputsBefore counts the output positions L + floor((s + k*num)/den),
-// k >= 0, that lie below t: the kernels produce one output for each, over
-// the magic samples and the offered input taken together.
+// outputsBefore counts positions L + floor((s + k*num)/den), k >= 0, below t:
+// one output each, over the magic samples and the offered input together.
 func outputsBefore(t uint64, lastSample int32, samp uint32, num, den uint64) uint64 {
 	l := uint64(max(lastSample, 0))
 	if t <= l {

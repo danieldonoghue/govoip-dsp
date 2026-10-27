@@ -68,9 +68,9 @@ configuration, it uses `default` at 16000 Hz.
 - **Alignment.** Output sample `n + D` corresponds to input sample `n`.
   Output frame `f` is `out[fF+D : (f+1)F+D]`.
 - **Frame level** is the dBFS of an output frame's RMS.
-- **Frame gain** `G_f` is `20·log10(RMS(output frame f)/RMS(input frame
-  f))`, computed only for frames whose input RMS is at least 10 dB above the
-  gate, so integer rounding does not matter.
+- **Frame gain** `G_f` is `20·log10(RMS(output frame f)/RMS(input frame f))`,
+  computed only for frames whose input RMS is at least 10 dB above the gate, so
+  integer rounding does not matter.
 - **Applied gain** is the gain value the implementation multiplies each
   sample by. Criteria on it are checked by an in-package test that reads it
   per sample; criteria on levels use only the output samples.

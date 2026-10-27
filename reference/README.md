@@ -29,33 +29,34 @@ reference/fixtures.sh fixed          # one component
 HARNESS_MODE=host reference/fixtures.sh fixed
 ```
 
-Each run builds every driver twice: with `-O2 -fwrapv -ffp-contract=off`,
-which writes the fixtures, and with `-O2 -ffp-contract=off
--fsanitize=undefined`, which writes to `build/<mode>/ubsan/`. The sanitizer
-build leaves out `-fwrapv`, because with it clang reports no signed overflow
-and no shift of a negative value. The script fails if the two builds give
-different outputs. The sanitizer log is `build/<mode>/ubsan/<component>.log`.
+Each run builds every driver twice: with `-O2 -fwrapv -ffp-contract=off`, which
+writes the fixtures, and with `-O2 -ffp-contract=off -fsanitize=undefined`,
+which writes to `build/<mode>/ubsan/`. The sanitizer build leaves out `-fwrapv`,
+because with it clang reports no signed overflow and no shift of a negative
+value. The script fails if the two builds give different outputs. The sanitizer
+log is `build/<mode>/ubsan/<component>.log`.
 
 ## Adding a driver
 
 1. Create `drivers/<component>.c`. Its header comment holds two directives:
 
    ```c
-    * harness-sources: resample.c
-    * harness-inputs: ./resample
+    * harness-sources: fftwrap.c kiss_fft.c kiss_fftr.c
+    * harness-inputs: ./internal/fft
    ```
 
-   `harness-sources` lists the upstream `libspeexdsp/*.c` files to compile in
-   (empty for header-only code). `harness-inputs`, if present, names the Go
-   package whose `TestHarnessInputs` test writes input files before the
-   driver runs (see `internal/fixed/reference_test.go`); leave it empty when
-   the driver needs no Go-written input.
+   `harness-sources` lists the upstream `libspeexdsp/*.c` files to compile in.
+   Leave out a file the driver `#include`s to read its static state.
+   `harness-inputs`, if present, names the Go package whose `TestHarnessInputs`
+   test writes input files before the driver runs (see
+   `internal/fixed/reference_test.go`); leave it empty when the driver needs no
+   Go-written input.
 2. Include `config.h` first, then the upstream headers, then `harness.h`.
-3. `main(argc, argv)` gets the output directory and the input directory.
-   Call `hz_manifest_open(out, "<component>", "reference/drivers/<component>.c")`,
-   then for each case `hz_case_begin`, one `hz_stream_begin` per input or
-   output stream, `hz_put_*` per element, and `hz_case_end(params_json)`.
-   Close with `hz_manifest_close()`.
+3. `main(argc, argv)` gets the output directory and the input directory. Call
+   `hz_manifest_open(out, "<component>", "reference/drivers/<component>.c")`,
+   then for each case `hz_case_begin`, one `hz_stream_begin` per input or output
+   stream, `hz_put_*` per element, and `hz_case_end(params_json)`. Close with
+   `hz_manifest_close()`.
 4. Integer inputs can be generated on both sides from SplitMix64 (`hz_next`
    here, `testutil.SplitMix64` in Go). Anything that needs floating-point maths
    to generate is written by the Go test, so that only one libm is involved.

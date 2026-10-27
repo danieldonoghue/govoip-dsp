@@ -12,7 +12,7 @@ feature detection.
 ## Decision
 
 1. The module has no dependencies today. `golang.org/x/sys` may be added
-   when `internal/kernels` (stretch S3) needs `cpu`.
+   when `internal/kernels` (WP9) needs `cpu`.
 2. Any other module dependency needs its own ADR covering licence, purity
    under `CGO_ENABLED=0`, maintenance, platforms, performance, and why a small
    own implementation is worse.

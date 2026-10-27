@@ -15,7 +15,7 @@ own sections as they land; status is in [status.md](status.md).
 | `internal/fixed` | Fixed-point arithmetic shared by the ports | Bit-exact with the SpeexDSP macros |
 | `internal/fft` | Fixed-point real FFT | Bit-exact with KISS FFT via `fftwrap.c` |
 | `internal/testutil` | Test signals, metrics, fixture loader | Test-only |
-| `internal/kernels` | Architecture-specific kernels (stretch) | Bit-exact with the portable code |
+| `internal/kernels` (planned, WP9) | Architecture-specific kernels | Must be bit-exact with the portable code |
 
 The public packages do not import each other. Shared arithmetic lives in
 `internal/fixed` and `internal/fft`. The one cross-package data flow, the
@@ -56,11 +56,11 @@ flowchart LR
 ## Dispatch and the portable path
 
 Every component has a portable Go implementation, which is the correctness
-reference on every architecture. Optimised kernels (stretch S3) live in
-`internal/kernels`, are selected at run time with `golang.org/x/sys/cpu`,
-and must be bit-exact with the portable code. The `purego` build tag, or
-`GOVOIP_DSP_PUREGO=1`, forces the portable path ([contracts.md](contracts.md)
-section 11). Today every path is portable.
+reference on every architecture. Optimised kernels are planned for WP9 in
+`internal/kernels`. They will be selected at run time with
+`golang.org/x/sys/cpu` and must be bit-exact with the portable code. The
+`purego` build tag, or `GOVOIP_DSP_PUREGO=1`, forces the portable path
+([contracts.md](contracts.md) section 11). Today every path is portable.
 
 ## Threading model
 

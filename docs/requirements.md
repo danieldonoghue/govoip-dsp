@@ -66,8 +66,9 @@ The project is not a CGO wrapper and does not reproduce the C API mechanically.
    (`preprocess.c:1112-1125`), so the reverb term is always zero. Do not mirror
    those controls as if they worked.
 
-A stretch item starts only after WP7 is merged and the project owner has
-reviewed its final report.
+Performance work (item 3, WP9) follows the developer documentation (WP8).
+The other stretch items start only after WP9 is merged, and after the project
+owner has reviewed WP7's final report.
 
 ### Sizing rule
 
@@ -171,9 +172,11 @@ codec (`docs/decisions/owner-codecs-separate-repo.md`).
   and pinned compiler. Cross-check the same fixtures on the macOS host
   toolchain; any difference is a finding to document, not something to average
   away. If Docker is unavailable, use the host toolchain and record that.
-- Fixtures live in `testdata/speexdsp/<component>/` as little-endian raw `int16`
-  plus a JSON manifest (config, input generator and seed, reference commit,
-  compiler, flags, platform, SHA-256 of each file).
+- Fixtures live in `testdata/speexdsp/<component>/` as little-endian raw
+  streams (`int16`, or `int32`, `float32` and `float64` for intermediate
+  values and tables) plus a JSON manifest (config, input generator and seed,
+  reference commit, compiler, flags, platform, SHA-256 of each stream chunk
+  and committed file).
 - Keep fixtures small and deterministic: individual files ≲ 1 MB, total
   committed fixtures ≲ 20 MB. Long-duration comparisons generate inputs at test
   time from seeds and compare against hashes or against harness output

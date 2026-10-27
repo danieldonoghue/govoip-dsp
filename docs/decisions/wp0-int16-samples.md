@@ -22,8 +22,8 @@ and convert them with `WORD2INT`.
 
 - No scaling step exists between the Go API and the reference arithmetic, so
   bit-exactness carries over to the `float32` entry points.
-- Callers with normalised audio multiply by 32768 themselves. The package
-  docs say so.
+- Callers with normalised audio scale it to the 16-bit range themselves.
+  The package docs state the scale.
 - NaN handling is the one place where Go defines what C leaves undefined,
   and each `float32` entry point tests it.
 

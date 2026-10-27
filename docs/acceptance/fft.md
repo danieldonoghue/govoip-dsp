@@ -7,8 +7,8 @@ after the first implementation commit need a written justification in the
 ## Parity class
 
 **Bit-exact** with SpeexDSP 1.2.1 (commit `1b28a0f6`), FIXED_POINT build,
-`USE_KISS_FFT`, no SIMD, compiled by the reference harness with `-O2 -fwrapv
--ffp-contract=off`.
+`USE_KISS_FFT`, no SIMD, compiled by the reference harness with
+`-O2 -fwrapv -ffp-contract=off`.
 
 The reference entry points are `spx_fft_init`, `spx_fft` and `spx_ifft` of
 `fftwrap.c`, which call `kiss_fftr_alloc`, `kiss_fftr2` and `kiss_fftri2` of

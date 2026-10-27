@@ -204,21 +204,20 @@ Targets:
      `wrap_q0_frac_4294967294_4294967295` and
      `wrap_q10_frac_4294967294_4294967295`, which run a fixed 50 calls;
      `TestReferenceCoverage` checks that they exist.
-   - Review found a panic and a hang outside the fuzzed domain (ratios of
-     2^31 and more after a rejected change; strides near `math.MaxInt`).
-     After their fix, `FuzzConfigResampler` also draws ratios above 6e8,
-     which the size limits always reject, and strides near 1, near
-     `math.MaxInt` and spread between. Chunk-partition invariance is tested for all four
-     process methods, not only `Process`.
+   - Review found a panic and a hang outside the fuzzed domain (ratios of 2^31
+     and more after a rejected change; strides near `math.MaxInt`). After their
+     fix, `FuzzConfigResampler` also draws ratios above 6e8, which the size
+     limits always reject, and strides near 1, near `math.MaxInt` and spread
+     between. Chunk-partition invariance is tested for all four process methods,
+     not only `Process`.
 4. **Deviation 4, decided after review:** after a rejected rate change, C's
-   input position can overflow `int` (ratios of 2^31 and more, or a
-   later filter growth). Go computes that position in `int64` and
-   saturates it at 2^31-1, which stops the panics that the wrapped
-   position caused in Go. Results are unchanged wherever C does not
-   overflow. Where it does, the `-fwrapv` reference build wraps and, in at
-   least one measured case (8000:8000 quality 0, then `set_rate(4000000000,
-   1)`, then 100 input and 100 output frames), produces 8 zeros where Go
-   produces 1; the output is zeros either way.
+   input position can overflow `int` (ratios of 2^31 and more, or a later filter
+   growth). Go computes that position in `int64` and saturates it at 2^31-1,
+   which stops the panics that the wrapped position caused in Go. Results are
+   unchanged wherever C does not overflow. Where it does, the `-fwrapv`
+   reference build wraps and, in at least one measured case (8000:8000 quality
+   0, then `set_rate(4000000000, 1)`, then 100 input and 100 output frames),
+   produces 8 zeros where Go produces 1; the output is zeros either way.
 5. **Go-only resource cap** (owner decision, 2026-10-26, after review;
    pre-registered here before its implementation). Justification: the
    reference limits allow filters of about 10^9 table entries and 2 GB
@@ -307,11 +306,11 @@ Targets:
      with sizes from 0 to 1160 frames, after rate and quality changes
      with magic samples pending, after `Reset` and `SkipZeros`, and in
      the zero-output state after a rejected change.
-   - **Ratios where the fractional position can wrap** (`den_rate - 1 +
-     (num_rate mod den_rate)` at least 2^32, for example
-     4294967294:4294967295): the output per call is not bounded by the
-     input there, so `MaxOut` returns 2^31-1, the largest length a call
-     accepts. Tested on its own; such a buffer is not allocated.
+   - **Ratios where the fractional position can wrap**
+     (`den_rate - 1 + (num_rate mod den_rate)` at least 2^32, for example
+     4294967294:4294967295): the output per call is not bounded by the input
+     there, so `MaxOut` returns 2^31-1, the largest length a call accepts.
+     Tested on its own; such a buffer is not allocated.
    - **Tightness.** For a mono stream, and for interleaved channels whose
      states are equal, a call offered `MaxOut(inFrames)` output frames
      writes exactly `MaxOut(inFrames)` frames: the slack is 0. The one

@@ -1,6 +1,7 @@
 # ADR wp0-reference-build: reference build configuration and toolchain
 
-- **Status:** accepted by WP0; the owner reviews it at the WP0 checkpoint.
+- **Status:** accepted by WP0; the owner confirmed the container
+  architecture (owner decision 1).
 - **Date:** 2026-10-26
 
 ## Context
@@ -37,10 +38,10 @@ architecture.
 
 - Integer-only components should produce identical fixtures in both modes;
   `fixed` does (`docs/testing.md`).
-- Components whose initialisation calls libm (resampler sinc table,
-  filterbank, preprocess) get glibc's aarch64 results as the reference.
-  WP1 and WP5 compare them with the host's Apple libm and record
-  differences.
+- Components whose initialisation calls libm (the resampler sinc table)
+  get glibc's aarch64 results as the reference. WP1 compares them with the
+  host's Apple libm and records differences; the fixed-point preprocess and
+  filterbank call no libm (`docs/testing.md`).
 - An amd64 container would add a third libm (glibc x86_64, which can pick
   FMA variants of some functions at run time on CPUs that have FMA). This is
   a belief from glibc's design, not something WP0 measured, and is not part

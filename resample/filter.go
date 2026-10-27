@@ -166,9 +166,8 @@ type filterPlan struct {
 	direct                        bool
 }
 
-// planFilter is the sizing part of update_filter (resample.c:613-658). It
-// returns false where C takes its fail label; the plan then holds the
-// cutoff and oversampling that C has set by that point.
+// planFilter is the sizing part of update_filter (resample.c:613-658); false
+// is C's fail label, and the plan then holds C's cutoff and oversampling.
 func planFilter(quality int, num, den uint32) (filterPlan, bool) {
 	qm := &qualityMap[quality]
 	p := filterPlan{filtLen: qm.baseLength, oversample: qm.oversample, cutoff: qm.upsampleBandwidth}
@@ -216,10 +215,8 @@ const (
 	maxChannels = 256
 )
 
-// checkCap returns ErrAllocFailed if the filter for quality and the reduced
-// ratio num/den needs more than maxEntries table and history entries, or if
-// its length wraps to 0 (C is undefined there). It returns nil where C's
-// ratio and table limits reject the filter, so that C's failure path runs.
+// checkCap returns ErrAllocFailed above maxEntries entries or when the length
+// wraps to 0, and nil where C's own limits reject, so C's failure path runs.
 func (r *Resampler) checkCap(quality int, num, den uint32) error {
 	p, ok := planFilter(quality, num, den)
 	if !ok {

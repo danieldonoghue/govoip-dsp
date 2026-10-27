@@ -5,25 +5,25 @@ streaming media: resampling, echo cancellation, noise suppression with voice
 activity detection, and automatic gain control.
 
 **Status: under construction.** The resampler (`resample`), the ring
-buffers (`buffer`), noise suppression with VAD (`preprocess`) and the AGC
-(`agc`) and the echo canceller (`echo`, supported at 8 and 16 kHz) are
-usable. See the table below and [docs/status.md](docs/status.md).
+buffers (`buffer`), the echo canceller (`echo`), noise suppression with VAD
+(`preprocess`) and the AGC (`agc`) are usable. Integration testing of the
+whole chain (WP7) is next. See the table below and
+[docs/status.md](docs/status.md).
 
 ## Design
 
 - **No cgo.** The library builds and runs with `CGO_ENABLED=0`; no C
   compiler, native library or external program is needed to build, test or
   use it.
-- **SpeexDSP compatibility (goal).** The resampler, echo canceller and
-  preprocessor are to be bit-exact ports of SpeexDSP 1.2.1, fixed-point build
-  (commit `1b28a0f6`), checked against fixtures from a C reference harness.
-  Today the resampler, the echo canceller, the preprocessor, the shared
-  fixed-point arithmetic (`internal/fixed`) and the FFT (`internal/fft`)
-  exist, and all five are bit-exact. The ring buffers and the AGC are own
-  designs.
-- **Real-time safety (requirement).** No allocation, locking or blocking on
-  the per-frame path, each to be verified by tests
+- **SpeexDSP compatibility.** The resampler, the echo canceller, the
+  preprocessor, the shared fixed-point arithmetic (`internal/fixed`) and the
+  FFT (`internal/fft`) are bit-exact ports of SpeexDSP 1.2.1, fixed-point
+  build (commit `1b28a0f6`), checked against fixtures from a C reference
+  harness. The ring buffers and the AGC are own designs.
+- **Real-time safety.** No allocation, locking or blocking on the
+  per-frame path
   ([requirements §16](docs/requirements.md#16-real-time-and-memory-safety-rules)).
+  Every streaming type has a zero-allocation test.
 - **Samples** are `int16` on the 16-bit scale; `float32` entry points use the
   same scale.
 
@@ -49,7 +49,7 @@ Status levels are defined in
 | Platform | Status |
 |---|---|
 | macOS arm64 | Tested locally: all tests |
-| Linux amd64, Linux arm64, macOS arm64, Windows amd64 | CI runs all tests on every push that changes code, with Go 1.26 and 1.27, plus race tests on Linux amd64 and macOS arm64 ([results](https://github.com/danieldonoghue/govoip-dsp/actions/workflows/ci.yml)) |
+| Linux amd64, Linux arm64, macOS arm64, Windows amd64 | CI runs all tests on every push that changes code, with Go 1.26 and 1.27 (LibriSpeech tests on Linux amd64 with Go 1.27 only), plus race tests on Linux amd64 and macOS arm64 ([results](https://github.com/danieldonoghue/govoip-dsp/actions/workflows/ci.yml)) |
 | linux/arm, linux/riscv64, linux/ppc64le, linux/s390x, linux/mips64le, freebsd/amd64, darwin/amd64, windows/arm64, wasip1/wasm | Build-only: cross-compiled with `make cross`, never run |
 
 ## Install
@@ -87,13 +87,16 @@ make race    # race detector
 make bench   # short benchmarks
 ```
 
-Reference fixtures are committed, so tests need neither a C compiler nor
-the network. Regenerating them (`make fixtures`) needs Docker or a host
-clang; see [docs/testing.md](docs/testing.md).
+Reference fixtures are committed, so tests need neither a C compiler nor the
+network, except `make race` on Linux, which needs cgo. Regenerating them
+(`make fixtures`) needs Docker or a host clang; see
+[docs/testing.md](docs/testing.md).
 
 ## Limitations
 
 - Mono echo cancellation and preprocessing only in the first release.
+- The echo canceller is supported at 8 and 16 kHz only; resample higher
+  rates down first.
 - Go is not a hard real-time platform; tail latencies will be measured and
   reported, not guaranteed.
 

@@ -97,9 +97,8 @@ func (r *Resampler) interpolate(ch int, in []int16, inLen uint32, out []int16, o
 	return uint32(outSample)
 }
 
-// zero is resampler_basic_zero (resample.c:565), used after a failed filter
-// update. Its ratio may reach 2^32-1, so the position is computed in int64
-// and saturates at MaxInt32 where C would overflow (undefined there).
+// zero is resampler_basic_zero (resample.c:565). Its ratio may reach 2^32-1,
+// so the position is int64 and saturates at MaxInt32 where C would overflow.
 func (r *Resampler) zero(ch int, inLen uint32, out []int16, off, stride int, outLen uint32) uint32 {
 	outSample := int32(0)
 	lastSample := int64(r.lastSample[ch])
@@ -186,9 +185,8 @@ func (r *Resampler) processInt(ch int, in []int16, istride int, inLen *uint32, o
 	return nil
 }
 
-// processFloat is speex_resampler_process_float in the FIXED_POINT build
-// (resample.c:966): the input saturates through WORD2INT, and the output is
-// produced in chunks of at most fixedStackAlloc samples.
+// processFloat is speex_resampler_process_float, FIXED_POINT (resample.c:966):
+// input saturates through WORD2INT; output goes in fixedStackAlloc chunks.
 func (r *Resampler) processFloat(ch int, in []float32, istride int, inLen *uint32, out []float32, ostride int, outLen *uint32) error {
 	ilen, olen := *inLen, *outLen
 	x := r.mem[ch*int(r.memAllocSize):]

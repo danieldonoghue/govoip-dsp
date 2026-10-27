@@ -39,10 +39,12 @@ to `|M|` in [16384, 32767]. It trades precision (about 14 bits) for range.
 **Deviations.**
 
 - `Word2IntFloat32` and `Word2IntFloat64` return 0 for NaN; C is undefined.
-- Where C is undefined (division by zero, oversized shift counts,
-  out-of-range float to `int16` conversion) Go follows its own rules; see
-  the package doc. `QConst16` saturates out-of-range results; no literal in
-  the fixed-point build is out of range.
+- Where C is undefined (division by zero, oversized shift counts, out-of-range
+  float to `int16` conversion) Go follows its own rules; see the package doc.
+  The exceptions follow the compiled reference: the `...OrZero` divisions return
+  0 (owner decision 13), and the `...Masked` functions take shift counts modulo
+  32 (owner decision 18). `QConst16` saturates out-of-range results; no literal
+  in the fixed-point build is out of range.
 
 **Latency.** None; every function is pure.
 
@@ -110,19 +112,6 @@ tables are still compared entry by entry with the harness.
   The noise error grows with `N` because full-range noise leaves no room
   for the range shift, so each stage's division loses bits. The sines use
   `testutil.Sine` at 1000 Hz and a 16 kHz rate.
-
-**Sanity results** (`go test ./preprocess -run Sanity -v`, 2026-10-26),
-reported, not thresholded:
-
-- Noise only, after the first second, default -15 dB: white noise at -35
-  dBFS is reduced by 13.3 to 14.1 dB, pink noise at -37 dBFS by 3.7 to 5.8
-  dB, over the eight MVP configurations.
-- Speech in white noise at 16 kHz, 10 and 20 ms frames: segmental SNR
-  improves by 5.3 to 6.0 dB at 0 dB SNR, 4.9 to 5.1 dB at 5 dB and 4.0 to
-  4.3 dB at 10 dB, for `SpeechLike` and for 62 s of LibriSpeech.
-- With denoise off, the output matches the input delayed by one frame to
-  39.6 to 54.5 dB SNR: the analysis and synthesis are not transparent.
-- VAD: see the numerical notes above.
 
 **Deviations.** None in output. `New` returns an error where the reference
 returns NULL (odd sizes) or aborts (`speex_fatal` for a radix above 17); it
@@ -339,32 +328,30 @@ rounded up to a multiple of 8.
   example 1073741823:2; undefined in C) is rejected the same way.
 - NaN `float32` input becomes 0; there is no `NULL`-input form.
 
-**Extension: `OutLen`.** SpeexDSP has no way to ask how much output a
-call needs. Each kernel writes one output per position `L + floor((s +
-k·num)/den)`, k = 0, 1, …, that lies below the input it holds, where `L`
-is `last_sample`, `s` is `samp_frac_num` and `num/den` the reduced ratio;
-the loop's integer and fractional steps add up to exactly that. The
-magic samples, processed first, and the offered input form one span of
-`t = magic + n` frames, so a call can write `ceil(((t - L)·den - s)/num)`
-frames (0 if `t <= L`), per channel. `OutLen` returns the largest of
-these over the channels, plus 1 when `n > 0`: a call stops as soon as its
-output is full, so with exactly the count it can stop before a later
-internal input chunk (`mem_alloc_size - (filt_len - 1)` samples, 160 by
-default), or before the input after the magic samples,
-even when those would write nothing. The extra frame keeps the output
-from filling. The count is exact, so the slack is 1 (measured over 671
-configurations and the event and fuzz tests), except that a `float32`
-call offered no input writes nothing, as upstream `process_float` does,
-and the zero-output state can write fewer after the input position
-saturates. Where `den - 1 + (num mod den)` reaches 2^32, the fractional
-position can wrap and the output is not bounded by the input, so
-`OutLen` returns 2^31-1. The result is clamped to 2^31-1 in every case,
-the largest length a call accepts; above that the guarantee does not
-hold, for example for 1:1000 with 3·10^6 input frames, or 1:4000000000
-with one. In the zero-output state after a rejected change with a ratio
-of 2^31 or more, the saturated position could in theory allow one more
-output than counted if more than about 2^31 input frames were offered
-at once; this was analysed by review, not run.
+**Extension: `OutLen`.** SpeexDSP has no way to ask how much output a call
+needs. Each kernel writes one output per position `L + floor((s + k·num)/den)`,
+k = 0, 1, …, that lies below the input it holds, where `L` is `last_sample`, `s`
+is `samp_frac_num` and `num/den` the reduced ratio; the loop's integer and
+fractional steps add up to exactly that. The magic samples, processed first, and
+the offered input form one span of `t = magic + n` frames, so a call can write
+`ceil(((t - L)·den - s)/num)` frames (0 if `t <= L`), per channel. `OutLen`
+returns the largest of these over the channels, plus 1 when `n > 0`: a call
+stops as soon as its output is full, so with exactly the count it can stop
+before a later internal input chunk (`mem_alloc_size - (filt_len - 1)` samples,
+160 by default), or before the input after the magic samples, even when those
+would write nothing. The extra frame keeps the output from filling. The count is
+exact, so the slack is 1 (measured over 671 configurations and the event and
+fuzz tests), except that a `float32` call offered no input writes nothing, as
+upstream `process_float` does, and the zero-output state can write fewer after
+the input position saturates. Where `den - 1 + (num mod den)` reaches 2^32, the
+fractional position can wrap and the output is not bounded by the input, so
+`OutLen` returns 2^31-1. The result is clamped to 2^31-1 in every case, the
+largest length a call accepts; above that the guarantee does not hold, for
+example for 1:1000 with 3·10^6 input frames, or 1:4000000000 with one. In the
+zero-output state after a rejected change with a ratio of 2^31 or more, the
+saturated position could in theory allow one more output than counted if more
+than about 2^31 input frames were offered at once; this was analysed by review,
+not run.
 
 **Measurements.** From the Go implementation, which is bit-exact with the
 reference, so these are the reference's figures. Mac, 2026-10-26:
@@ -521,7 +508,7 @@ nonzero. Shown nonzero, with the test that covers the closest boundary:
 | `filterbank_new` | `sampling/2` | 2 |
 | `SET_PROB_START`, `SET_PROB_CONTINUE` | 100 | 100 |
 | `filterbank_new` | `2*len`, `banks-1`, `mel_interval` | at least 2, 23, and 16384 or more for rates of 4 Hz and up |
-| `filterbank_new` (`filterbank.c:85`) | `EXTRACT16(PSHR32(mel_interval,15))` | nonzero exactly for rates of 4 Hz and up (`TestFilterbankDivisors`, every rate) |
+| `filterbank_new` (`filterbank.c:96`) | `EXTRACT16(PSHR32(mel_interval,15))` | nonzero exactly for rates of 4 Hz and up (`TestFilterbankDivisors`, every rate) |
 | `beta` (`preprocess.c:740`) | `nb_adapt` | 1 to 20000 |
 | `Pframe` | `nbands` | 24 |
 | `qcurve` | `MAX16(x,1)`; `512 + ...` | at least 1; 512 to 20172 |
@@ -558,7 +545,7 @@ which happens through the wraps above and the -32768 of `DIV32_16_Q8`.
   review found none in 1.28 million frames of random input checked
   against C.
 
-The policy is an open question for the owner in `docs/status.md`.
+The owner accepted this policy (owner decision 13 in `docs/status.md`).
 
 **Sanity results** (`go test ./preprocess -run Sanity -v`, 2026-10-26),
 reported, not thresholded:

@@ -1,6 +1,6 @@
 # ADR wp0-harness: reference harness and fixture format
 
-- **Status:** accepted by WP0; the owner reviews it at the WP0 checkpoint.
+- **Status:** accepted by WP0.
 - **Date:** 2026-10-26
 
 ## Context

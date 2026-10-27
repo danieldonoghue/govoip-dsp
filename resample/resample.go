@@ -144,9 +144,8 @@ func New(cfg Config) (*Resampler, error) {
 			ErrAllocFailed, num, den, cfg.Quality, maxEntries)
 	}
 	r.setRateFrac(uint32(num), uint32(den), uint32(cfg.InRate), uint32(cfg.OutRate))
-	// update_filter runs before the per-channel arrays exist, which it does
-	// not touch before the first process call, so that a channel count the
-	// size limits reject fails before allocating for it.
+	// update_filter does not touch the per-channel arrays, so a channel count
+	// the size limits reject fails here, before they are allocated.
 	if err := r.updateFilter(); err != nil {
 		return nil, fmt.Errorf("%w: %d channels, ratio %d:%d, quality %d", err, cfg.Channels, num, den, cfg.Quality)
 	}

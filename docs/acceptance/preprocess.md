@@ -7,8 +7,8 @@ after the first implementation commit need a written justification in the
 ## Parity class
 
 **Bit-exact** with SpeexDSP 1.2.1 (commit `1b28a0f6`), FIXED_POINT build,
-`USE_KISS_FFT`, no SIMD, compiled by the reference harness with `-O2 -fwrapv
--ffp-contract=off`.
+`USE_KISS_FFT`, no SIMD, compiled by the reference harness with
+`-O2 -fwrapv -ffp-contract=off`.
 
 The reference is `preprocess.c` and `filterbank.c`, over `fftwrap.c` (ported
 as `internal/fft`). Ported entry points:
@@ -51,7 +51,7 @@ For every supported configuration and every input, the Go port must give:
 - **Sampling rate:** every rate for which `filterbank_new` is defined: at most
   65535 Hz (`SHL32(sampling,15)` must not overflow and `sampling/2` must fit
   `EXTRACT16`), and at least the smallest rate for which the divisor
-  `EXTRACT16(PSHR32(mel_interval,15))` (`filterbank.c:85`) is nonzero.
+  `EXTRACT16(PSHR32(mel_interval,15))` (`filterbank.c:96`) is nonzero.
   The exact lower bound is derived from that expression, tested at the
   boundary, and stated in the package doc. `New` returns an error outside.
 - Settings: any `int32` value for the suppress levels, and any `int` for the

@@ -46,7 +46,7 @@ func benchRun(b *testing.B, echo bool) {
 func BenchmarkPreprocessorRun(b *testing.B)     { benchRun(b, false) }
 func BenchmarkPreprocessorRunEcho(b *testing.B) { benchRun(b, true) }
 
-func BenchmarkNew(b *testing.B) {
+func BenchmarkPreprocessorNew(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := New(Config{SampleRate: 48000, FrameSize: 960}); err != nil {

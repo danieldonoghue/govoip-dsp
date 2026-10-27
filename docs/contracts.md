@@ -167,12 +167,13 @@ an entry in `THIRD_PARTY_NOTICES.md`.
 - On a mismatch, find the first differing sample and the first differing
   state variable. Never add a tolerance.
 - Division by zero is undefined in C. On the canonical arm64 reference it
-  yields 0 without trapping; on amd64 it traps; the `internal/fixed`
-  divisions panic. For every division a port makes, show from the upstream
-  code that the divisor cannot be zero for any input, and test the boundary
-  that comes closest. If a zero divisor is reachable, do not add a guard
-  silently: record it under "Open questions" in `docs/status.md`, because
-  the reference itself has no defined result there.
+  yields 0 without trapping; on amd64 it traps; the `internal/fixed` divisions
+  panic, except `Div32x16OrZero` and `PDiv32x16OrZero`, which return 0 as the
+  arm64 reference does (owner decision 13). For every division a port makes,
+  show from the upstream code that the divisor cannot be zero for any input, and
+  test the boundary that comes closest. If a zero divisor is reachable, do not
+  add a guard silently: record it under "Open questions" in `docs/status.md`,
+  because the reference itself has no defined result there.
 
 ## 9. Tests, benchmarks and shared helpers
 
@@ -187,10 +188,13 @@ Names:
 | Reset | `TestReset<What>` |
 | Benchmark | `Benchmark<Type><Method>/<config>`, for example `BenchmarkResamplerProcess/q5_48k_16k_mono_480` |
 
-Benchmarks use `b.Loop()`, report allocations (`b.ReportAllocs()`), and call
+Benchmarks use `b.Loop()`. Benchmarks of streaming types (per-frame or
+per-chunk processing and their constructors) follow the naming above, report
+allocations (`b.ReportAllocs()`), and the per-frame ones call
 `testutil.ReportFrameMetrics(b, samples, rate)` to add `samples/s` and
-`rt-fraction` (processing time over audio duration). `make bench` runs them
-for 100 ms each.
+`rt-fraction` (processing time over audio duration). Benchmarks of single
+arithmetic operations, as in `internal/fixed`, need neither. `make bench` runs
+them for 100 ms each.
 
 `internal/testutil` provides:
 
@@ -210,7 +214,11 @@ compared bit for bit: those can differ between architectures. Use the
 
 Under `-race` or `-short`, a test may reduce work only by comparing a leading
 part of a stream (for example the first chunk hash); it must still run the
-same code paths. Say so in the test.
+same code paths. Say so in the test. One exception: under `-race`, a package
+that starts no goroutines may run a subset of its reference configurations,
+because the race detector adds run time there, not coverage. The normal
+`go test` still runs every case, and the test and `docs/testing.md` state the
+subset.
 
 ## 10. Fixtures and the reference harness
 
@@ -277,12 +285,12 @@ driver with `HARNESS_FULL_OUT=<dir>` and the test with
 - Integer inputs may be generated on both sides from SplitMix64 and a seed
   (`testutil.Seed(caseName)` is the convention). Commit or hash the input
   stream too, so a generator mismatch shows as an input mismatch.
-- Inputs that need floating-point maths are generated in Go only. The
-  driver's `harness-inputs: ./<package>` directive makes
-  `reference/fixtures.sh` run `go test ./<package> -run '^TestHarnessInputs$'
-  -args -harness-inputs=<dir>` first; the test writes files there and skips
-  when the flag is empty. The driver reads them from its input directory
-  (`argv[2]`) and records them as a stream.
+- Inputs that need floating-point maths are generated in Go only. The driver's
+  `harness-inputs: ./<package>` directive makes `reference/fixtures.sh` run
+  `go test ./<package> -run '^TestHarnessInputs$' -args -harness-inputs=<dir>`
+  first; the test writes files there and skips when the flag is empty. The
+  driver reads them from its input directory (`argv[2]`) and records them as a
+  stream.
 
 ### Size and provenance
 
@@ -296,18 +304,19 @@ driver with `HARNESS_FULL_OUT=<dir>` and the test with
 ## 11. Portable path and build tags
 
 - The build tag `purego` and the environment variable `GOVOIP_DSP_PUREGO=1`
-  force the portable path (requirements §6). Only `internal/kernels` (stretch
-  S3) reads them; until it exists every path is portable.
-- CPU detection uses `golang.org/x/sys/cpu`, the only pre-approved
+  force the portable path (requirements §6). Only `internal/kernels` (WP9,
+  planned) will read them; until it exists every path is portable.
+- CPU detection will use `golang.org/x/sys/cpu`, the only pre-approved
   dependency (ADR `docs/decisions/wp0-dependencies.md`).
 
 ## 12. Echo to preprocess residual-echo coupling
 
-In the reference, `speex_preprocess_ctl(st, SPEEX_PREPROCESS_SET_ECHO_STATE,
-echo_state)` stores a pointer to the echo canceller. Every
-`speex_preprocess_run` then calls `speex_echo_get_residual(echo_state,
-st->residual_echo, N)` (`preprocess.c:744-757`) before its analysis, and
-folds the result into its echo-noise estimate:
+In the reference,
+`speex_preprocess_ctl(st, SPEEX_PREPROCESS_SET_ECHO_STATE, echo_state)` stores a
+pointer to the echo canceller. Every `speex_preprocess_run` then calls
+`speex_echo_get_residual(echo_state, st->residual_echo, N)`
+(`preprocess.c:744-757`) before its analysis, and folds the result into its
+echo-noise estimate:
 
 ```c
 echo_noise[i] = MAX32(MULT16_32_Q15(QCONST16(.6f,15), echo_noise[i]), residual_echo[i]);  /* i < N */
@@ -371,19 +380,19 @@ sequenceDiagram
 Conditions:
 
 - Both instances use the same frame size and sampling rate. Upstream does
-  not check this; `preprocess` checks `len(residual)`, and WP7 tests the
-  pairing.
+  not check this; `preprocess` checks `len(residual)`, and WP7 (planned)
+  will test the pairing.
 - Switching between `Run` and `RunEcho` from frame to frame is allowed and
   matches setting and clearing the echo state between calls in C.
 - WP6 tests that calling `Residual` does not change any later echo output,
   and WP5 tests `RunEcho` against residual spectra that its driver records
-  from the C pairing, until WP7 runs the real pairing.
+  from the C pairing, until WP7 (planned) runs the real pairing.
 
 Alternatives considered: `preprocess` holding a `*echo.Canceller` (mirrors
 the C pointer, but couples the packages and stops WP5 testing without WP6),
 or an interface with a `Residual` method (needs owner approval, and adds
-nothing the slice does not give). The owner may still choose either; see
-`docs/status.md`.
+nothing the slice does not give). The owner confirmed the slice hand-off
+(owner decision 2 in `docs/status.md`).
 
 ## 13. Internal FFT (WP3)
 

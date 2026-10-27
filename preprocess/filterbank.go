@@ -25,7 +25,7 @@ func toBark(n int16) int32 {
 		fixed.Mult16x16(3355, n)
 }
 
-// bankDivisor is the divisor of filterbank.c:85 for a sampling rate, which
+// bankDivisor is the divisor of filterbank.c:96 for a sampling rate, which
 // must be nonzero for filterbank_new to be defined.
 func bankDivisor(sampling int32, banks int) int16 {
 	melInterval := fixed.PDiv32(toBark(fixed.Extract16(sampling/2)), int32(banks-1))

@@ -55,7 +55,7 @@
 // noise before the AGC sees it, and set GateLevel above the residual noise.
 // At the default suppression (-15 dB), preprocess was measured to reduce
 // white noise at -35 dBFS by 13 to 14 dB and pink noise at -37 dBFS by only
-// 4 to 6 dB. The integration work package (WP7) measures the whole chain.
+// 4 to 6 dB. The whole chain has not yet been measured.
 //
 // # Rates, chunking and latency
 //
