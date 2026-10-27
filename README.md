@@ -107,10 +107,10 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   the input are raised by 16 to 23 dB after noise suppression; set
   `GateLevel` above the residual noise
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
-- Recipe B of [docs/usage.md](docs/usage.md) (`Playback` and `Capture`)
-  cancels the far end one frame late, plus the frames its sender is
-  behind. With up to 30 ms of jitter it cancelled echo delays of 60 ms
-  and more, not 50 ms and less (U6, at 32 ms, fails).
+- Recipe B of [docs/usage.md](docs/usage.md) sends one frame per
+  received frame and cancels with `Playback` and `Capture`, one frame
+  late. In simulated calls with up to 30 ms of jitter it cancelled echo
+  delays of 40 to 200 ms; with a 32 ms echo it did not (U6 fails).
 - Go is not a hard real-time platform; tail latencies are measured and
   reported ([docs/performance.md](docs/performance.md)), not guaranteed.
   The Linux amd64 reference environment has not been measured yet.
