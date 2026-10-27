@@ -1061,9 +1061,22 @@ still compared in full there: `cancel_8k_20ms`, `capture_8k_20ms` and
 `resampled_48k_16k_20ms`. The normal `go test` compares every stream of
 every case in full. The 10-minute cases then generate one 40 s repetition
 of their inputs, which `TestScenarioIsPrefixSafe` shows equals the start
-of the full inputs. `TestRealTimeBudget` skips under `-race`, where timing
-means nothing. The package starts goroutines (`TestRecipeThroughSPSC`), so
-its other tests are not reduced under `-race`.
+of the full inputs.
+
+Under `-race`, `integration` also skips its single-goroutine measurement
+and allocation tests, case by case, by the rule that `docs/contracts.md`
+section 9 adds for packages that start goroutines: `TestPipelineCall`,
+`TestPipelineSpeech`, `TestReceivePath`, `TestNoiseThroughSendChain`,
+`TestFinding48k`, `TestBufferedUnevenTiming`, `TestBufferedIdleSender`,
+`TestBufferedLagAndDelay`, `TestRealTimeBudget` and the `TestNoAllocs*`
+tests. Each skip names the rule, so `go test -v -race ./integration`
+lists them. The tests that start goroutines (`TestRecipeThroughSPSC`,
+`TestRecipeDropsUnderRace`, `TestBufferedTwoGoroutines`) run in full, and
+`TestReferencePairing` runs as under `-short`. The normal `go test` runs
+everything. Measured on the M1 Pro, one run each, 2026-10-27:
+`go test -race -count=1 -timeout 20m ./integration` took 620.6 s before
+the skips (load average 1.89 before, 1.63 after) and 88.2 s with them
+(1.58 before, 1.81 after).
 
 CI and the Makefile run the full and race test runs with `-timeout 20m`
 instead of Go's default of 10 minutes per package. On CI runners the normal
