@@ -6,8 +6,8 @@ activity detection, and automatic gain control.
 
 **Status: under construction.** The resampler (`resample`), the ring
 buffers (`buffer`), noise suppression with VAD (`preprocess`) and the AGC
-(`agc`) are usable; the echo canceller is still in progress. See the table
-below and [docs/status.md](docs/status.md).
+(`agc`) and the echo canceller (`echo`, supported at 8 and 16 kHz) are
+usable. See the table below and [docs/status.md](docs/status.md).
 
 ## Design
 
@@ -17,9 +17,10 @@ below and [docs/status.md](docs/status.md).
 - **SpeexDSP compatibility (goal).** The resampler, echo canceller and
   preprocessor are to be bit-exact ports of SpeexDSP 1.2.1, fixed-point build
   (commit `1b28a0f6`), checked against fixtures from a C reference harness.
-  Today the resampler, the preprocessor, the shared fixed-point arithmetic
-  (`internal/fixed`) and the FFT (`internal/fft`) exist, and all four are
-  bit-exact. The ring buffers and the AGC are own designs.
+  Today the resampler, the echo canceller, the preprocessor, the shared
+  fixed-point arithmetic (`internal/fixed`) and the FFT (`internal/fft`)
+  exist, and all five are bit-exact. The ring buffers and the AGC are own
+  designs.
 - **Real-time safety (requirement).** No allocation, locking or blocking on
   the per-frame path, each to be verified by tests
   ([requirements §16](docs/requirements.md#16-real-time-and-memory-safety-rules)).
@@ -37,7 +38,7 @@ below and [docs/status.md](docs/status.md).
 | FFT | `internal/fft` | Validated (bit-exact with the harness) |
 | AGC | `agc` | Validated (own design, behavioural criteria) |
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
-| Echo canceller | `echo` | Planned |
+| Echo canceller | `echo` | Validated (bit-exact with SpeexDSP 1.2.1; supported at 8 and 16 kHz) |
 
 Status levels are defined in
 [requirements §14](docs/requirements.md#14-status-levels). The live board is
