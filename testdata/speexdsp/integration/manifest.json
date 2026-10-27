@@ -1,0 +1,741 @@
+{
+  "schema": 1,
+  "component": "integration",
+  "driver": "reference/drivers/integration.c",
+  "reference": {
+    "repository": "https://github.com/xiph/speexdsp",
+    "tag": "SpeexDSP-1.2.1",
+    "commit": "1b28a0f61bc31162979e1f26f3981fc3637095c8"
+  },
+  "build": {
+    "mode": "container",
+    "image": "debian:trixie-slim@sha256:a66b19aa552f595b4ab276c6b4f9b24fa4546632c5ecd88cccdced4a6866323a + clang-19=1:19.1.7-3+b1 (linux/arm64)",
+    "compiler": "Debian clang version 19.1.7 (3+b1)",
+    "cflags": "-O2 -fwrapv -ffp-contract=off",
+    "os": "Linux",
+    "arch": "aarch64",
+    "config_h_sha256": "233a3ef7452cddf91e8e7f00b21ce0fc734ef9f4b1ff88d1a4023062438d09ee"
+  },
+  "cases": [
+    {
+      "name": "cancel_16k_10ms",
+      "params": {"net_rate": 16000, "rate": 16000, "frame_size": 160, "filter_length": 3200, "mode": "cancel", "quality": 3, "input": "call_16k_1", "frames": 4000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["c318a40053703f5cf056cbe9e9fb8779091016f1978bc4b6b64aa2ef67c5c068"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["a58fa1270635071f5ff94dc438f0fdcbf1604890a8299a32de5c1dfc3e4c004e"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["43deffbf8dd60997228dacb4ffdcee9acebc2f122aec357fe16e85478fa5c2fc"],
+          "file": {"path": "cancel_16k_10ms.echo_out.raw", "count": 640, "sha256": "0d094485b2a49d37aa5f97c0b918c309c19978e535e5fc450f9a08d67f3cbf07"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 644000,
+          "chunk": 1048576,
+          "chunks": ["f85b080a526f96be2446b183f563afd5ece68a0ac876cd71fbb01cd5983fc801"],
+          "file": {"path": "cancel_16k_10ms.residual.raw", "count": 644, "sha256": "c761e3be285d6d5316a9405da5a85368da854d4044728949ca9a0a13913895da"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["21920d53e9abffe35b79218ff680adc6688f3712f586f8adab5527525f63cdb4"],
+          "file": {"path": "cancel_16k_10ms.out.raw", "count": 640, "sha256": "646e872a9e94c0753da75c9e508832ede636366db18648c80b379594c1c33199"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["0f8564b1d6c7d9b947423c9aaa6f5d0d7bb44611edeb696f5b5e1c103fcdf2bc"],
+          "file": {"path": "cancel_16k_10ms.vad.raw", "count": 200, "sha256": "39bcd66c4157e0e4e4252650387b8952cfa1b5416f5d45a1cdf5cebd4feff68c"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["3223f5d204ff4820e60899fcc4d5988d05d955ea0b96d1cab8a0fa642ff5c4b8"],
+          "file": {"path": "cancel_16k_10ms.prob.raw", "count": 200, "sha256": "86463ecff7d5e2720d1287d59e8a736b44ac5b66787de12e53de4b19ad7c28aa"}
+        }
+      ]
+    },
+    {
+      "name": "cancel_16k_20ms",
+      "params": {"net_rate": 16000, "rate": 16000, "frame_size": 320, "filter_length": 3200, "mode": "cancel", "quality": 3, "input": "call_16k_1", "frames": 2000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["c318a40053703f5cf056cbe9e9fb8779091016f1978bc4b6b64aa2ef67c5c068"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["a58fa1270635071f5ff94dc438f0fdcbf1604890a8299a32de5c1dfc3e4c004e"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["e5ff2b5af131413d0c312c56506ffc8d0be1010a9613bb13b89333ee35ca3c8b"],
+          "file": {"path": "cancel_16k_20ms.echo_out.raw", "count": 1280, "sha256": "478f7a84f592a5a0134b1040c615d0143eeb2f5f5b208ad778f183a694847c3b"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 642000,
+          "chunk": 1048576,
+          "chunks": ["9e4adbd61d4e948beaaa1de761a29624d241ae2ac1fabe2db416c55887b201b9"],
+          "file": {"path": "cancel_16k_20ms.residual.raw", "count": 1284, "sha256": "03859502f021706a67b26b12fd7b72d0ef125356fc2255efd82bd4fd20f2b797"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["75b4838a079c8d42f88644f5a84cedba5b9fb9ed76ebc8a71bd3a1ff931d2820"],
+          "file": {"path": "cancel_16k_20ms.out.raw", "count": 1280, "sha256": "fb6d311be6b0b8e9348f318206f86786be994b6194cd27cffe1986d4bf2020db"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["2fc053fe806baa431d893210a7c9924356a3693d24965aced8c345a80849711e"],
+          "file": {"path": "cancel_16k_20ms.vad.raw", "count": 200, "sha256": "a41258bdc05ccf3af7267158c192710204b5fe0440189a2080e525ebf4cac280"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["9ad5e02dbfd0330d88d040168e20eb509b186f1605f43cb8a918aad1870b9dab"],
+          "file": {"path": "cancel_16k_20ms.prob.raw", "count": 200, "sha256": "78b05909d4119090e22323303e2cebafe25cf8074fbf50f13ce3d681797bd392"}
+        }
+      ]
+    },
+    {
+      "name": "capture_16k_10ms",
+      "params": {"net_rate": 16000, "rate": 16000, "frame_size": 160, "filter_length": 3200, "mode": "capture", "quality": 3, "input": "call_16k_1", "frames": 4000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["c318a40053703f5cf056cbe9e9fb8779091016f1978bc4b6b64aa2ef67c5c068"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["a58fa1270635071f5ff94dc438f0fdcbf1604890a8299a32de5c1dfc3e4c004e"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["ea243ed9c837803a516023d742b59c56e6890462f3a409f2086a5d89192fb60e"],
+          "file": {"path": "capture_16k_10ms.echo_out.raw", "count": 640, "sha256": "0d094485b2a49d37aa5f97c0b918c309c19978e535e5fc450f9a08d67f3cbf07"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 644000,
+          "chunk": 1048576,
+          "chunks": ["4f94de23c7743c95c4cb1dbd16f01c01651c82e18d454cf340836f51549d89d8"],
+          "file": {"path": "capture_16k_10ms.residual.raw", "count": 644, "sha256": "c761e3be285d6d5316a9405da5a85368da854d4044728949ca9a0a13913895da"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["0e026961c19975ca405ee4857fbae8bbe72712b0885e99baffdef100cc46608c"],
+          "file": {"path": "capture_16k_10ms.out.raw", "count": 640, "sha256": "646e872a9e94c0753da75c9e508832ede636366db18648c80b379594c1c33199"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["5999d5256d5832a6d852da69353a85d2df3de232ac7d27d551f2d920a4325963"],
+          "file": {"path": "capture_16k_10ms.vad.raw", "count": 200, "sha256": "39bcd66c4157e0e4e4252650387b8952cfa1b5416f5d45a1cdf5cebd4feff68c"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["83b3ba2547db3b38cae5b1fafe667714a3fdbb353f9c31176834bd26968ec8a4"],
+          "file": {"path": "capture_16k_10ms.prob.raw", "count": 200, "sha256": "86463ecff7d5e2720d1287d59e8a736b44ac5b66787de12e53de4b19ad7c28aa"}
+        }
+      ]
+    },
+    {
+      "name": "capture_16k_20ms",
+      "params": {"net_rate": 16000, "rate": 16000, "frame_size": 320, "filter_length": 3200, "mode": "capture", "quality": 3, "input": "call_16k_1", "frames": 2000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["c318a40053703f5cf056cbe9e9fb8779091016f1978bc4b6b64aa2ef67c5c068"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["a58fa1270635071f5ff94dc438f0fdcbf1604890a8299a32de5c1dfc3e4c004e"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["3d06494cd1bde991a64fea7332c748b9aa1a22cc1d01afca5854d6842b3bda57"],
+          "file": {"path": "capture_16k_20ms.echo_out.raw", "count": 1280, "sha256": "478f7a84f592a5a0134b1040c615d0143eeb2f5f5b208ad778f183a694847c3b"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 642000,
+          "chunk": 1048576,
+          "chunks": ["c46689d4db8dd325f27f5069f45c3125ffb93b10a460943b35e66272f6a91b22"],
+          "file": {"path": "capture_16k_20ms.residual.raw", "count": 1284, "sha256": "03859502f021706a67b26b12fd7b72d0ef125356fc2255efd82bd4fd20f2b797"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["aa9c8e45c9ed9b4ea342d8682a4050f7430832a7c7ec806209f1504b5a4e00e6"],
+          "file": {"path": "capture_16k_20ms.out.raw", "count": 1280, "sha256": "fb6d311be6b0b8e9348f318206f86786be994b6194cd27cffe1986d4bf2020db"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["cd09eb365d017531b281a9ffbc73729c9ae9a12044eb590455a74fc9ee6fbb23"],
+          "file": {"path": "capture_16k_20ms.vad.raw", "count": 200, "sha256": "a41258bdc05ccf3af7267158c192710204b5fe0440189a2080e525ebf4cac280"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["26a40e7ed642d7dbb5eb46730c6332d8129cdea958ee5976d91a707b8000fb52"],
+          "file": {"path": "capture_16k_20ms.prob.raw", "count": 200, "sha256": "93c17834331e916a2283089d9894b36add68c2f58bf3365d8e614ad4095c3f9e"}
+        }
+      ]
+    },
+    {
+      "name": "long_cancel_16k_20ms",
+      "params": {"net_rate": 16000, "rate": 16000, "frame_size": 320, "filter_length": 3200, "mode": "cancel", "quality": 3, "input": "call_16k_15", "frames": 30000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 9600000,
+          "chunk": 1048576,
+          "chunks": ["3de5c88466c9c77df8f3e2df4cace6ae0387f0931840c77b83efa861d35a0186", "e93aab6cb829d81896718207844827bd1f8eec47552c656522ef1f32be8c500d", "a451374b8a5b8841bfb44312ef9272e794dbf6df6343e4a1fcd04117318b6d62", "e48f41fec1dd4f580ba2af8c125f33137838d7bb6500f23fb6b14b8b1c25f193", "7f0cbd4d48e9343e7f16051a7e41ce71dba2c4834f7fbfbac825d2571b7adbad", "5a6f9300b00ba01acad21efc7f00d18f70bf91f02afae1a0b7e44e089a8fc0d1", "4a72a52164cb3c06c54186c08ee98011250dd1774203ea84968c3738ae4a3567", "8ad2be67d46af0bd61a99a1d1bfab28c6b391c42cb9c6c5d974bd3a63e54db8c", "2f97530721b5eb0941db83884d94aa7e11b67ff28f76508e4065a057fc3e99f7", "d03ba880d7d9748ae59753015ba75f96fccf3defff4c4ece764937021ac350cd"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 9600000,
+          "chunk": 1048576,
+          "chunks": ["fcb117d72206f54e0275049ce8a9701410219bca0b7c8d7af28379a5bf5f438a", "7f076ad151844f6bbd1596af0e25db515a5ba238c775f4bf3a6552c5a27424df", "f86889a333f2f663cf25fd6234b76aa698f58d2cceabd1429fc84ae30c975bf2", "f137bdcde85b1c24311b91f963b46f2353faa96c33769ad6f462bc1674732a8b", "8d1bd16f97290a4ccbab70fb9d7857b1490966db214f11682b80a52129308dcc", "61cc3a800324377226ce5aeb5dce1a45a0da7c5c80cba87fb461c2ae6447fbf4", "94a7e2e2a53a4aa4110486f47b6af1ef9908b244866243fe0d0cd38df8ab38ad", "cbbdd5179628041809dd38e9d0f7c4c22a81d6ffebf9729b36c460cbfe5c21b0", "e815086809c43a7f788cb8fd79b99ec2a512adba28996da7a5b56c15d57ba4af", "0b7327b8fca71b55521b8ff46879ea3b83dde8be8518287ac37a7a2f556a4a69"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 9600000,
+          "chunk": 1048576,
+          "chunks": ["dd1e651ee97e3eba4bcebf3d00096fb68ebefd03db08d3dddf3144557c8d321d", "374a5b8c72ad5666a5de81923608c76c85a75e70258961dfbc1e68ddf0d955b8", "a27686d2c1d0fbe680f7ae1ef53d0a8021a9acf8b1886b9fd3babddfe40aa784", "b6242fba5103f5f445d8ebd3e0643a8a15af666cd7fd4760f800d9952e1e01cf", "cfbfeee2c11fbf2e66cd20ac089b97020e2f6049dfd9355d67d171dcf83c6a23", "b13321496ea1db63191a6cae9ce8f60697172057ca64c33f8a90a6accbed3c88", "b2e71dd88f8074ddef3831f0e714fac0fb06115aea96017e081a77432f357075", "98fff7f6a0986ffd9d209aecb14a7c71cf30424a018e38ce18dc17ffd54cb5e1", "5226e56e4e891917cdd05961cafaaa5e65fb867429f3abb2e22aacc2e9080dea", "a9fc11af0767d2b7ea8310c9fab9efbad088bc007eeb73ef1cc7e42b5750c7fc"],
+          "file": {"path": "long_cancel_16k_20ms.echo_out.raw", "count": 1280, "sha256": "478f7a84f592a5a0134b1040c615d0143eeb2f5f5b208ad778f183a694847c3b"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 9630000,
+          "chunk": 1048576,
+          "chunks": ["f4d8c6e8e6ab333d307282b3b7199decd77429fd582afee0a42764904a74752c", "482174b8467f5656ca39259d2c7b090dbfba8dd21f5118ddbdac2737b2e5d824", "a97a60b52b2e0fccab564830b7bf4e8fe6f1f0a06f664dd06d81332bfd3238c9", "ad49fa370a50ffebdb0facc9c7dc94c63c6e86931386429978624f9f22abe272", "a9bbac9839c0bb4429a2b8476c474cda45f1e85d1d3652390317839191f01d7e", "5f443811c53b46120bbb12edabacbde8a15fa87ed0dfb6dde59710af094d22d8", "82fe7268984afb5a7790445a03ca41be4d4731cd9b67271674f0deda027661e1", "8d217fb1dbf96472307547459c78872a3b44faf98acc8c7c3a166b482753ff33", "05ff42d1d9efeca65b99ae751950e8dd7a2620cb897d35300e908e26ff721730", "f6f34ec832f18938f0ed5c6f4b07c3edab15fc2014f87e0d28332e0219ff2681"],
+          "file": {"path": "long_cancel_16k_20ms.residual.raw", "count": 1284, "sha256": "03859502f021706a67b26b12fd7b72d0ef125356fc2255efd82bd4fd20f2b797"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 9600000,
+          "chunk": 1048576,
+          "chunks": ["488de147e8995ee9ce476bd47bb039873641a5a8384896df57b393e51368477d", "c7f5928736f971f7e56b3d3d83ab0627089e90d6711da232311a7c7daea4f8a8", "3f9de946165e40f26b1eb5d0e98965351bb05a4a334dc95f3dcc7c5070128221", "faf0ef7e9ad659bc4ff880fa3b21cc2c34677786f5b1527d8824bb26e6e5b130", "f2585f6a1e03d3b1180b0313ed4aad2058b6a09f5bb6c89c2c499763035903f9", "fd2f93582c575377808cde19abccf59afea59d70df25a4f90b3eb82bacc5710a", "b736c20bfae43fe3c817be034acecf7eac86d33fb573a5fb12f116c880f7839c", "487306bf472fcf6b8f80830d067622dbc457ec9d6aab161f35d03c0e45f6d4ff", "705881bbd8fa77adb44327fa7ceb796dbe2085bf5c45240a49eab604b5a722e0", "ba47290cd1643579b79d6aa1ec8cef7274cb771e39ffd5c18a044dcb8635b00e"],
+          "file": {"path": "long_cancel_16k_20ms.out.raw", "count": 1280, "sha256": "fb6d311be6b0b8e9348f318206f86786be994b6194cd27cffe1986d4bf2020db"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 30000,
+          "chunk": 1048576,
+          "chunks": ["26ae5b00cc2fb2e7270f9b610909202d97bcacd6b4cae78c9e2aa4ffb3ea3a9b"],
+          "file": {"path": "long_cancel_16k_20ms.vad.raw", "count": 200, "sha256": "a41258bdc05ccf3af7267158c192710204b5fe0440189a2080e525ebf4cac280"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 30000,
+          "chunk": 1048576,
+          "chunks": ["dc084a604735fe8c37b3e3630aa2b8c0be3141977d42c98bbdfac4a55d0cd23b"],
+          "file": {"path": "long_cancel_16k_20ms.prob.raw", "count": 200, "sha256": "78b05909d4119090e22323303e2cebafe25cf8074fbf50f13ce3d681797bd392"}
+        }
+      ]
+    },
+    {
+      "name": "resampled_48k_16k_10ms",
+      "params": {"net_rate": 48000, "rate": 16000, "frame_size": 160, "filter_length": 3200, "mode": "cancel", "quality": 3, "input": "call_48k_1", "frames": 4000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 1920000,
+          "chunk": 1048576,
+          "chunks": ["bbb597041778b36d400022a27bd38276af4e19710d571aa51db925d1d46b5c7f", "64b19a1ac570fded3f3bfc5031957548b36e1d79bf3acba448b413f2f450a828"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 1920000,
+          "chunk": 1048576,
+          "chunks": ["2abe51b254b5603da6187fa13d91ced580a6ad5f16931a10ab04a5fccf87230e", "12d3dc025938f14c1bf3872b787ff4249545bd8c0f6e0e3dabc516307cceb3a7"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["d60f22aa2831a1190349b2400d7c6d5a49318b46c44d39565b1bd44457d4b3b9"],
+          "file": {"path": "resampled_48k_16k_10ms.echo_out.raw", "count": 640, "sha256": "1e8c5d71dc1f693546ec77ee8bab0d6fed0a40d4712a9fd49a8c932f79c23723"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 644000,
+          "chunk": 1048576,
+          "chunks": ["0f05928a69aa940b0c6878f65db666674db0da2469db3b6744761cd6eb6b8fe0"],
+          "file": {"path": "resampled_48k_16k_10ms.residual.raw", "count": 644, "sha256": "c761e3be285d6d5316a9405da5a85368da854d4044728949ca9a0a13913895da"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["6f0cc6fb6632a7ecf925c2b5c2917d19eab439b03e5084796689abd766d8173f"],
+          "file": {"path": "resampled_48k_16k_10ms.out.raw", "count": 640, "sha256": "ef1ed58878474e871e9dabbc66a5dd89da4259a3aea85c147f9e96307c80826d"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["7b92ab87009c07cc2540c915c111b53172633ded0c7ae2f86b42ec8ce49d4a02"],
+          "file": {"path": "resampled_48k_16k_10ms.vad.raw", "count": 200, "sha256": "7a12e561363385e9dfeeab326368731c030ed4b374e7f5897ac819159d2884c5"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["db44e2721e43a4b047419ef4a92eb8b660a0fbe56be3275aeed5b7f87714b080"],
+          "file": {"path": "resampled_48k_16k_10ms.prob.raw", "count": 200, "sha256": "7338fcdd727a2de56280b9e9ac35a346e5a094cae69545636a8e3fbdb709d113"}
+        }
+      ]
+    },
+    {
+      "name": "resampled_48k_16k_20ms",
+      "params": {"net_rate": 48000, "rate": 16000, "frame_size": 320, "filter_length": 3200, "mode": "cancel", "quality": 3, "input": "call_48k_1", "frames": 2000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 1920000,
+          "chunk": 1048576,
+          "chunks": ["bbb597041778b36d400022a27bd38276af4e19710d571aa51db925d1d46b5c7f", "64b19a1ac570fded3f3bfc5031957548b36e1d79bf3acba448b413f2f450a828"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 1920000,
+          "chunk": 1048576,
+          "chunks": ["2abe51b254b5603da6187fa13d91ced580a6ad5f16931a10ab04a5fccf87230e", "12d3dc025938f14c1bf3872b787ff4249545bd8c0f6e0e3dabc516307cceb3a7"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["bbdd41066701e1fa4fed0fd6c09d8413ddc8d8095b0e825e6c69594fff25bb30"],
+          "file": {"path": "resampled_48k_16k_20ms.echo_out.raw", "count": 1280, "sha256": "efe6fccc31299c730417e45ddba654c0c31abaed95c8a508c8111caa95e0d7c2"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 642000,
+          "chunk": 1048576,
+          "chunks": ["27d1ec27111ce0b8b2aa9f4136a0f363e0d500f30880db3ceedbf42871a1a74a"],
+          "file": {"path": "resampled_48k_16k_20ms.residual.raw", "count": 1284, "sha256": "03859502f021706a67b26b12fd7b72d0ef125356fc2255efd82bd4fd20f2b797"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 640000,
+          "chunk": 1048576,
+          "chunks": ["b0d4642b43c4f24c5bbb23329239519823b83a263044295de4420c071b53d0cd"],
+          "file": {"path": "resampled_48k_16k_20ms.out.raw", "count": 1280, "sha256": "8ce8ba8e726ee8925e6560d86ac35be1097691d1cfac888e6bd20e804ea9eb15"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["055d4d5e35d8261f1b7b2d54c538c8f61d591a1273c1a9992f544503ec67d989"],
+          "file": {"path": "resampled_48k_16k_20ms.vad.raw", "count": 200, "sha256": "54ee81c5fb81bbfee648f794131250219476b847330d91ea493dee1b1dc97bce"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["fd364e934f7d302435db7d2ed93d348f3eaf3fbfbed7316ad88d489e75c0d594"],
+          "file": {"path": "resampled_48k_16k_20ms.prob.raw", "count": 200, "sha256": "7cb331bd2cdd7eb74c3d96abb733cdc267f59da473a42312ed37d2c91ff75447"}
+        }
+      ]
+    },
+    {
+      "name": "cancel_8k_10ms",
+      "params": {"net_rate": 8000, "rate": 8000, "frame_size": 80, "filter_length": 1600, "mode": "cancel", "quality": 3, "input": "call_8k_1", "frames": 4000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["0a6052ef03d920d505a391079b8817e71498425ba6d8ee28d1fb4ff24937a7b7"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["85b7fb90f735c7a5dbc5146215cbd1fca2975d66ef1b868e3ba3454e837fad52"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["d17fdf2676399aa048ad9ad8ed8ea5e0425ad2dd44293addb80b39bfda67a01d"],
+          "file": {"path": "cancel_8k_10ms.echo_out.raw", "count": 320, "sha256": "dc6af875022faaf17c4e327a9056d80d94ed56a5ec84fdfaa5e69c9168774c9a"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 324000,
+          "chunk": 1048576,
+          "chunks": ["f4015d3fc058dba5452ec2d82e8a1d5987ca40c65ee72d9abca083c8f1b1ba9c"],
+          "file": {"path": "cancel_8k_10ms.residual.raw", "count": 324, "sha256": "94637c6efefbdcc3d3bb74d61732b22250552654c8c11f0fa9c3b3ed11d38373"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["c049bef3f2ed604463970c76e0bdd2559d72ee3c94039004a2f30061dcc99404"],
+          "file": {"path": "cancel_8k_10ms.out.raw", "count": 320, "sha256": "8b0476adb6b0e82337b4fb9e9bed342a5321b2be31d2d2e8fe7c449bc5eb1918"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["5d2b7f56bbaf63f221bcf7909e0ede2b11faa7b4d833ab47996d308b734b5fa8"],
+          "file": {"path": "cancel_8k_10ms.vad.raw", "count": 200, "sha256": "ce7d59b6aff10da297722e985aeede703a0f100f5f74a0ab4d5eca40a164fd9f"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["82b3a61f0072fe0481c4d028f876e7b53ff4aaa5472fd2ed2b789a43a65339b8"],
+          "file": {"path": "cancel_8k_10ms.prob.raw", "count": 200, "sha256": "2dc1c409136bcdfec7198644a0b9ab8f441c586b1118863dce2464be750723ff"}
+        }
+      ]
+    },
+    {
+      "name": "cancel_8k_20ms",
+      "params": {"net_rate": 8000, "rate": 8000, "frame_size": 160, "filter_length": 1600, "mode": "cancel", "quality": 3, "input": "call_8k_1", "frames": 2000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["0a6052ef03d920d505a391079b8817e71498425ba6d8ee28d1fb4ff24937a7b7"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["85b7fb90f735c7a5dbc5146215cbd1fca2975d66ef1b868e3ba3454e837fad52"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["3ca2967bf3ada50b3350b64ab88e78980fa0faf364a939f43b10a9e74f96a2d8"],
+          "file": {"path": "cancel_8k_20ms.echo_out.raw", "count": 640, "sha256": "c1852c6e9cf8e958a5f2492336847341e2351412353db972f590040dc8360738"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 322000,
+          "chunk": 1048576,
+          "chunks": ["f726eed2aacdab1e85938de32d7da10bcc7beac12b3cecc5dfd85068726a57dc"],
+          "file": {"path": "cancel_8k_20ms.residual.raw", "count": 644, "sha256": "c761e3be285d6d5316a9405da5a85368da854d4044728949ca9a0a13913895da"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["b09b7142b1a0779b44566201c381fac52ee8c47e54ccf9617a9afbc34cb9a80e"],
+          "file": {"path": "cancel_8k_20ms.out.raw", "count": 640, "sha256": "ae64ae2a41f5608d1945ba1dc5f6eb3b8d883d92fa66c4540253fe55d9679b58"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["f82cddfbbcd3fc1442cb124e2db97fb37963e441ba254abfb03e7512e1f5cb62"],
+          "file": {"path": "cancel_8k_20ms.vad.raw", "count": 200, "sha256": "54ee81c5fb81bbfee648f794131250219476b847330d91ea493dee1b1dc97bce"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["1670e22b7813fafedfea202eadd1919c5730fdd26748426439ad6fe7e8c68b60"],
+          "file": {"path": "cancel_8k_20ms.prob.raw", "count": 200, "sha256": "d5c35eb52618dfd0706628498c6ec21f16180669b5bb52b28609bc3362ef00af"}
+        }
+      ]
+    },
+    {
+      "name": "capture_8k_10ms",
+      "params": {"net_rate": 8000, "rate": 8000, "frame_size": 80, "filter_length": 1600, "mode": "capture", "quality": 3, "input": "call_8k_1", "frames": 4000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["0a6052ef03d920d505a391079b8817e71498425ba6d8ee28d1fb4ff24937a7b7"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["85b7fb90f735c7a5dbc5146215cbd1fca2975d66ef1b868e3ba3454e837fad52"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["99865a87a625c172075804839613e9e78ec035b783e74d6ad99782f1f0c3040b"],
+          "file": {"path": "capture_8k_10ms.echo_out.raw", "count": 320, "sha256": "dc6af875022faaf17c4e327a9056d80d94ed56a5ec84fdfaa5e69c9168774c9a"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 324000,
+          "chunk": 1048576,
+          "chunks": ["a991115ad899f7e5e259c8223d8b472c4085c160924a7d930bc8dfb65c3de092"],
+          "file": {"path": "capture_8k_10ms.residual.raw", "count": 324, "sha256": "94637c6efefbdcc3d3bb74d61732b22250552654c8c11f0fa9c3b3ed11d38373"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["3090f48b555152f40de1a21e93c278d9ff2fc9ae96b58c93a328d9513a96fa2f"],
+          "file": {"path": "capture_8k_10ms.out.raw", "count": 320, "sha256": "8b0476adb6b0e82337b4fb9e9bed342a5321b2be31d2d2e8fe7c449bc5eb1918"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["596d624e8cc2955d5902dbd95337a1378a1348d1d5a70562472e04d75511ad54"],
+          "file": {"path": "capture_8k_10ms.vad.raw", "count": 200, "sha256": "ce7d59b6aff10da297722e985aeede703a0f100f5f74a0ab4d5eca40a164fd9f"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 4000,
+          "chunk": 1048576,
+          "chunks": ["6d9699f15d8de27446ac712f824f207812f7a1c6d7e07a36972a9599ad9cc580"],
+          "file": {"path": "capture_8k_10ms.prob.raw", "count": 200, "sha256": "2dc1c409136bcdfec7198644a0b9ab8f441c586b1118863dce2464be750723ff"}
+        }
+      ]
+    },
+    {
+      "name": "capture_8k_20ms",
+      "params": {"net_rate": 8000, "rate": 8000, "frame_size": 160, "filter_length": 1600, "mode": "capture", "quality": 3, "input": "call_8k_1", "frames": 2000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["0a6052ef03d920d505a391079b8817e71498425ba6d8ee28d1fb4ff24937a7b7"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["85b7fb90f735c7a5dbc5146215cbd1fca2975d66ef1b868e3ba3454e837fad52"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["d4896c1c6460caeffe783c0f9b94b6f4e36b8c61b20fa92e9f25e97c04fda44f"],
+          "file": {"path": "capture_8k_20ms.echo_out.raw", "count": 640, "sha256": "c1852c6e9cf8e958a5f2492336847341e2351412353db972f590040dc8360738"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 322000,
+          "chunk": 1048576,
+          "chunks": ["defa87f5b723b005c265e0abde202b7e35950bcc78cd563a11db70d5be997b2e"],
+          "file": {"path": "capture_8k_20ms.residual.raw", "count": 644, "sha256": "c761e3be285d6d5316a9405da5a85368da854d4044728949ca9a0a13913895da"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 320000,
+          "chunk": 1048576,
+          "chunks": ["76b6db8d3ff72efd92412348c8608a1c9988da85b2039fbcb7813aa72544311e"],
+          "file": {"path": "capture_8k_20ms.out.raw", "count": 640, "sha256": "ae64ae2a41f5608d1945ba1dc5f6eb3b8d883d92fa66c4540253fe55d9679b58"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["a5f0ef63316ec7d23be68d2e0a5488ef6e988242d585a8f87c88c452068e19be"],
+          "file": {"path": "capture_8k_20ms.vad.raw", "count": 200, "sha256": "54ee81c5fb81bbfee648f794131250219476b847330d91ea493dee1b1dc97bce"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 2000,
+          "chunk": 1048576,
+          "chunks": ["41bda550ec210c45d29e5f3e4bf7727933a80e69ba6135f6e325836f18dfbe1f"],
+          "file": {"path": "capture_8k_20ms.prob.raw", "count": 200, "sha256": "c7048468cfd3ff46fc569a552e83d9c55bd1be638d15bfaa7c133e6dd2f90927"}
+        }
+      ]
+    },
+    {
+      "name": "long_capture_8k_20ms",
+      "params": {"net_rate": 8000, "rate": 8000, "frame_size": 160, "filter_length": 1600, "mode": "capture", "quality": 3, "input": "call_8k_15", "frames": 30000},
+      "streams": [
+        {
+          "name": "mic",
+          "type": "int16",
+          "count": 4800000,
+          "chunk": 1048576,
+          "chunks": ["465e73a6a90e07044e694eb6faf93f473b2399c80b6d1e228725e6cbc5edb2a6", "a5b4690b67c4e7147e8eb4e3f83437f6422a91bb201b94879264488ce3d68d9c", "e1fe516485de30f38c08f1523bcdcf14f6efb40875477ac71c62d14ae7eecd3c", "9666f1f898730448330fdb6c92b980c3436be5f01691a2c2fb176f42e65f6ab3", "8f96a965e8e95388842aac4d63230bcd479c4c92e39b0dd789e3042d4d7ce362"]
+        },
+        {
+          "name": "far",
+          "type": "int16",
+          "count": 4800000,
+          "chunk": 1048576,
+          "chunks": ["d97781bbe37bd3611316e6892b901003f2b2b1eb657e4e423097de1a8183be99", "47a279fe7ee65265c61ff126b042adf5ef93fe43e2171cd4548605d4cc361f8e", "d5d2024ee563f89f14fe4ef68c3b3c87712b9f0339aae0f5d7ad6421f7b85d3e", "bac36c15f52def64ff3f1d07591e0f0ee5595cccb8580c5620e52572b5355614", "8f3463b9948340830ce7ba37dddc18c742b81ad512e29504001ec215913266a6"]
+        },
+        {
+          "name": "echo_out",
+          "type": "int16",
+          "count": 4800000,
+          "chunk": 1048576,
+          "chunks": ["5909c5a20c52f70b3954ca7e1a6eceb2d05741ec56b618ee47d7c70cbef987c5", "0e63a431945f8507ef890efa445b584bb0e525a1734b38cbe6b08a7a6564133c", "8258f8a875d72f3b40f17e19e51a83e7581ec9218eb775fbcedda6bc1bec02c0", "d77ee895d10831b9b35f234889ebb21bac05a5ec2a1a679e1b50d0558ae4c0b0", "41ba6dc64ac75afa9cf7a334e5ea967bb5fec2c7d274208973a1b95c9d26d793"],
+          "file": {"path": "long_capture_8k_20ms.echo_out.raw", "count": 640, "sha256": "c1852c6e9cf8e958a5f2492336847341e2351412353db972f590040dc8360738"}
+        },
+        {
+          "name": "residual",
+          "type": "int32",
+          "count": 4830000,
+          "chunk": 1048576,
+          "chunks": ["bfdbe2cad469c5bb7d7638ab3e8263115b28bc60f539661e4b1ad9f79667dfc1", "35d06501a8c0abc61460361303588d63d24b50fb5367d2cdd7a1fa6f34494d33", "2c283f76cc5db5dc0f566cb9624717e704588650aaef21d036d045c9a920f64e", "376009317caa97784c2ba8e9df6dc27313efa48d7abbf05dec15867de99329b0", "0f576e84f7b0d94ba32cd674ae563e1758fdf582f6cc3b7166f0fb4175b3aabc"],
+          "file": {"path": "long_capture_8k_20ms.residual.raw", "count": 644, "sha256": "c761e3be285d6d5316a9405da5a85368da854d4044728949ca9a0a13913895da"}
+        },
+        {
+          "name": "out",
+          "type": "int16",
+          "count": 4800000,
+          "chunk": 1048576,
+          "chunks": ["68a910feb4caebdbef568414aadb197acce2e71996700faa64107f7230a66469", "0d468f055ce299550e55bcc001d1ad0d1c9e1482c96b9ca4009c5b4e3bebb4cd", "e6db30d44667d5215a898116d3402b6e17e3496ccc27c60e9da1f777406d68fa", "fb02cae1e640df5b15a13e3b16ddfb2e87df5a90552f874c463efd3a660a9331", "59c8defc987085ce8159e4e80470a6fad46b0b18784f5ce4d3aa0313bb0dd79b"],
+          "file": {"path": "long_capture_8k_20ms.out.raw", "count": 640, "sha256": "ae64ae2a41f5608d1945ba1dc5f6eb3b8d883d92fa66c4540253fe55d9679b58"}
+        },
+        {
+          "name": "vad",
+          "type": "int16",
+          "count": 30000,
+          "chunk": 1048576,
+          "chunks": ["c3985401676039c845b51e6215aeab300066369a60953505bbcac840dd8b05af"],
+          "file": {"path": "long_capture_8k_20ms.vad.raw", "count": 200, "sha256": "54ee81c5fb81bbfee648f794131250219476b847330d91ea493dee1b1dc97bce"}
+        },
+        {
+          "name": "prob",
+          "type": "int16",
+          "count": 30000,
+          "chunk": 1048576,
+          "chunks": ["a22c6fd29a1b41e2c403be9729088b5f69543b25c7f454a343626977f8cde4f5"],
+          "file": {"path": "long_capture_8k_20ms.prob.raw", "count": 200, "sha256": "c7048468cfd3ff46fc569a552e83d9c55bd1be638d15bfaa7c133e6dd2f90927"}
+        }
+      ]
+    }
+  ]
+}
