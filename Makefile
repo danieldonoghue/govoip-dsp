@@ -8,7 +8,7 @@ CROSS_TARGETS ?= linux/arm linux/riscv64 linux/ppc64le linux/s390x \
 	linux/mips64le freebsd/amd64 darwin/amd64 windows/arm64 wasip1/wasm
 
 .PHONY: help check fmt-check vet test test-purego staticcheck deps-guard race \
-	bench fixtures fixtures-host cross speech hooks
+	bench fixtures fixtures-host cross speech hooks check-short test-short
 
 .DEFAULT_GOAL := help
 
@@ -18,7 +18,10 @@ help: ## List the targets with a short description (the default)
 
 check: fmt-check vet test test-purego deps-guard staticcheck ## Run every pre-merge check
 
-hooks: ## Run make check before every git push (once per clone)
+# The pre-push hook's check; CI runs the full reference suite on code pushes.
+check-short: fmt-check vet test-short deps-guard staticcheck ## Run the quick checks, with go test -short
+
+hooks: ## Run make check-short before every git push (once per clone)
 	git config core.hooksPath .githooks
 
 fmt-check: ## Fail if any file needs gofmt
@@ -33,6 +36,10 @@ test: ## Run all tests with CGO_ENABLED=0
 
 test-purego: ## Run all tests on the portable path (-tags purego)
 	CGO_ENABLED=0 $(GO) test -timeout 20m -tags purego ./...
+
+test-short: ## Run go test -short, also on the portable path
+	CGO_ENABLED=0 $(GO) test -short ./...
+	CGO_ENABLED=0 $(GO) test -short -tags purego ./...
 
 # Fails if any package (tests included) imports "C" or depends on a module
 # outside the allow list.

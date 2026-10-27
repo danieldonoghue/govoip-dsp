@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runs make check before every push (make hooks enables it). It tests the
-# working tree, so it pushes only the checked-out commit with no local changes.
+# Runs make check-short before every push (make hooks enables it). It tests
+# the working tree, so it pushes only the checked-out commit with no changes.
 set -eu
 
 head=$(git rev-parse HEAD)
@@ -19,7 +19,7 @@ done
 [ "$pushing" = 1 ] || exit 0
 
 if [ -n "$(git status --porcelain)" ]; then
-	echo "pre-push: commit or stash local changes first; make check tests the working tree" >&2
+	echo "pre-push: commit or stash local changes first; the check tests the working tree" >&2
 	exit 1
 fi
-exec make check
+exec make check-short
