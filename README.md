@@ -6,8 +6,9 @@ activity detection, and automatic gain control.
 
 **Status: under construction.** The resampler (`resample`), the ring
 buffers (`buffer`), the echo canceller (`echo`), noise suppression with VAD
-(`preprocess`) and the AGC (`agc`) are usable. Integration testing of the
-whole chain (WP7) is next. See the table below and the
+(`preprocess`) and the AGC (`agc`) are usable, and are tested together as
+the send path of a call ([docs/usage.md](docs/usage.md)). Developer
+documentation (WP8) is next. See the table below and the
 [work packages](docs/architecture.md#work-packages).
 
 ## Design
@@ -39,6 +40,8 @@ whole chain (WP7) is next. See the table below and the
 | AGC | `agc` | Validated (own design, behavioural criteria) |
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Echo canceller | `echo` | Validated (bit-exact with SpeexDSP 1.2.1; supported at 8 and 16 kHz) |
+| Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
+| Developer documentation | root package `govoipdsp`, `docs/` | Planned (WP8); [docs/usage.md](docs/usage.md) is a tested wiring recipe |
 
 Status levels are defined in
 [requirements §14](docs/requirements.md#14-status-levels). Decisions are
@@ -98,8 +101,15 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
 - Mono echo cancellation and preprocessing only in the first release.
 - The echo canceller is supported at 8 and 16 kHz only; resample higher
   rates down first.
-- Go is not a hard real-time platform; tail latencies will be measured and
-  reported, not guaranteed.
+- The VAD reports speech on stationary noise and on residual echo, so the
+  AGC's level gate is its only noise protection. With the default gate,
+  white noise from about -40 dBFS and pink noise from about -52 dBFS at
+  the input are raised by 16 to 23 dB after noise suppression; set
+  `GateLevel` above the residual noise
+  ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
+- Go is not a hard real-time platform; tail latencies are measured and
+  reported ([docs/performance.md](docs/performance.md)), not guaranteed.
+  The Linux amd64 reference environment has not been measured yet.
 
 ## Contributing
 
