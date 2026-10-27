@@ -26,6 +26,7 @@ type bufferedCall struct {
 	pre *preprocess.Preprocessor
 	gc  *agc.AGC
 
+	echoed   []int16 // the echo canceller's output, which the tests measure
 	clean    []int16
 	residual []int32
 }
@@ -54,6 +55,7 @@ func newBufferedCall(rate, frameMs int) (*bufferedCall, error) {
 	if err != nil {
 		return nil, err
 	}
+	b.echoed = make([]int16, b.frame)
 	b.clean = make([]int16, b.frame)
 	b.residual = make([]int32, b.ec.ResidualLen())
 	return b, nil
@@ -64,9 +66,10 @@ func (b *bufferedCall) played(far []int16) error { return b.ec.Playback(far) }
 
 // received cleans a received frame against the queued sent frames.
 func (b *bufferedCall) received(mic, out []int16) error {
-	if err := b.ec.Capture(mic, b.clean); err != nil {
+	if err := b.ec.Capture(mic, b.echoed); err != nil {
 		return err
 	}
+	copy(b.clean, b.echoed)
 	if err := b.ec.Residual(b.residual); err != nil {
 		return err
 	}
@@ -77,24 +80,23 @@ func (b *bufferedCall) received(mic, out []int16) error {
 	return b.gc.Process(b.clean, out, speech)
 }
 
-// drain runs on the processing goroutine: it alternates the sent frames
-// (queued with played) and the received frames that are waiting.
+// drain runs on the processing goroutine. For each received frame it queues
+// one sent frame, or silence when none has arrived, then cleans the frame.
 func (b *bufferedCall) drain(sent, rx *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
-	ns, nr := sent.Len()/b.frame, rx.Len()/b.frame // bounds the work of this call
-	for i := 0; i < max(ns, nr); i++ {
-		if i < ns {
+	for range rx.Len() / b.frame { // bounds the work of this call
+		if sent.Len() >= b.frame {
 			sent.Read(far)
-			if err := b.played(far); err != nil {
-				return err
-			}
+		} else {
+			clear(far) // nothing sent yet; a later sent frame waits for the next
 		}
-		if i < nr {
-			rx.Read(mic)
-			if err := b.received(mic, out); err != nil {
-				return err
-			}
-			deliver(out)
+		if err := b.played(far); err != nil {
+			return err
 		}
+		rx.Read(mic)
+		if err := b.received(mic, out); err != nil {
+			return err
+		}
+		deliver(out)
 	}
 	return nil
 }
@@ -122,19 +124,21 @@ func arrivals(n, frameMs, maxMs int, seed string) []int {
 }
 
 // runBuffered runs drain every frameMs of a simulated clock, with frame k of
-// mic and far available from micAt[k] and farAt[k] ms; it returns the output.
-func runBuffered(t testing.TB, b *bufferedCall, mic, far []int16, micAt, farAt []int, frameMs int) []int16 {
+// mic and far available from micAt[k] and farAt[k] ms.
+func runBuffered(t testing.TB, b *bufferedCall, mic, far []int16, micAt, farAt []int, frameMs int) (out, echoed []int16) {
 	sent, rx, err := newBufferedRx(b)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fb, mb := make([]int16, b.frame), make([]int16, b.frame)
-	out := make([]int16, b.frame)
-	var got []int16
-	deliver := func(x []int16) { got = append(got, x...) }
+	o := make([]int16, b.frame)
+	deliver := func(x []int16) {
+		out = append(out, x...)
+		echoed = append(echoed, b.echoed...)
+	}
 	frames := len(mic) / b.frame
 	km, kf := 0, 0
-	for now := 0; km < frames || kf < len(farAt); now += frameMs {
+	for now := 0; km < frames; now += frameMs {
 		for ; kf < len(farAt) && farAt[kf] <= now; kf++ {
 			if !onPacket(sent, far[kf*b.frame:(kf+1)*b.frame]) {
 				t.Fatalf("sent frame %d dropped", kf)
@@ -145,39 +149,34 @@ func runBuffered(t testing.TB, b *bufferedCall, mic, far []int16, micAt, farAt [
 				t.Fatalf("received frame %d dropped", km)
 			}
 		}
-		if err := b.drain(sent, rx, fb, mb, out, deliver); err != nil {
+		if err := b.drain(sent, rx, fb, mb, o, deliver); err != nil {
 			t.Fatal(err)
 		}
 	}
-	return got
+	return out, echoed
 }
 
 // TestBufferedUnevenTiming checks echo cancellation with jittered sent and
-// received frames (U6), and reports a drift beyond the queue (U10).
+// received frames (U6), and reports a sender pause and burst (U10).
 func TestBufferedUnevenTiming(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
 		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
 			s := callScenario(rate, 1)
+			frame := rate * frameMs / 1000
+			n := len(s.mic) / frame
+			micAt := arrivals(n, frameMs, 30, "integration/buffered/mic")
+			farAt := arrivals(n, frameMs, 30, "integration/buffered/far")
+			ratio := func(y []int16, from, to float64) float64 {
+				return dB(energy(window(s.mic, rate, from, to)), energy(window(y, rate, from, to)))
+			}
 			b, err := newBufferedCall(rate, frameMs)
 			if err != nil {
 				t.Fatal(err)
 			}
-			n := len(s.mic) / b.frame
-			micAt := arrivals(n, frameMs, 30, "integration/buffered/mic")
-			farAt := arrivals(n, frameMs, 30, "integration/buffered/far")
-			out := runBuffered(t, b, s.mic, s.far, micAt, farAt, frameMs)
-			erle := dB(energy(window(s.mic, rate, 8, 14)), energy(window(out, rate, 8, 14)))
-			t.Logf("jitter 0 to 30 ms: echo through the chain %.1f dB over 8 to 14 s", erle)
-
-			// Echo stage alone, for criterion U6.
-			b2, err := newBufferedCall(rate, frameMs)
-			if err != nil {
-				t.Fatal(err)
-			}
-			e := echoStageBuffered(t, b2, s.mic, s.far, micAt, farAt, frameMs)
-			stage := dB(energy(window(s.mic, rate, 8, 14)), energy(window(e, rate, 8, 14)))
-			t.Logf("jitter 0 to 30 ms: echo stage %.1f dB over 8 to 14 s", stage)
+			out, e := runBuffered(t, b, s.mic, s.far, micAt, farAt, frameMs)
+			stage := ratio(e, 8, 14)
+			t.Logf("jitter 0 to 30 ms: echo stage %.1f dB, chain %.1f dB over 8 to 14 s", stage, ratio(out, 8, 14))
 			// U6 fails, a reported finding (docs/testing.md); the test shows
 			// if that changes.
 			if stage < 15 {
@@ -197,51 +196,15 @@ func TestBufferedUnevenTiming(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			e3 := echoStageBuffered(t, b3, s.mic, s.far, micAt, pause, frameMs)
+			_, e3 := runBuffered(t, b3, s.mic, s.far, micAt, pause, frameMs)
 			t.Logf("sender pause of 100 ms at 6 s: echo stage %.1f dB over 8 to 14 s, %.1f dB over 6 to 8 s",
-				dB(energy(window(s.mic, rate, 8, 14)), energy(window(e3, rate, 8, 14))),
-				dB(energy(window(s.mic, rate, 6, 8)), energy(window(e3, rate, 6, 8))))
+				ratio(e3, 8, 14), ratio(e3, 6, 8))
 		})
 	}
 }
 
-// echoStageBuffered is runBuffered with Playback and Capture only, so the
-// figure is the echo stage, as B1 measures it.
-func echoStageBuffered(t testing.TB, b *bufferedCall, mic, far []int16, micAt, farAt []int, frameMs int) []int16 {
-	frames := len(mic) / b.frame
-	e := make([]int16, b.frame)
-	var got []int16
-	km, kf := 0, 0
-	for now := 0; km < frames || kf < len(farAt); now += frameMs {
-		// The same alternation as drain: one sent, one received, and so on.
-		ns, nr := 0, 0
-		for kf+ns < len(farAt) && farAt[kf+ns] <= now {
-			ns++
-		}
-		for km+nr < frames && micAt[km+nr] <= now {
-			nr++
-		}
-		for i := 0; i < max(ns, nr); i++ {
-			if i < ns {
-				if err := b.ec.Playback(far[kf*b.frame : (kf+1)*b.frame]); err != nil {
-					t.Fatal(err)
-				}
-				kf++
-			}
-			if i < nr {
-				if err := b.ec.Capture(mic[km*b.frame:(km+1)*b.frame], e); err != nil {
-					t.Fatal(err)
-				}
-				got = append(got, e...)
-				km++
-			}
-		}
-	}
-	return got
-}
-
-// TestBufferedIdleSender compares a sender that queues silence when it has
-// nothing to send with one that queues nothing (criterion U7).
+// TestBufferedIdleSender compares drain, which queues silence once the
+// sender stops, with captures that find nothing queued (criterion U7).
 func TestBufferedIdleSender(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
@@ -256,18 +219,31 @@ func TestBufferedIdleSender(t *testing.T) {
 			for k := range at {
 				at[k] = k * frameMs
 			}
-			idle := at[:14*1000/frameMs] // nothing queued after 14 s
-			tail := func(farAt []int) float64 {
-				b, err := newBufferedCall(rate, frameMs)
-				if err != nil {
+			stop := 14 * 1000 / frameMs // the sender sends nothing from 14 s on
+			b, err := newBufferedCall(rate, frameMs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, withSilence := runBuffered(t, b, mic, far, at, at[:stop], frameMs)
+
+			// The counterfactual, which drain never does: no Playback after 14 s.
+			ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
+			if err != nil {
+				t.Fatal(err)
+			}
+			nothing := make([]int16, frames*frame)
+			for k := range frames {
+				if k < stop {
+					if err := ec.Playback(far[k*frame : (k+1)*frame]); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := ec.Capture(mic[k*frame:(k+1)*frame], nothing[k*frame:(k+1)*frame]); err != nil {
 					t.Fatal(err)
 				}
-				e := echoStageBuffered(t, b, mic, far, at, farAt, frameMs)
-				return energy(window(e, rate, 14.0, 14.3))
 			}
-			silent, nothing := tail(at), tail(idle)
-			gain := dB(nothing, silent)
-			t.Logf("echo tail over 14.0 to 14.3 s: %.1f dB lower when the idle sender queues silence", gain)
+			gain := dB(energy(window(nothing, rate, 14.0, 14.3)), energy(window(withSilence, rate, 14.0, 14.3)))
+			t.Logf("echo tail over 14.0 to 14.3 s: %.1f dB lower when silence is queued", gain)
 			if gain < 10 {
 				t.Errorf("U7: queuing silence lowers the echo tail by %.1f dB, want at least 10", gain)
 			}
@@ -290,11 +266,11 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 	}
 	frames := seconds * 1000 / frameMs
 	mic := s.mic[:frames*b.frame]
-	// Sample 0 of each sent frame is its index, so the processing goroutine
-	// can tell how many sent frames it had queued.
+	// Sample 0 of each sent frame is its index plus 1, so the processing
+	// goroutine can tell which one it queued; silence reads as 0.
 	far := append([]int16(nil), s.far[:frames*b.frame]...)
 	for k := range frames {
-		far[k*b.frame] = int16(k)
+		far[k*b.frame] = int16(k + 1)
 	}
 	sent, rx, err := newBufferedRx(b)
 	if err != nil {
@@ -320,13 +296,12 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 	go produce(sent, far, t.Name()+"/sent")
 
 	fb, mb := make([]int16, b.frame), make([]int16, b.frame)
-	fb[0] = -1 // no sent frame read yet
 	out := make([]int16, b.frame)
 	var got []int16
-	var queuedBefore []int // sent frames read before each received frame
+	var queued []int // per received frame: the sent frame's index plus 1, or 0
 	deliver := func(x []int16) {
 		got = append(got, x...)
-		queuedBefore = append(queuedBefore, int(fb[0])+1)
+		queued = append(queued, int(fb[0]))
 	}
 	tick := time.NewTicker(time.Duration(frameMs) * time.Millisecond / 4)
 	defer tick.Stop()
@@ -341,25 +316,34 @@ func TestBufferedTwoGoroutines(t *testing.T) {
 		t.Fatalf("processed %d of %d received samples", len(got), len(mic))
 	}
 
-	// Replay: the same sent frames queued before each received frame.
+	// Replay: one queued frame per received frame, the same one, in order.
 	r, err := newBufferedCall(rate, frameMs)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := make([]int16, 0, len(mic))
 	o := make([]int16, b.frame)
-	played := 0
+	silence := make([]int16, b.frame)
+	next, silent := 1, 0
 	for k := range frames {
-		for ; played < queuedBefore[k]; played++ {
-			if err := r.played(far[played*b.frame : (played+1)*b.frame]); err != nil {
-				t.Fatal(err)
+		f := silence
+		if q := queued[k]; q != 0 {
+			if q != next {
+				t.Fatalf("received frame %d got sent frame %d, want %d (sent frames in order)", k, q-1, next-1)
 			}
+			f, next = far[(q-1)*b.frame:q*b.frame], next+1
+		} else {
+			silent++
+		}
+		if err := r.played(f); err != nil {
+			t.Fatal(err)
 		}
 		if err := r.received(mic[k*b.frame:(k+1)*b.frame], o); err != nil {
 			t.Fatal(err)
 		}
 		want = append(want, o...)
 	}
+	t.Logf("%d received frames, %d of them with silence queued", frames, silent)
 	testutil.Compare(t, "out", want, got)
 }
 
@@ -397,8 +381,8 @@ func TestNoAllocsBuffered(t *testing.T) {
 	}
 }
 
-// TestBufferedLagAndDelay reports why U6 fails: the queue's reference lag
-// against the echo delay (reported only, added after the U6 result).
+// TestBufferedLagAndDelay reports the echo stage against the far end's lag,
+// the echo delay and the jitter (reported only, added after a U6 result).
 func TestBufferedLagAndDelay(t *testing.T) {
 	const frameMs = 20
 	for _, rate := range []int{8000, 16000} {
@@ -424,28 +408,14 @@ func TestBufferedLagAndDelay(t *testing.T) {
 			}
 			n := len(mic) / frame
 			for _, j := range []int{0, 2, 5, 10, 30} {
-				micAt := arrivals(n, frameMs, j, "integration/buffered/mic")
-				farAt := arrivals(n, frameMs, j, "integration/buffered/far")
 				b, err := newBufferedCall(rate, frameMs)
 				if err != nil {
 					t.Fatal(err)
 				}
-				e := echoStageBuffered(t, b, mic, base.far, micAt, farAt, frameMs)
-				t.Logf("%d Hz, echo delay %d ms: Playback and Capture, jitter 0 to %d ms, echo stage %.1f dB", rate, delayMs, j, erle(e))
+				_, e := runBuffered(t, b, mic, base.far, arrivals(n, frameMs, j, "integration/buffered/mic"),
+					arrivals(n, frameMs, j, "integration/buffered/far"), frameMs)
+				t.Logf("%d Hz, echo delay %d ms: drain, jitter 0 to %d ms, echo stage %.1f dB", rate, delayMs, j, erle(e))
 			}
-			// Jitter below 10 ms with ticks 10 ms after the nominal times:
-			// every drain then sees one frame of each stream.
-			micAt := arrivals(n, frameMs, 9, "integration/buffered/mic")
-			farAt := arrivals(n, frameMs, 9, "integration/buffered/far")
-			for k := range micAt {
-				micAt[k], farAt[k] = micAt[k]+10, farAt[k]+10
-			}
-			b, err := newBufferedCall(rate, frameMs)
-			if err != nil {
-				t.Fatal(err)
-			}
-			e := echoStageBuffered(t, b, mic, base.far, micAt, farAt, frameMs)
-			t.Logf("%d Hz, echo delay %d ms: Playback and Capture, jitter 0 to 9 ms, ticks 10 ms after the nominal times, echo stage %.1f dB", rate, delayMs, erle(e))
 		}
 	}
 }

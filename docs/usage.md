@@ -9,7 +9,7 @@ whose echo may return in the received audio.
 | Recipe | Sent and received frames | Echo canceller calls |
 |---|---|---|
 | [A, in step](#recipe-a-sent-and-received-frames-in-step) | one sent frame for every received frame, at the same time | `Cancel` |
-| [B, not in step](#recipe-b-sent-and-received-frames-not-in-step) | sent whenever there is audio to send, received on the network's clock | `Playback` and `Capture` |
+| [B, paced by the received frames](#recipe-b-sending-paced-by-the-received-frames) | sent when there is audio, queued one per received frame | `Playback` and `Capture` |
 
 Each recipe opens with the situations it fits and does not fit, then its
 caveats, then the code. Every Go block on this page is copied from the
@@ -322,63 +322,67 @@ ratios that do not divide the frame, such as 44.1 kHz; no such rate is
 tested. `TestReceivePath` checks that a 20 ms frame per call with an
 `OutLen` buffer always consumes the whole frame.
 
-## Recipe B: sent and received frames not in step
+## Recipe B: sending paced by the received frames
 
 ### Use cases
 
 Fits:
 
-- An Asterisk application through AudioSocket or external media that
-  sends audio when it has some (TTS prompts, a bridged leg, hold music)
-  and receives the caller's audio on the network's clock, so that a sent
-  frame is not always there when a frame is received, or the reverse.
+- An application on Asterisk AudioSocket or external media that sends
+  audio only when it has some (TTS prompts, a bridged leg, hold music).
+  In the Asterisk sources (`apps/app_audiosocket.c` and
+  `channels/chan_audiosocket.c`), Asterisk forwards the call's frames to
+  the application on the call's own clock and writes the application's
+  audio to the call as it arrives, without re-timing it or adding
+  silence. So the application has to pace what it sends. Recipe B paces
+  it off the received frames: for each received frame it queues one sent
+  frame, or silence when none is ready, and the far end the canceller
+  sees is then what was sent.
 - Any source where the sent and the received frames reach the processing
-  goroutine from two different goroutines, as long as each drain sees the
-  same number of each (see "Caveats": jitter breaks it).
+  goroutine from two different goroutines, with jitter between them.
 
 Does not fit:
 
 - Network rates other than 8 and 16 kHz: the recipe has no resampler.
   Resample both streams first, as recipe A does.
-- Streams whose jitter moves frames across drain ticks, a sender that
-  stops and then sends a burst, or a sent stream that drifts against the
-  received one: the queue then discards or runs dry, and the measured
-  cancellation is about -1 to 8 dB (see "Caveats").
+- An echo that returns within the far end's lag after the frame was sent:
+  one frame period plus the shift described under "Caveats". The echo is
+  then partly ahead of the far end the canceller sees. Measured with a
+  32 ms echo at 20 ms frames: 7.6 dB at 8 kHz without jitter, 0.3 to
+  0.7 dB with jitter (U6 fails).
 - A recorder or monitor that only receives: see "Receive only" above.
 
 ### Caveats
 
-- **Silence when there is nothing to send.** The sending goroutine should
-  still send a frame of silence every 20 ms and queue it with `Playback`.
-  If it queues nothing, `Capture` finds the queue empty and passes the
-  received frame through without cancellation, so the echo tail of the
-  last real audio is not removed (criterion U7, `TestBufferedIdleSender`).
-- **The canceller's queue.** It follows `speex_echo_playback` and
-  `speex_echo_capture` (the `echo` package doc, "Stream alignment"): it
-  starts with two frames of silence; it holds at most three frames, and a
-  `Playback` into a full queue is discarded; a `Capture` with an empty
-  queue passes the frame through and empties the queue; `Playback` calls
-  before the first `Capture` are discarded. Each `Capture` cancels against
-  the oldest queued frame, about one or two frame periods before it, so
-  the canceller models echo delays from there to about 200 ms later.
+- **One sent frame per received frame.** `drain` queues exactly one sent
+  frame with `Playback` before each `Capture`. When no sent frame has
+  arrived, it queues silence, and the late frame waits for the next
+  received frame. The canceller's queue therefore never runs dry or
+  overflows, whatever the jitter.
+- **The far end's shift.** `Playback` before `Capture` makes the far end
+  the canceller cancels against one frame later than the received frame.
+  Each time a sent frame arrives after the received frame it belongs
+  with, silence takes its place and every later sent frame moves one
+  frame later; the shift never shrinks. While the sender sends one frame
+  per received frame, it stays at most the largest delay of a sent frame
+  behind its received frame, rounded up to whole frames. A sender pause
+  followed by a burst adds the length of the pause. The shift is bounded
+  by the sent SPSC (200 ms); beyond that `onPacket` drops sent frames.
+- **Echo delay.** The canceller models echo delays from that lag to about
+  200 ms after it (the `echo` package doc, "Stream alignment"). With a
+  100 ms echo the measured echo stage is 24.7 to 26.2 dB at 8 kHz and
+  19.1 to 20.3 dB at 16 kHz for any jitter from 0 to 30 ms; with a 32 ms
+  echo it is 0.3 to 7.6 dB (`docs/testing.md`, "Recipe B").
+- **Silence when there is nothing to send.** The silence that `drain`
+  queues also keeps the echo tail of the last real audio cancelled after
+  the sender stops (criterion U7, `TestBufferedIdleSender`). Captures
+  that find the queue empty would pass the received frames through.
 - **Single owner.** `played` and `received` call one canceller, so both
   run on the processing goroutine. The sent frames reach it through their
   own SPSC, written by the goroutine that writes them to the network.
-- **Drops.** A sent frame that `onPacket` drops is never queued, and a
-  received frame that it drops is never processed; either moves the far
-  end against its echo by a frame until the queue under- or overflows.
-  Nothing reports it.
-- **Jitter breaks it.** Measured (`docs/testing.md`, "Recipe B"): the
-  recipe cancels echo only when every `drain` sees the same number of
-  sent and received frames. With each frame up to 30 ms late, or even
-  2 ms late across a tick, the echo stage falls to about -1 to 8 dB (U6
-  fails), because the canceller's queue runs dry or overflows. With the
-  drain ticks placed so that jitter never crosses one, it is as good as
-  without jitter.
-- **Echo delay.** `Playback` then `Capture` cancels against a far end one
-  frame late. An echo that returns sooner than about one frame period
-  after the frame was sent is cancelled poorly: with a 32 ms echo, 7.6 dB
-  at 8 kHz against 23.9 dB for recipe A; with a 100 ms echo, 24.7 dB.
+- **Drops.** A received frame that `onPacket` drops is never processed,
+  and its sent frame then goes with the next received frame: the shift
+  grows by one frame. Nothing reports it.
 
 ### Threads (recipe B)
 
@@ -391,9 +395,8 @@ flowchart LR
 ```
 
 The network reader hands each received frame to the rx SPSC. The goroutine
-that writes frames to the network hands each frame it has sent, silence
-included, to the sent SPSC. The processing goroutine drains both on its
-own clock.
+that writes frames to the network hands each frame it has sent to the sent
+SPSC. The processing goroutine drains both on its own clock.
 
 ### B1. Make the processors and the hand-offs
 
@@ -420,6 +423,7 @@ func newBufferedCall(rate, frameMs int) (*bufferedCall, error) {
 	if err != nil {
 		return nil, err
 	}
+	b.echoed = make([]int16, b.frame)
 	b.clean = make([]int16, b.frame)
 	b.residual = make([]int32, b.ec.ResidualLen())
 	return b, nil
@@ -447,9 +451,10 @@ func (b *bufferedCall) played(far []int16) error { return b.ec.Playback(far) }
 
 ```go
 func (b *bufferedCall) received(mic, out []int16) error {
-	if err := b.ec.Capture(mic, b.clean); err != nil {
+	if err := b.ec.Capture(mic, b.echoed); err != nil {
 		return err
 	}
+	copy(b.clean, b.echoed)
 	if err := b.ec.Residual(b.residual); err != nil {
 		return err
 	}
@@ -462,46 +467,45 @@ func (b *bufferedCall) received(mic, out []int16) error {
 ```
 
 The per-frame order after `Capture` is that of recipe A: `Residual`,
-`RunEcho`, then the AGC with the VAD decision.
+`RunEcho`, then the AGC with the VAD decision. `received` keeps the
+canceller's output in `echoed`, which the tests measure.
 
-### B3. Drain both hand-offs
+### B3. Drain the received frames, one sent frame each
 
 ```go
 func (b *bufferedCall) drain(sent, rx *buffer.SPSC, far, mic, out []int16, deliver func([]int16)) error {
-	ns, nr := sent.Len()/b.frame, rx.Len()/b.frame // bounds the work of this call
-	for i := 0; i < max(ns, nr); i++ {
-		if i < ns {
+	for range rx.Len() / b.frame { // bounds the work of this call
+		if sent.Len() >= b.frame {
 			sent.Read(far)
-			if err := b.played(far); err != nil {
-				return err
-			}
+		} else {
+			clear(far) // nothing sent yet; a later sent frame waits for the next
 		}
-		if i < nr {
-			rx.Read(mic)
-			if err := b.received(mic, out); err != nil {
-				return err
-			}
-			deliver(out)
+		if err := b.played(far); err != nil {
+			return err
 		}
+		rx.Read(mic)
+		if err := b.received(mic, out); err != nil {
+			return err
+		}
+		deliver(out)
 	}
 	return nil
 }
 ```
 
-`drain` alternates one sent and one received frame, so a tick with a
-frame of each keeps the queue as the calls arrive, and does at most the
-frames waiting when it starts.
-
 Tests:
 
 - `TestBufferedUnevenTiming`: each frame of both streams is up to 30 ms
-  late, independently; the echo stage must reach 15 dB (U6), and does
-  not (a reported finding). It also reports a 100 ms sender pause
-  followed by a burst. `TestBufferedLagAndDelay` reports why.
-- `TestBufferedIdleSender`: queuing silence against queuing nothing after
-  the far end stops (U7).
+  late, independently; the echo stage must reach 15 dB (U6), and does not
+  with the scenario's 32 ms echo (a reported finding). It also reports a
+  100 ms sender pause followed by a burst.
+- `TestBufferedLagAndDelay`: the echo stage against the far end's lag,
+  the echo delay and the jitter (reported only).
+- `TestBufferedIdleSender`: the silence `drain` queues after the sender
+  stops, against captures with nothing queued (U7).
 - `TestBufferedTwoGoroutines`: two producer goroutines and the processing
-  goroutine, compared with a replay of the observed order (U8).
+  goroutine, compared with a replay that queues the same sent frame or
+  silence for each received frame (U8).
 - `TestNoAllocsBuffered`: a tick allocates nothing (U9).
 
 ## What the measurements show
@@ -523,7 +527,7 @@ Tests:
   2.5% of the frame duration. The slowest single frame of a 10-minute run
   varied between runs, up to 65% of a 10 ms frame
   (`docs/performance.md`).
-- Recipe B cancels echo only when each drain sees one sent and one
-  received frame, and the echo returns more than a frame after it was
-  sent; jitter across a drain tick defeats it (U6 fails, a reported
+- Recipe B keeps cancelling under jitter of up to 30 ms when the echo
+  returns well after the far end's lag (100 ms: 19 to 26 dB), and does
+  not when the echo returns within it (32 ms: U6 fails, a reported
   finding).
