@@ -485,3 +485,42 @@ func TestBufferedLongDelay(t *testing.T) {
 		})
 	}
 }
+
+// TestBufferedLagIsOneFrame checks that drain without jitter equals Cancel
+// with the far end one frame late, the first sent frame lost (mdf.c:656).
+func TestBufferedLagIsOneFrame(t *testing.T) {
+	skipUnderRace(t)
+	const frameMs = 20
+	for _, rate := range []int{8000, 16000} {
+		t.Run(fmt.Sprintf("%dk", rate/1000), func(t *testing.T) {
+			s := callScenario(rate, 1)
+			frame := rate * frameMs / 1000
+			n := len(s.mic) / frame
+			at := make([]int, n)
+			for k := range at {
+				at[k] = k * frameMs
+			}
+			b, err := newBufferedCall(rate, frameMs, 200)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, got := runBuffered(t, b, s.mic, s.far, at, at, frameMs)
+
+			// Received frame k cancels against sent frame k-1; frames 0 and 1
+			// against silence, because Playback before the first Capture is lost.
+			ref := make([]int16, n*frame)
+			copy(ref[2*frame:], s.far[frame:(n-1)*frame])
+			ec, err := echo.New(echo.Config{FrameSize: frame, FilterLength: rate / 5, SampleRate: rate})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := make([]int16, n*frame)
+			for i := 0; i < n*frame; i += frame {
+				if err := ec.Cancel(s.mic[i:i+frame], ref[i:i+frame], want[i:i+frame]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			testutil.Compare(t, "echoed", want, got)
+		})
+	}
+}
