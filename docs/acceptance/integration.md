@@ -223,7 +223,7 @@ Recorded with commands and real output:
 
 ## Changes
 
-### T3 split into the chain's allocations and the process's (during the implementation)
+### T3 counts the chain's allocations (during the implementation)
 
 T3 was measured with `runtime.MemStats`, whose `Mallocs` counts the
 allocations of every goroutine. The first 10 s run counted one allocation
@@ -242,7 +242,7 @@ The LibriSpeech cache that `make speech` fills holds 20 utterances of one
 speaker (1272). The speech variant uses the utterances of one chapter as
 far end and of another chapter as near end. Its thresholds are unchanged.
 
-### B1 and B3 fail on the 48 kHz chain, reported as a finding (after the first measurement)
+### B1 and B3 fail at 48 kHz, reported as a finding (after measurement)
 
 On the 48 kHz chain with 20 ms frames, B1 measured 15.9 dB (floor 20) and
 B3 -33.1 dBFS (window -30 to -18). The test keeps both thresholds. It
