@@ -93,7 +93,8 @@ to the same component. S1 to S5 are stretch items, which start after WP9.
 | WP5 | Noise suppression and VAD | `preprocess` | WP3 | bit-exact | Validated |
 | WP5b | Preprocess frame-size check, `SupportedFrameSize` | `preprocess` | WP5 | bit-exact | Validated |
 | WP6 | Echo canceller (MDF) | `echo` | WP3 | bit-exact | Validated |
-| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | n/a | Planned |
+| WP6b | Parallel reference subtests | `echo`, `preprocess` tests | WP5, WP6 | bit-exact | Validated |
+| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | n/a | In progress |
 | WP8 | Developer documentation | package docs, examples, root package `govoipdsp`, `docs/` | WP7 | n/a | Planned |
 | WP9 | Performance | `internal/kernels`, hot paths | WP8 | bit-exact with the portable code | Planned |
 | S1 | Jitter buffer | `jitter` | WP9 | to be decided | Planned |
@@ -120,7 +121,9 @@ Recorded so it is not lost; none of it is scheduled.
    `preprocess`, the preprocess noise estimate could be fed to `agc`, which
    changes the `agc` API
    ([ADR `wp4-noise-protection`](decisions/wp4-noise-protection.md)).
-4. **Parallel reference subtests.** `t.Parallel()` in the `echo` reference
-   subtests, and in the `preprocess` reference tests that do not use it
-   yet, would cut wall time with the same coverage, and could let CI drop
-   `-timeout 20m` ([testing.md](testing.md#race-detector-and-short-mode)).
+4. **Faster reference tests.** The `echo` and `preprocess` reference tests
+   run in parallel. Further cuts that change test names or test content
+   are separate decisions, taken after a CPU profile
+   ([ADR `wp6b-parallel-tests`](decisions/wp6b-parallel-tests.md)). CI
+   keeps `-timeout 20m` until its run times show it can go
+   ([testing.md](testing.md#race-detector-and-short-mode)).
