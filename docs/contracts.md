@@ -380,13 +380,15 @@ sequenceDiagram
 Conditions:
 
 - Both instances use the same frame size and sampling rate. Upstream does
-  not check this; `preprocess` checks `len(residual)`, and WP7 (planned)
-  will test the pairing.
+  not check this; `preprocess` checks `len(residual)`, and `integration`
+  tests the pairing bit for bit against the C chain
+  (`TestReferencePairing`).
 - Switching between `Run` and `RunEcho` from frame to frame is allowed and
   matches setting and clearing the echo state between calls in C.
 - WP6 tests that calling `Residual` does not change any later echo output,
   and WP5 tests `RunEcho` against residual spectra that its driver records
-  from the C pairing, until WP7 (planned) runs the real pairing.
+  from the C pairing. `integration` tests the real pairing bit for bit
+  against the C chain (`TestReferencePairing`).
 
 Alternatives considered: `preprocess` holding a `*echo.Canceller` (mirrors
 the C pointer, but couples the packages and stops WP5 testing without WP6),
