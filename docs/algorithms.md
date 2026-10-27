@@ -822,13 +822,16 @@ behaviour of the fixed-point build, not a property of this port.
 **Internal resets.** The reference resets itself (as
 `speex_echo_state_reset`) when an energy sum is negative or the
 foreground error is much larger than the input for 50 frames. The energy
-sums are 32-bit (`mdf_inner_prod`). With 640- and 960-sample frames (20 ms
-at 32 and 48 kHz) and speech peaks of 16000, the error energy `See` and the
-echo-estimate energy `Syy` overflow, so the reference resets every few
-seconds in ordinary scenarios (2 to 22 resets per case in the fixtures; a
-temporary count over `farend` and `doubletalk` at 32 and 48 kHz with 20 ms
-frames found `See` negative 43 times and `Syy` 14 times). At 8 and 16 kHz
-the resets occur only in the `diverge` scenario.
+sums are 32-bit (`mdf_inner_prod`). With frames of 480 samples or more
+(10 ms at 48 kHz, 20 ms at 32 and 48 kHz) and speech peaks of 16000, the
+error energy `See` and the echo-estimate energy `Syy` overflow, so the
+reference resets every few seconds in ordinary scenarios (1 to 22 resets
+per case in the fixtures; a temporary count over `farend` and `doubletalk`
+at 32 and 48 kHz with 20 ms frames found `See` negative 43 times and `Syy`
+14 times). At 8 and 16 kHz the resets occur only in the `diverge`
+scenario. At 32 kHz with 10 ms frames there are neither resets nor a
+truncated rate, yet `farend` reaches only 9 to 10 dB; that cause has not
+been investigated.
 
 **Shifts outside [0, 31].** In C a shift by 32 or more is undefined. The
 sanitizer build reports such shifts in `FLOAT_EXTRACT32` (`pseudofloat.h:236`,
@@ -872,7 +875,7 @@ fixtures.
 definitions in `docs/acceptance/echo.md`). Ranges are over the six frame
 and filter combinations of each rate. ERLE and gains in dB, times in
 seconds at 0.5 s resolution (convergence "0.0" means the first window
-already reached 10 dB); -1 means not reached.
+already reached 10 dB); -1 means not reached within the 8 s searched.
 
 | Scenario | Figure | 8 kHz | 16 kHz | 32 kHz | 48 kHz |
 |---|---|---|---|---|---|

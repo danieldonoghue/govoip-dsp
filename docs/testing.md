@@ -681,8 +681,11 @@ passes), restoring `agc.go` after each.
 
 Run on the working tree, one mutation of `echo/mdf.go` at a time, against
 13 reference cases covering every path (the whole `TestReference` set or
-the full `go test ./echo` where stated). 38 mutations: 33 caught, 5 not caught (two equivalent,
-three unreachable boundaries).
+the full `go test ./echo` where stated). 38 mutations: 33 caught (one of
+them only by the allocation test, and semantically equivalent), 5 not
+caught: three boundaries that no input reaches, one equivalent mutation,
+and one whose difference a later clamp hides in every frame where it
+occurs.
 
 | Mutation | Result |
 |---|---|
@@ -725,8 +728,9 @@ three unreachable boundaries).
 | impulse response shift 6 → 5 | caught |
 | `Pyy` floor against 0 instead of 1 | caught |
 
-Four boundaries were not caught before the `edges` scenario existed; it
-was added for them (`docs/acceptance/echo.md`, "Changes").
+The four rows marked `edges` were not caught before that scenario existed;
+it was added for the five boundaries behind them, the notch step counting
+twice (`docs/acceptance/echo.md`, "Changes").
 
 ## Platform determinism of generated inputs
 
@@ -756,11 +760,19 @@ the committed prefix; every other case runs in full. `go test -race
 
 Under `-race` and `-short`, the `echo` reference test runs the first 1 s
 of every case and compares the committed prefixes of `out` and
-`residual` (at most 0.4 s) element by element; it skips the chunk hashes,
-which need a whole chunk of 2^20 elements. Its inputs are generated only
-over their first 2 s, which `TestCappedInputsArePrefixes` shows equal the
-full inputs there. The scenario measurements run one configuration (16
-kHz, 10 ms, 128 ms). The full comparisons run in the normal `go test`.
+`residual` element by element; it skips the chunk hashes, which need a
+whole chunk of 2^20 elements. Its inputs are generated only over their
+first 2 s, which `TestCappedInputsArePrefixes` shows equal the full inputs
+there. These prefixes are weak: the `out` prefix (0.07 to 0.4 s) is mostly
+from before adaptation, every committed `residual` prefix is zero (the
+echo estimate is still empty), and ops after 1 s (the reset, rate changes
+and `diverge` events) do not run. So under `-short` (not `-race`) one
+configuration per scenario is still checked in full: 8 kHz, 10 ms, 64 ms,
+and for `diverge` 16 kHz, 20 ms, 64 ms, which reaches the internal reset.
+Under `-race` the test stays prefix-only to keep the run near 275 s; the
+package has no concurrency, and CI runs the full `go test` on every
+runner. The scenario measurements run one configuration (16 kHz, 10 ms,
+128 ms) in both modes.
 
 ## Speech
 

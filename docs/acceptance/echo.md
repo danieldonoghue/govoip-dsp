@@ -8,8 +8,8 @@ after the first implementation commit need a written justification in the
 
 **Bit-exact** with SpeexDSP 1.2.1 (commit `1b28a0f6`), FIXED_POINT build,
 `USE_KISS_FFT`, no SIMD, `TWO_PATH` (always defined in `mdf.c`), one
-microphone and one loudspeaker, compiled by the reference harness with `-O2
--fwrapv -ffp-contract=off`.
+microphone and one loudspeaker, compiled by the reference harness with
+`-O2 -fwrapv -ffp-contract=off`.
 
 The reference entry points are `speex_echo_state_init`,
 `speex_echo_cancellation`, `speex_echo_capture`, `speex_echo_playback`,
