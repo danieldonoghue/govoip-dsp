@@ -55,7 +55,9 @@
 // noise before the AGC sees it, and set GateLevel above the residual noise.
 // At the default suppression (-15 dB), preprocess was measured to reduce
 // white noise at -35 dBFS by 13 to 14 dB and pink noise at -37 dBFS by only
-// 4 to 6 dB. The whole chain has not yet been measured.
+// 4 to 6 dB. Through the whole chain with the default gate, white noise from
+// about -40 dBFS and pink noise from about -52 dBFS at the input are raised
+// by 16 to 23 dB (docs/testing.md, "Whole-chain measurements").
 //
 // # Rates, chunking and latency
 //
