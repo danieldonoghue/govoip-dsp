@@ -225,7 +225,9 @@ It is accepted when:
    under `-race`, the same cases run with the same comparisons as before.
    `go test -v` on `master` and on the branch list the same passed and
    skipped tests and subtests in each mode. A test that gains subtests
-   is named here, and its subtests are exactly the cases it ran before.
+   is named here, and its subtests are exactly the cases it ran before:
+   `TestScenarioMeasurements` gains `measure/<case>`, one subtest for
+   each case it measured.
    The `-race` subset stays as `docs/testing.md` states it.
 2. **Comparisons still run.** Swapping `q07` and `q03` in the adaptation
    mask (`mdf.go:668`) is still caught by both reference tests, in the
