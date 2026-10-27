@@ -167,8 +167,8 @@ Every size comes from the rate and the frame duration:
 | Output | 2 × frame (one frame per call in practice) | 320 | 640 |
 
 `newCall` allocates everything here once. Nothing on the per-frame path
-allocates (`TestNoAllocsRecipe`). `Example_call` prints the sizes for 8,
-16 and 48 kHz.
+allocates (`TestNoAllocsRecipe`). `Example_call` prints every size in the
+table for 8, 16 and 48 kHz and checks them against its expected output.
 
 The 200 ms filter is the echo delay the canceller can model, from the far
 frame passed to it to the echo in the received frame. A network round trip
@@ -263,8 +263,10 @@ func (c *call) step(mic, far, out []int16) error {
 2. `Residual` reads the residual echo spectrum of that same frame.
 3. `RunEcho` suppresses noise and residual echo in place and returns the
    VAD decision. This is the pairing of `docs/contracts.md` section 12.
-   `TestReferencePairing` checks it bit for bit against the C chain, in
-   which the preprocessor holds the echo state.
+   `TestReferencePairing` checks the pairing bit for bit against the C
+   chain, in which the preprocessor holds the echo state, through its own
+   loop (`runPairing`); `step` itself runs in `TestRecipeThroughSPSC` and
+   the pipeline tests.
 4. `Process` applies the AGC, with the VAD decision as `speech`.
 
 At 48 kHz, `process` first resamples the received frame and the far frame
@@ -345,11 +347,12 @@ Does not fit:
 
 - Network rates other than 8 and 16 kHz: the recipe has no resampler.
   Resample both streams first, as recipe A does.
-- An echo that returns within the far end's lag after the frame was sent:
-  one frame period plus the shift described under "Caveats". The echo is
-  then partly ahead of the far end the canceller sees. Measured with a
-  32 ms echo at 20 ms frames: 7.6 dB at 8 kHz without jitter, 0.3 to
-  0.7 dB with jitter (U6 fails).
+- An echo that returns 50 ms or less after the frame was sent, with up to
+  30 ms of jitter between the streams. Measured at 20 ms frames
+  (`TestBufferedLagAndDelay`, reported only): 0.3 to 1.2 dB at 32, 40
+  and 50 ms, against 19.5 to 31.4 dB at 60 to 100 ms. U6 (32 ms) is such
+  a delay that recipe B does not cancel. Without jitter 40 ms cancels,
+  but 32 ms gives only 7.6 dB at 8 kHz; why is not traced.
 - A recorder or monitor that only receives: see "Receive only" above.
 
 ### Caveats
@@ -369,24 +372,29 @@ Does not fit:
   each `Capture` finds the frame queued one call earlier; the lag is two
   frames when `Capture` comes before `Playback`. The first sent frame is
   lost the same way.
-- **The far end's shift.** Each time a sent frame arrives after the received
-  frame it belongs with, silence takes its place and every later sent frame
-  moves one frame later; the shift never shrinks. While the sender sends one
-  frame per received frame, it stays at most the largest delay of a sent frame
-  behind its received frame, rounded up to whole frames. A sender pause followed
-  by a burst adds the length of the pause. The shift is bounded by the sent SPSC
-  (200 ms); beyond that `onPacket` drops sent frames.
-- **Echo delay.** The canceller models echo delays from that lag to
-  the end of its filter (the `echo` package doc, "Stream alignment"). So
-  the echo must return later than one frame plus the shift after the
-  frame was sent: with a 32 ms echo and up to 30 ms of jitter the
-  echo stage is 0.3 to 0.7 dB (U6, a reported finding). With delays of
-  100 and 200 ms it is 19.2 to 25.6 dB (U11, `docs/testing.md`).
+- **The far end's shift.** On top of that one frame, the far end lags by
+  the number of sent frames waiting in the sent SPSC when a received frame
+  is processed. It rises by one when a received frame finds no sent frame
+  (silence is queued, and the late frame then waits), falls when fewer
+  frames are sent than received, so a gap in sending drains it to zero,
+  and is capped by the sent SPSC (200 ms), where `onPacket` drops sent
+  frames. Reasoning from the code, not measured: while one frame is sent
+  per received frame, it stays at most the largest delay of a sent frame
+  behind its received frame, rounded up to whole frames.
+- **Echo delay.** The canceller models echo delays from that lag to the
+  end of its filter (the `echo` package doc, "Stream alignment"). With up
+  to 30 ms of jitter, delays of 60 ms and more were cancelled and 50 ms
+  and less were not (see "Does not fit"); U6, at 32 ms, is a delay recipe
+  B does not cancel. With delays of 100 and 200 ms and a 256 ms filter it
+  is 19.2 to 25.6 dB (U11, `docs/testing.md`).
 - **Filter length.** Choose the shortest `filterMs` that covers the
   largest echo delay expected plus the echo's tail, not the longest
   available. A longer filter costs more per frame
-  (`docs/performance.md`) and adapts more slowly; the Speex manual names
-  an over-long tail as a common reason no echo is cancelled. U11 uses
+  (`docs/performance.md`) and adapts more slowly; the Speex manual's
+  echo-cancellation chapter
+  ([node7](https://www.speex.org/docs/manual/speex-manual/node7.html))
+  says so and names an over-long tail as a common reason no echo is
+  cancelled. U11 uses
   256 ms because its longest case, a 200 ms delay with a 48 ms tail,
   needs 248 ms, and 256 ms is the longest length the `echo` fixtures
   test; it keeps that one length for its 100 ms case too, so the two
@@ -397,13 +405,15 @@ Does not fit:
   delay; after each sudden change it re-converges, and cancellation is
   lost for a while: after a step from 100 to 140 ms, 3.5 s at 8 kHz and
   3.0 s at 16 kHz before the echo stage was at 10 dB again (U11).
-- **No resync, no drift correction.** Recipe B never moves the far end
-  back: its shift only grows, and a slow drift between the clocks of the
-  sent and the received streams over a long call is not corrected. For
-  comparison, PulseAudio's `module-echo-cancel` resynchronises after a
-  large misalignment and corrects slow drift within watermarks. Drift
-  correction here would come from the planned clock-drift controller,
-  stretch item S2 in `docs/architecture.md`, "Work packages".
+- **No resync, no drift correction.** Recipe B never corrects the far
+  end's alignment: its shift changes only as described above, and a slow
+  drift between the clocks of the sent and the received streams over a
+  long call is not corrected. For comparison, PulseAudio's echo
+  cancellation module (`module-echo-cancel.c` in the PulseAudio sources)
+  resynchronises after a large misalignment and corrects slow drift
+  within watermarks. Drift correction here would come from the planned
+  clock-drift controller, stretch item S2 in `docs/architecture.md`,
+  "Work packages".
 - **Typical delays.** Vendor and trade sources (not standards) put the
   delay that VoIP adds at 50 to 80 ms or more, size network echo
   cancellers for 64 ms, up to 128 ms on long paths, and note that the
@@ -567,7 +577,7 @@ Tests:
   2.5% of the frame duration. The slowest single frame of a 10-minute run
   varied between runs, up to 65% of a 10 ms frame
   (`docs/performance.md`).
-- Recipe B cancels under jitter of up to 30 ms when the echo returns
-  well after the far end's lag: 19.2 to 25.6 dB at echo delays of 100 and
-  200 ms with a 256 ms filter (U11). With a 32 ms echo it does not (U6
-  fails, a reported finding).
+- Recipe B cancels under jitter of up to 30 ms when the echo returns 60
+  ms or more after the frame was sent: 19.2 to 25.6 dB at 100 and 200 ms
+  with a 256 ms filter (U11). At 50 ms and less it does not; U6, at 32
+  ms, fails as a reported finding.

@@ -40,7 +40,7 @@ documentation (WP8) is next. See the table below and the
 | AGC | `agc` | Validated (own design, behavioural criteria) |
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | Echo canceller | `echo` | Validated (bit-exact with SpeexDSP 1.2.1; supported at 8 and 16 kHz) |
-| Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
+| Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz, and recipe B of [docs/usage.md](docs/usage.md) fails U6 with a 32 ms echo ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
 | Developer documentation | root package `govoipdsp`, `docs/` | Planned (WP8); [docs/usage.md](docs/usage.md) is a tested wiring recipe |
 
 Status levels are defined in
@@ -107,6 +107,10 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   the input are raised by 16 to 23 dB after noise suppression; set
   `GateLevel` above the residual noise
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
+- Recipe B of [docs/usage.md](docs/usage.md) (`Playback` and `Capture`)
+  cancels the far end one frame late, plus the frames its sender is
+  behind. With up to 30 ms of jitter it cancelled echo delays of 60 ms
+  and more, not 50 ms and less (U6, at 32 ms, fails).
 - Go is not a hard real-time platform; tail latencies are measured and
   reported ([docs/performance.md](docs/performance.md)), not guaranteed.
   The Linux amd64 reference environment has not been measured yet.

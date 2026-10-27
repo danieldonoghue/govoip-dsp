@@ -928,17 +928,36 @@ U6 fails at both rates; the test pins it as a reported finding.
    silence, because a `Playback` before the first `Capture` is discarded
    (`mdf.c:656`). The SpeexDSP header's two frames of delay is the lag
    when `Capture` comes before `Playback`.
-2. With jitter, a sent frame that arrives after its received frame is
-   replaced by silence, and every later sent frame moves one frame later.
+2. With jitter, a received frame that finds no sent frame gets silence,
+   and the late sent frame then waits for the next received frame, which
+   adds a frame of lag until a gap in sending drains the waiting frames.
    With jitter of 2 to 10 ms the figures equal those of `Cancel` with the
    far end two frames late exactly; with 30 ms they are close to them.
 3. The canceller's queue no longer runs dry or overflows, so jitter itself
    costs nothing: with a 100 ms echo the echo stage is 24.7 to 26.2 dB at
    8 kHz and 19.1 to 20.3 dB at 16 kHz for every jitter measured.
-4. The scenario's echo returns 32 ms after the far frame, sooner than a
-   lag of two frames (40 ms), so part of it is ahead of the far end the
-   canceller sees: hence U6 fails. U6 stays as a pinned finding: it marks
-   the shortest echo delay the recipe can cancel.
+4. The scenario's echo returns 32 ms after the far frame, and U6 fails.
+   A lag of one frame alone leaves that echo 12 ms after the far frame
+   the canceller sees, and `mdf.c` puts the current far frame in block 0,
+   so a delay of 0 is in its range; yet `Cancel` with the far end one
+   frame late gives only 7.6 and 11.9 dB there, against 27.0 and 19.8 dB
+   at 40 ms. The cause of that loss is not traced. U6 stays as a pinned
+   finding: a delay recipe B does not cancel.
+
+Delay sweep through `drain`, reported only (`TestBufferedLagAndDelay`),
+echo stage over 8 to 14 s:
+
+| Echo delay | 8 kHz, no jitter | 8 kHz, 0 to 30 ms jitter | 16 kHz, no jitter | 16 kHz, 0 to 30 ms jitter |
+|---|---|---|---|---|
+| 32 ms | 7.6 | 0.7 | 11.9 | 0.3 |
+| 40 ms | 27.0 | 0.9 | 19.8 | 0.5 |
+| 50 ms | 24.5 | 1.2 | 18.9 | 0.3 |
+| 60 ms | 27.0 | 31.4 | 20.1 | 22.4 |
+| 80 ms | 25.5 | 26.7 | 19.3 | 19.5 |
+| 100 ms | 24.7 | 26.2 | 19.1 | 20.3 |
+
+With up to 30 ms of jitter, delays of 60 ms and more were cancelled and
+50 ms and less were not.
 
 **U11, longer echo delays** (`TestBufferedLongDelay`): the call scenario
 with the echo's bulk delay at 100 and 200 ms, 0 to 30 ms of jitter, 256 ms
@@ -1084,20 +1103,22 @@ every case in full. The 10-minute cases then generate one 40 s repetition
 of their inputs, which `TestScenarioIsPrefixSafe` shows equals the start
 of the full inputs.
 
-Under `-race`, `integration` also skips its single-goroutine measurement
-and allocation tests, case by case, by the rule that `docs/contracts.md`
-section 9 adds for packages that start goroutines: `TestPipelineCall`,
+Under `-race`, `integration` also skips its single-goroutine measurement and
+allocation tests, case by case, by the rule that `docs/contracts.md` section 9
+adds for packages that start goroutines: `TestPipelineCall`,
 `TestPipelineSpeech`, `TestReceivePath`, `TestNoiseThroughSendChain`,
 `TestFinding48k`, `TestBufferedUnevenTiming`, `TestBufferedIdleSender`,
-`TestBufferedLagAndDelay`, `TestRealTimeBudget` and the `TestNoAllocs*`
-tests. Each skip names the rule, so `go test -v -race ./integration`
-lists them. The tests that start goroutines (`TestRecipeThroughSPSC`,
+`TestBufferedLagAndDelay`, `TestBufferedLongDelay`, `TestBufferedLagIsOneFrame`,
+`TestScenarioIsPrefixSafe`, `TestRealTimeBudget` and the `TestNoAllocs*` tests.
+Each skip names the rule, so `go test -v -race ./integration` lists them. The
+tests that start goroutines (`TestRecipeThroughSPSC`,
 `TestRecipeDropsUnderRace`, `TestBufferedTwoGoroutines`) run in full, and
 `TestReferencePairing` runs as under `-short`. The normal `go test` runs
-everything. Measured on the M1 Pro, one run each, 2026-10-27:
-`go test -race -count=1 -timeout 20m ./integration` took 620.6 s before
-the skips (load average 1.89 before, 1.63 after) and 88.2 s with them
-(1.58 before, 1.81 after).
+everything. Measured on the M1 Pro, one run each, 2026-10-27: `go test -race
+-count=1 -timeout 20m ./integration` took 620.6 s before the skips (load average
+1.89 before, 1.63 after) and 88.2 s with them (1.58 before, 1.81 after). Both
+runs predate `TestBufferedLongDelay` and `TestBufferedLagIsOneFrame`, which skip
+under `-race`.
 
 CI and the Makefile run the full and race test runs with `-timeout 20m`
 instead of Go's default of 10 minutes per package. On CI runners the normal

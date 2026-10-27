@@ -379,3 +379,19 @@ longest the `echo` fixtures test, which covers the 200 ms delay plus its
    start of the first 0.5 s window, before 14 s, whose echo stage is at
    least 10 dB, as the `echo` criteria define convergence; "not reached"
    is a valid result.
+
+### Wording of the U6 explanation, and U11's provenance (after review)
+
+The entry "U6 kept, U11 added" says that U6 marks the shortest echo delay
+recipe B can cancel. The measurements do not show that: with a one-frame
+lag a 32 ms echo is still causal, and the loss there is not traced. Read
+it as: U6 is a delay recipe B does not cancel. A reported sweep shows
+that with up to 30 ms of jitter, delays of 60 ms and more were cancelled
+and 50 ms and less were not (`docs/testing.md`).
+
+The same entry says that U11 is registered before it is measured. Its
+100 ms case had already been measured once, reported only, in
+`TestBufferedLagAndDelay` (26.2 dB at 8 kHz and 20.3 dB at 16 kHz, with
+a 200 ms filter), before U11 was written. U11's threshold is U6's, set
+before any figure with a longer delay existed; its 200 ms case, the
+256 ms filter and the delay step had not been measured.
