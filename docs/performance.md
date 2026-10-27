@@ -272,3 +272,48 @@ Target (`docs/acceptance/echo.md`): every 10 ms case at most 10% of the
 frame duration on the Mac. Met: the largest is 2.3% (48 kHz). No Linux VM
 numbers yet. The work per frame is nine FFTs of `2F` points plus loops
 over `M*2F` values; no profile-guided optimisation has been done.
+
+## Whole chain (`integration`, WP7)
+
+The real-time budget of requirements §7: per-frame wall time of the whole
+send path of one call (`echo` `Cancel` and `Residual`, `preprocess`
+`RunEcho` with denoise and VAD on, `agc` `Process`; echo filter 200 ms),
+measured with the monotonic clock around every frame. At 48 kHz the frame
+also includes resampling the microphone and far end to 16 kHz and the
+receive path from 16 kHz back to 48 kHz. Input: the 40 s synthetic call
+scenario (`docs/acceptance/integration.md`) repeated, 10 minutes per
+configuration after 2 s of warm-up.
+
+Mac (MacBookPro18,1, Apple M1 Pro, 10 cores, macOS 27.0.1, Go 1.26.5),
+2026-10-27, load average 2.3 to 3.1 from other processes:
+
+```sh
+CGO_ENABLED=0 go test ./integration -run TestRealTimeBudget -budget -count=1 -v -timeout 60m
+```
+
+| Configuration | Frames | p50 | p99 | Max | Max, share of the frame |
+|---|---|---|---|---|---|
+| 8 kHz, 10 ms | 60000 | 42.5 µs (0.42%) | 54.6 µs (0.55%) | 872 µs | 8.7% |
+| 8 kHz, 20 ms | 30000 | 71.4 µs (0.36%) | 83.3 µs (0.42%) | 289 µs | 1.4% |
+| 16 kHz, 10 ms | 60000 | 85.8 µs (0.86%) | 97.9 µs (0.98%) | 713 µs | 7.1% |
+| 16 kHz, 20 ms | 30000 | 142.2 µs (0.71%) | 170.4 µs (0.85%) | 377 µs | 1.9% |
+| 48 kHz, 10 ms (quality 3) | 60000 | 113.4 µs (1.13%) | 139.5 µs (1.40%) | 394 µs | 3.9% |
+| 48 kHz, 20 ms (quality 3) | 30000 | 196.6 µs (0.98%) | 238.6 µs (1.19%) | 2748 µs | 13.7% |
+| 48 kHz, 10 ms (quality 10) | 60000 | 211.0 µs (2.11%) | 254.3 µs (2.54%) | 2397 µs | 24.0% |
+
+No garbage collection ran in any timed loop; `runtime.MemStats` counted 0
+heap allocations in every loop of this run (the runtime's own background
+goroutines can allocate; `TestNoAllocsChain` checks the chain itself).
+
+Target (`docs/acceptance/integration.md`, T2): p99 at most 10% of the frame
+duration and every frame below the frame duration. Met in every
+configuration. The maxima are single frames well above the p99. Their cause
+was not traced; preemption by other processes is likely but not shown. Go
+is not a hard real-time platform (requirements §16), so these are measured
+tails, not bounds.
+
+**Linux VM: not measured.** The Linux amd64 VMware reference environment
+was not reachable from the machine that ran this work package.
+
+`BenchmarkChain/<configuration>` reports the same work per frame for
+`make bench`.
