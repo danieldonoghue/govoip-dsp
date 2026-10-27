@@ -220,6 +220,13 @@ because the race detector adds run time there, not coverage. The normal
 `go test` still runs every case, and the test and `docs/testing.md` state the
 subset.
 
+Added by WP7, accepted: a package that does start goroutines may also skip
+under `-race` the tests or cases that run on one goroutine only, extending
+the exception above. Every test that starts goroutines runs in full under
+`-race`, and the skipped work runs in full in the normal `go test`. Each
+skipped test or case calls `t.Skip` with a reason that names this rule, so
+`go test -v -race` lists what is skipped; `docs/testing.md` states it.
+
 ## 10. Fixtures and the reference harness
 
 Layout: `testdata/speexdsp/<component>/manifest.json` plus raw files. The

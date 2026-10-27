@@ -337,3 +337,19 @@ jitter no longer matters at an echo delay of 100 ms (24.7 to 26.2 dB at
 8 kHz, 19.1 to 20.3 dB at 16 kHz, for jitter from 0 to 30 ms), and that
 the scenario's echo delay of 32 ms is shorter than the far end's lag in
 the buffered mode. What to change needs a decision.
+
+### Less work under `-race` (after review)
+
+A decision after review adds a rule to `docs/contracts.md` section 9:
+under `-race` a package may skip its single-goroutine tests and cases, if
+every test that starts goroutines runs in full there. Under `-race`
+`integration` then runs `TestRecipeThroughSPSC`, `TestRecipeDropsUnderRace`
+and `TestBufferedTwoGoroutines` in full, `TestReferencePairing` as in
+`-short` (the committed prefixes of every case and three cases in full),
+and the short checks (`TestDrainDropsBacklog`, `TestQueueFullIsReported`,
+`TestUsageCodeIsTested`, `TestReferenceCaseList`, the example). It skips,
+with `t.Skip` naming the rule, the measurement tests (B, N, U6, U7, U10,
+`TestFinding48k`, `TestBufferedLagAndDelay`, `TestReceivePath`) and the
+allocation tests, case by case where they have cases. The normal
+`go test` is unchanged. P5 still holds under `-race` in the cases it
+names; no criterion threshold changes.
