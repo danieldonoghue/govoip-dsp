@@ -112,3 +112,23 @@ original nine signals never put the peak in (16000, 16383], and in the
 -32768 signals the wrapped peak either is overwritten by a later sample or
 meets inputs that round to zero either way. Signals 10 to 12 add those inputs.
 This widens the tested domain and relaxes nothing.
+
+### Zero-value safety (WP7b)
+
+A zero `FFT` is one not made by `New` (ADR `wp7-zero-value-safety`). The
+survey before any change found no gap: `Forward` and `Inverse` return
+`ErrConfig` and `Size` returns 0. These criteria were registered before
+the test was written. They add to the criteria above and relax nothing.
+They are met when:
+
+1. **No panic.** No method of a zero `FFT` panics, for any arguments.
+2. **Results.** `Forward` and `Inverse` return `ErrConfig` and write
+   nothing into their arguments; `Size` returns 0. No method changes the
+   zero value.
+3. **Test.** `TestZeroValueMethods` lists the exported methods by
+   reflection (`testutil.CheckZeroValue`), so a method added later is
+   covered. It calls each on a fresh zero value with nil slices and
+   slices of 1, 160 and 161 elements in every combination. It fails on a
+   panic, a wrong result, a write into an argument or a change to the
+   zero value.
+4. **Mutation.** Removing the guard from `Forward` is caught by the test.

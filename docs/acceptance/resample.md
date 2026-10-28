@@ -384,3 +384,34 @@ Targets:
     changes 9 to 13 apply to `OutLen` unchanged; their text keeps the old
     name as history. The tests are `TestOutLen*` and `FuzzOutLen`.
 
+15. **Zero-value safety (WP7b, ADR `wp7-zero-value-safety`).** A zero
+    `Resampler` is one not made by `New`. These criteria were registered
+    before any code change. They add to the criteria above and relax
+    nothing. They are met when:
+    - **No panic.** No exported method of a zero `Resampler` panics, for
+      any arguments.
+    - **Errors.** `Process`, `ProcessFloat`, `ProcessChannel`,
+      `ProcessChannelFloat`, `SetRate`, `SetRateFrac` and `SetQuality`
+      return 0 frames and `ErrConfig`, and write nothing into their
+      arguments.
+    - **Other methods.** `Rate`, `Ratio`, `Quality`, `Channels`,
+      `InputLatency`, `OutputLatency` and `OutLen` return 0, and
+      `SkipZeros` and `Reset` do nothing. No method changes the zero
+      value.
+    - **Test.** `TestZeroValueMethods` lists the exported methods by
+      reflection (`testutil.CheckZeroValue`), so a method added later is
+      covered. It calls each on a fresh zero value with every combination
+      of representative arguments: integers -1, 0, 1, 160, 16000 and the
+      type's maximum, and nil slices and slices of 1, 160 and 161
+      elements. It fails on a panic, a wrong result, a write into an
+      argument or a change to the zero value. It is shown failing on the
+      code before the change.
+    - **Valid instances unchanged.** A `Resampler` made by `New` takes the
+      same path as before, past one added check. Every existing test
+      passes unchanged, including the reference tests and the
+      zero-allocation tests.
+    - **Cost measured.** A subset of `BenchmarkResamplerProcess` runs on
+      the code before and after the change, on the same machine,
+      interleaved, with the load reported. There is no numeric target.
+    - **Mutation.** Removing the guard from `Process` is caught by the
+      test.

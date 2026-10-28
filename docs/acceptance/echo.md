@@ -248,3 +248,33 @@ It is accepted when:
 6. `make check` and `make race` pass.
 
 This changes how the tests are scheduled and relaxes nothing.
+
+### Zero-value safety (WP7b)
+
+A zero `Canceller` is one not made by `New` (ADR `wp7-zero-value-safety`).
+These criteria were registered before any code change. They add to the
+criteria above and relax nothing. They are met when:
+
+1. **No panic.** No exported method of a zero `Canceller` panics, for any
+   arguments.
+2. **Errors.** `Cancel`, `Capture`, `Playback`, `Residual`,
+   `ImpulseResponse` and `SetSampleRate` return `ErrConfig` and write
+   nothing into their arguments.
+3. **Other methods.** `FrameSize`, `SampleRate`, `FilterLength`,
+   `ResidualLen` and `ImpulseResponseLen` return 0, and `Reset` does
+   nothing. No method changes the zero value.
+4. **Test.** `TestZeroValueMethods` lists the exported methods by
+   reflection (`testutil.CheckZeroValue`), so a method added later is
+   covered. It calls each on a fresh zero value with every combination of
+   representative arguments: bools, integers -1, 0, 1, 160, 16000 and the
+   type's maximum, and nil slices and slices of 1, 160 and 161 elements.
+   It fails on a panic, a wrong result, a write into an argument or a
+   change to the zero value. It is shown failing on the code before the
+   change.
+5. **Valid instances unchanged.** A `Canceller` made by `New` takes the
+   same path as before, past one added check. Every existing test passes
+   unchanged, including the reference tests and `TestNoAllocs`.
+6. **Cost measured.** `BenchmarkCancellerCancel` runs on the code before
+   and after the change, on the same machine, interleaved, with the load
+   reported. There is no numeric target.
+7. **Mutation.** Removing the guard from `Cancel` is caught by the test.

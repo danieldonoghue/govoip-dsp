@@ -225,3 +225,24 @@ those changes.
    scope requires, and that disabling the keep-newest branch of the stress test
    went unnoticed. Both criteria are added before the tests that meet them.
 5. **WP2b examples** (D9). Added before the examples are written.
+6. **Zero-value safety (WP7b, ADR `wp7-zero-value-safety`).** A `Ring`
+   or `SPSC` not made by `New` or `NewSPSC` is a zero buffer. The survey
+   before any change found that a zero buffer already behaves as an
+   empty buffer of capacity 0, so no code changes; these criteria record
+   that and guard it. They were registered before the test was written,
+   add to the criteria above and relax nothing. They are met when:
+   - **No panic.** No exported method of a zero `Ring` or `SPSC` panics,
+     for any arguments.
+   - **Results.** Every method returns 0 or empty views, and writes
+     nothing into its argument. No method changes the zero value. Neither
+     type has a method with an error result.
+   - **Test.** `TestZeroValueMethods` lists the exported methods of both
+     types by reflection (`testutil.CheckZeroValue`), so a method added
+     later is covered. It calls each on a fresh zero value with every
+     combination of representative arguments: integers -1, 0, 1, 160,
+     16000 and the type's maximum, and nil slices and slices of 1, 160
+     and 161 elements. It fails on a panic, a nonzero result, a write
+     into an argument or a change to the zero value.
+   - **Mutation.** With no guard to remove, the mutation is one that
+     keeps buffers made by the constructors correct: `SPSC.slot` computed
+     as `i % len(s.buf)`. The test catches it.

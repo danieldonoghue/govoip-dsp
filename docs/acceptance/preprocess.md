@@ -241,3 +241,36 @@ test files only. It is accepted when:
 6. `make check` and `make race` pass.
 
 This changes how the tests are scheduled and relaxes nothing.
+
+### Zero-value safety (WP7b)
+
+A zero `Preprocessor` is one not made by `New` (ADR
+`wp7-zero-value-safety`). Its frame methods already return `ErrConfig`.
+The survey before any change found one gap: `PSD` and `NoisePSD` return
+nil on a zero value, writing nothing. These criteria were registered
+before any code change. They add to the criteria above and relax nothing.
+They are met when:
+
+1. **No panic.** No exported method of a zero `Preprocessor` panics, for
+   any arguments.
+2. **Errors.** `Run`, `RunEcho`, `EstimateUpdate`, `PSD` and `NoisePSD`
+   return `ErrConfig` and write nothing into their arguments.
+3. **Other methods.** The getters return 0 or false and `Reset` does
+   nothing. The setters store their setting, as before, which a getter
+   then returns; the value stays unusable for frames. No other method
+   changes the zero value.
+4. **Test.** `TestZeroValueMethods` lists the exported methods by
+   reflection (`testutil.CheckZeroValue`), so a method added later is
+   covered. It calls each on a fresh zero value with every combination of
+   representative arguments: bools, integers -1, 0, 1, 160, 16000 and the
+   type's maximum, and nil slices and slices of 1, 160 and 161 elements.
+   It fails on a panic, a wrong result, a write into an argument or a
+   change to the zero value by a method other than a setter. It is shown
+   failing on the code before the change. `TestZeroPreprocessor` expects
+   `ErrConfig` from `PSD(nil)` instead of nil.
+5. **Valid instances unchanged.** A `Preprocessor` made by `New` takes the
+   same path as before, past one added check in `PSD` and `NoisePSD`,
+   which are not frame methods. Every other existing test passes
+   unchanged, including the reference tests and the zero-allocation
+   tests.
+6. **Mutation.** Removing the guard from `Run` is caught by the test.
