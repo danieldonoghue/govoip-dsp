@@ -501,6 +501,15 @@ The three rows marked with signals 10 to 12 were not caught by the first
 nine signals; the inputs were added for them (`docs/acceptance/fft.md`,
 "Changes").
 
+#### Zero value (WP7b)
+
+Run with `go test ./internal/fft -run 'TestZeroValueMethods$' -count=1` on a
+scratch change, restored after each.
+
+| Mutation | Result |
+|---|---|
+| no zero-value guard in `Forward` | caught: `Forward(len 0, len 0)` panics, index out of range |
+
 ### `buffer` (WP2)
 
 Run on a scratch copy of the package on the Mac (darwin/arm64, GOMAXPROCS 10).
@@ -564,6 +573,15 @@ clip-to-`Cap` mutation through its drops, and its keep-newest requirement
 catches the disabled branch. The WP2 mutation table above gives the same
 results on the code with the drop path (`spsc.go` unchanged).
 
+#### Zero value (WP7b)
+
+Run with `go test ./buffer -run 'TestZeroValueMethods$' -count=1` on a
+scratch change, restored after each.
+
+| Mutation | Result |
+|---|---|
+| `SPSC.slot` as `i % len(s.buf)`, equal for a buffer from `NewSPSC` | caught: `ReadSlices` and `WriteSlices` panic, integer divide by zero |
+
 ### `resample` (WP1)
 
 Run with `go test ./resample -run <test> -count=1` on a scratch change,
@@ -616,6 +634,17 @@ restored after each.
 | early return comparing the reduced ratio | not caught: equivalent, the extra `update_filter` changes nothing visible |
 | main loop not skipped while magic samples remain (`int16`) | not caught: equivalent, magic samples remain only when the output is full |
 | a consumed sample re-offered when the output is full | not caught: equivalent, the re-offered sample overwrites the same value |
+
+#### Zero value (WP7b)
+
+Run with `go test ./resample -run 'TestZeroValueMethods$' -count=1` on a
+scratch change, restored after each.
+
+| Mutation | Result |
+|---|---|
+| no zero-value guard in `Process` | caught: `Process(len 0, len 0)` panics, integer divide by zero |
+| no zero-value guard in `ProcessChannel` | caught: returns `ErrChannel` |
+| no zero-value check in `SetQuality` | caught: `SetQuality(0)` returns nil |
 
 ### `preprocess` (WP5)
 
@@ -678,6 +707,16 @@ not caught and equivalent, and 1 not caught as a test gap (the VAD start
 | `n >= 1` → `n >= 0` | not caught: equivalent, `fft.Supported(0)` is false |
 | `n <= MaxFrameSize` → `<= MaxFrameSize+1` | not caught: equivalent, `fft.Supported(4098)` is false |
 | no upper bound | not caught: equivalent, for `n` above 2048 `2*n` is above 4096 or wraps negative, and `fft.Supported` rejects both |
+
+#### Zero value (WP7b)
+
+Run with `go test ./preprocess -run 'TestZeroValueMethods$' -count=1` on a
+scratch change, restored after each.
+
+| Mutation | Result |
+|---|---|
+| no zero-value guard in `Run` | caught: `Run(len 0)` panics, nil pointer dereference |
+| no zero-value guard in `PSD` | caught: `PSD(len 0)` returns nil |
 
 ### `agc` (WP4)
 
@@ -773,6 +812,16 @@ passes), restoring `agc.go` after each.
 | Output saturation removed | not caught: equivalent, the limiter keeps every product within the ceiling |
 | Ramp step `(b−a)/K` → `(b−a)/(K−1)` | not caught: the ramp still stays between its endpoints, and no criterion depends on its exact slope |
 
+#### Zero value (WP7b)
+
+Run with `go test ./agc -run 'TestZeroValueMethods$' -count=1` on a
+scratch change, restored after each.
+
+| Mutation | Result |
+|---|---|
+| no zero-value guard in `Process` | caught: `Process(len 0, len 0, false)` returns nil |
+| no zero-value guard in `Reset` | caught: `Reset` changes the zero value |
+
 ### `echo` (WP6)
 
 Run on the working tree, one mutation of `echo/mdf.go` at a time, against 13
@@ -826,6 +875,16 @@ whose difference a later clamp hides in every frame where it occurs.
 The four rows marked `edges` were not caught before that scenario existed;
 it was added for the five boundaries behind them, the notch step counting
 twice (`docs/acceptance/echo.md`, "Changes").
+
+#### Zero value (WP7b)
+
+Run with `go test ./echo -run 'TestZeroValueMethods$' -count=1` on a
+scratch change, restored after each.
+
+| Mutation | Result |
+|---|---|
+| no zero-value guard in `Cancel` | caught: `Cancel(len 0, len 0, len 0)` panics, nil pointer dereference |
+| no zero-value guard in `ResidualLen` | caught: panics, nil pointer dereference |
 
 ### `integration` (WP7)
 
