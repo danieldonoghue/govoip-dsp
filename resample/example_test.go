@@ -71,11 +71,12 @@ func tone(n, rate int) []int16 {
 	return x
 }
 
-// The receive path of a call: decoded 8 kHz audio up to a 48 kHz device, in
-// 20 ms frames. OutLen, read on a new Resampler, sizes the output once:
-// until a setter changes the filter, every call then consumes its whole
-// input. Output per call varies by a frame around in*OutRate/InRate
-// at fractional ratios, but here 48000/8000 is exactly 6.
+// The receive path of a call: decoded 8 kHz audio up to a 48 kHz device,
+// in 20 ms frames. A size from OutLen(n) on a new Resampler covers every call of up
+// to n frames while SkipZeros and the setters are not used, so here it is made
+// once and every call consumes its whole input. Output per call varies by a
+// frame around in*OutRate/InRate at fractional ratios, but here 48000/8000 is
+// exactly 6.
 func Example() {
 	r, err := resample.New(resample.Config{
 		Channels: 1, InRate: 8000, OutRate: 48000, Quality: resample.QualityVoIP,
@@ -92,7 +93,7 @@ func Example() {
 			log.Fatal(err)
 		}
 		if read != len(in) {
-			log.Fatal("input left over") // cannot happen: no setter was called
+			log.Fatal("input left over") // cannot happen: no SkipZeros or setter
 		}
 		total += written // pass out[:written] to the device
 	}

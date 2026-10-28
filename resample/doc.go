@@ -28,7 +28,7 @@
 //		return err // wraps ErrConfig or ErrAllocFailed
 //	}
 //	in := make([]int16, 480)               // 10 ms at 48 kHz
-//	out := make([]int16, r.OutLen(len(in))) // made once, before any setter
+//	out := make([]int16, r.OutLen(len(in))) // made once: no setter is used
 //	_, nOut, err := r.Process(in, out)      // reads all of in
 //	if err != nil {
 //		return err // a programming error (see "Errors")
@@ -82,11 +82,11 @@
 // current position and any magic samples pending after a filter change,
 // plus 1 when n > 0. For Process and ProcessFloat the buffer is OutLen(n)
 // times Channels() samples. The result is clamped to 2^31-1, where the
-// guarantee no longer holds (see OutLen). OutLen(n) of a new Resampler,
-// read before SkipZeros, covers every call of up to n frames until a
-// setter changes the filter; Reset and SkipZeros keep it valid. After a
-// setter, read OutLen again; it does not allocate. Read after SkipZeros,
-// it covers the next call only.
+// guarantee no longer holds (see OutLen). A size from OutLen(n) on a new
+// Resampler covers every call of up to n frames while SkipZeros and the
+// setters are not used. After SkipZeros or any setter, call OutLen before
+// each call; it does not allocate. An output shorter than OutLen gives no
+// error: the call leaves input unread.
 //
 // Interleaved calls (Process, ProcessFloat) process every channel with the
 // same offered lengths and report the counts of the last channel, as the
@@ -162,6 +162,7 @@
 // cannot handle, this package differs:
 //
 //   - NaN float32 input becomes 0; C is undefined there ("Float32 samples").
+//   - There is no NULL input: C feeds zeros for one; here, pass zeros.
 //   - Offered lengths above 2^31-1 frames are clamped to 2^31-1, where C
 //     would stop making progress.
 //   - The Go-only cap, and a filter length that would wrap to 0, give
