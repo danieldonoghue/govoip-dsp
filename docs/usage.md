@@ -17,6 +17,10 @@ tests in `integration/` (`paced_test.go`, `buffered_test.go`,
 `call_test.go` and `usage_test.go`), and `TestUsageCodeIsTested` fails if
 one is not. Each section names the tests that back it.
 
+New to these packages? The [developer guide](guide.md) explains each
+package, the per-frame call order and the goroutine hand-off first, and
+the [glossary](glossary.md) defines the terms this page uses.
+
 ## Before either recipe
 
 - **Samples.** The packages take `[]int16` samples on the 16-bit scale.
