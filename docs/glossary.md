@@ -28,10 +28,10 @@ frequency).
 
 ### Channel
 
-One stream of samples for one position. Mono audio has one channel;
-stereo has two, left and right; surround layouts such as 5.1 and 7.1 have
-more. `echo`, `preprocess` and `agc` are mono: one channel. `resample`
-takes 1 to 256 channels.
+One signal of the audio: the samples from one microphone, or for one
+loudspeaker. Mono audio has one channel; stereo has two, left and right;
+surround layouts such as 5.1 and 7.1 have more. `echo`, `preprocess` and
+`agc` are mono: one channel. `resample` takes 1 to 256 channels.
 
 ### Interleaved
 

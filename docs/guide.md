@@ -67,12 +67,13 @@ Sound as numbers:
   add where the factors multiply. A signal pushed past the largest
   sample is cut flat, which is [clipping](glossary.md#clipping) and
   sounds distorted.
-- **Channel.** One stream of samples for one position. Mono audio has
-  one channel; stereo has two, left and right; surround layouts such as
-  5.1 and 7.1 have more. `echo`, `preprocess` and `agc` take mono;
-  `resample` takes 1 to 256 [interleaved](glossary.md#interleaved)
-  channels: the first sample of every channel, then the second of every
-  channel ([channel](glossary.md#channel)).
+- **Channel.** One signal of the audio: the samples from one microphone,
+  or for one loudspeaker. Mono audio has one channel; stereo has two, left
+  and right; surround layouts such as 5.1 and 7.1 have more. `echo`,
+  `preprocess` and `agc` take mono; `resample` takes 1 to 256
+  [interleaved](glossary.md#interleaved) channels: the first sample of
+  every channel, then the second of every channel
+  ([channel](glossary.md#channel)).
 - **Speech, noise and VAD.** Speech is the voice. Background
   [noise](glossary.md#noise) is any other sound in the microphone
   signal, such as a fan or line hiss. A [VAD](glossary.md#vad) (voice
