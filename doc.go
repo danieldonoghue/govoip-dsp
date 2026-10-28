@@ -41,8 +41,16 @@
 //
 // # How they fit together
 //
-// The send path cleans the microphone signal of one call before it is
-// encoded and sent, one frame at a time:
+// A call needs only some of the packages, and which ones depends on whether
+// its microphone can hear its loudspeaker. On a speakerphone or in a
+// conference room it can: the microphone picks up what the loudspeaker
+// plays, so the far end would hear itself, and echo removes that echo. With
+// a headset, or a handset at the ear, there is no echo, and the send path is
+// preprocess.Preprocessor.Run followed by agc.AGC.Process. The
+// [developer guide] has a table of use cases and the packages each needs.
+//
+// With echo cancellation, the send path cleans the microphone signal of one
+// call before it is encoded and sent, one frame at a time:
 //
 //	microphone -> echo.Canceller.Cancel -> preprocess.Preprocessor.RunEcho
 //	           -> agc.AGC.Process -> encoder
@@ -57,11 +65,11 @@
 //
 // The receive path brings decoded audio to the device rate with
 // resample.Resampler.Process, its output sized with OutLen
-// (Example_receiveChain). Where the microphone and loudspeaker streams
-// run at a rate other than 8 or 16 kHz, usually the device rate, resample
-// both to 16 kHz before the send path, each with its own Resampler. Where
-// the encoder runs at another rate than the send path, resample the send
-// path's output to the encoder rate.
+// (Example_receiveChain). With echo cancellation, where the microphone and
+// loudspeaker streams run at a rate other than 8 or 16 kHz, usually the
+// device rate, resample both to 16 kHz before the send path, each with its
+// own Resampler. Where the encoder runs at another rate than the send
+// path, resample the send path's output to the encoder rate.
 //
 // Between goroutines, for example a network reader and the processing
 // goroutine, use buffer.SPSC; it never blocks either side, and after a
