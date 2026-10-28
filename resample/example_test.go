@@ -80,7 +80,7 @@ func Example() {
 		Channels: 1, InRate: 8000, OutRate: 48000, Quality: resample.QualityVoIP,
 	})
 	if err != nil {
-		log.Fatal(err) // wraps ErrConfig or is ErrAllocFailed
+		log.Fatal(err) // wraps ErrConfig or ErrAllocFailed
 	}
 	in := make([]int16, 160)                // one 20 ms frame at 8 kHz
 	out := make([]int16, r.OutLen(len(in))) // made once, reused every call
@@ -216,14 +216,15 @@ func ExampleResampler_OutputLatency() {
 }
 
 // OutLen gives the output space one call needs to consume n input frames.
-// At a fractional ratio it can differ from call to call by one frame.
+// From 8000 to 11025 Hz, 20 ms gives 220.5 output frames, so the count
+// written, and OutLen, differ from call to call.
 func ExampleResampler_OutLen() {
-	r, err := resample.New(resample.Config{Channels: 1, InRate: 44100, OutRate: 48000, Quality: resample.QualityVoIP})
+	r, err := resample.New(resample.Config{Channels: 1, InRate: 8000, OutRate: 11025, Quality: resample.QualityVoIP})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	in := make([]int16, 441) // 10 ms at 44.1 kHz
+	in := make([]int16, 160) // 20 ms at 8 kHz
 	out := make([]int16, 1024)
 	for range 3 {
 		n := r.OutLen(len(in))
@@ -236,9 +237,9 @@ func ExampleResampler_OutLen() {
 	}
 	fmt.Println("OutLen(0) =", r.OutLen(0))
 	// Output:
-	// OutLen 481 read 441 wrote 480
-	// OutLen 481 read 441 wrote 480
-	// OutLen 481 read 441 wrote 480
+	// OutLen 222 read 160 wrote 221
+	// OutLen 221 read 160 wrote 220
+	// OutLen 222 read 160 wrote 221
 	// OutLen(0) = 0
 }
 

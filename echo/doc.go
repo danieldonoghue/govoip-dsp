@@ -12,7 +12,8 @@
 // disagree, and the port saturates (docs/algorithms.md).
 //
 // Terms such as near end, far end, echo delay, echo tail, filter length,
-// residual echo and ERLE are defined in the [glossary]. The developer
+// residual echo and ERLE are defined in the [glossary]. A frame here is a
+// processing frame: FrameSize samples, passed whole to every frame method. The developer
 // guide shows the [per-frame call order] of the send path, and
 // docs/usage.md has two tested wiring recipes for a call. The SpeexDSP
 // documentation of the same functions is the Speex manual's
@@ -32,8 +33,8 @@
 //	}
 //	out := make([]int16, c.FrameSize())        // made once
 //	residual := make([]int32, c.ResidualLen()) // made once
-//	for mic, far := range frames { // pairs of 160-sample frames
-//		if err := c.Cancel(mic, far, out); err != nil {
+//	for i := range mics { // mics[i] and fars[i]: 160 samples each
+//		if err := c.Cancel(mics[i], fars[i], out); err != nil {
 //			return err // ErrBufferSize: a slice is not 160 samples
 //		}
 //		if err := c.Residual(residual); err != nil {
@@ -87,8 +88,8 @@
 // in mic. The filter models echo paths whose delay from far to mic lies
 // between 0 and about FilterLength() samples:
 //
-//   - Echo that reaches mic before the far frame that causes it is passed
-//     to Cancel (an acausal path) cannot be cancelled.
+//   - If the echo of a far frame is already in mic before that far frame
+//     is passed to Cancel (an acausal path), it cannot be cancelled.
 //   - The part of an echo path longer than FilterLength() is not modelled
 //     and stays in the output. This includes a bulk delay larger than the
 //     filter: then nothing is cancelled.
@@ -113,8 +114,8 @@
 //   - A Capture with no queued frame copies mic to out unprocessed and
 //     empties the queue.
 //
-// The reference prints a warning in each of the last three cases; this
-// package does not report them.
+// The reference prints a warning in each of these cases; this package does
+// not report them.
 //
 // # Frames, buffers and aliasing
 //

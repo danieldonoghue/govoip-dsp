@@ -11,7 +11,10 @@ The package docs are the reference for each type and method; read them
 with `go doc`, for example
 `go doc -all github.com/danieldonoghue/govoip-dsp/echo`.
 The root package, `go doc github.com/danieldonoghue/govoip-dsp`, has the
-end-to-end examples this guide cites.
+end-to-end examples this guide cites. `go doc` does not print example
+code: read the examples in each package's `example_test.go` (the root's
+is [example_test.go](../example_test.go)), or run them with
+`go test <package> -run Example -v`.
 
 ## Start here
 
@@ -79,7 +82,7 @@ the same life.
 ```mermaid
 stateDiagram-v2
   [*] --> Ready: New(cfg) returns no error
-  [*] --> Rejected: New(cfg) returns an error wrapping ErrConfig
+  [*] --> Rejected: New(cfg) returns an error
   Rejected --> [*]: fix the Config
   Ready --> Ready: per-frame call
   Ready --> Ready: Reset, for a new stream
@@ -90,13 +93,16 @@ stateDiagram-v2
 1. **New.** Build the `Config`, call `New`, and check the error. New
    validates every field, allocates everything the processor will use,
    and returns an error wrapping the package's `ErrConfig` for an invalid
-   `Config`. Test it with `errors.Is`; the message names the field.
+   `Config` (`resample` also `ErrAllocFailed`, for a filter too large).
+   Test it with `errors.Is`; the message names the field.
    Retrying with the same `Config` cannot help.
 2. **Per-frame calls.** Call the process method once per frame or chunk.
    It does not allocate, block or panic. It returns only unwrapped
    sentinel errors (for example `ErrBufferSize` for a slice of the wrong
    length), which cannot occur when the buffers are sized once from the
-   processor. Treat them as programming errors.
+   processor. Treat them as programming errors. One exception:
+   `resample` returns `ErrAllocFailed` from its process methods while a
+   rejected rate or quality change is in force (see [Errors](#errors)).
 3. **Setters.** Settings that SpeexDSP changes on the fly are methods
    (`preprocess.Preprocessor.SetVAD`, `echo.Canceller.SetSampleRate`,
    `resample.Resampler.SetRate`); call them between frames. Settings
@@ -110,7 +116,8 @@ stateDiagram-v2
 
 A zero value, such as `var c echo.Canceller`, is not a processor: it was
 not made by `New`. No method panics on it, but the methods with an error
-result return `ErrConfig` and the others do nothing.
+result return `ErrConfig`, and the others return zero values and change
+nothing, except that the `preprocess` setters store their setting.
 
 ## The send path, frame by frame
 
@@ -147,18 +154,27 @@ Rules for this path:
   at 8 kHz, 320 at 16 kHz. Check it with `preprocess.SupportedFrameSize`
   before `New`.
 - **Buffers made once.** Make `clean` (`FrameSize` samples), `residual`
-  (`ResidualLen()` values, one more than the frame) and `out` before the
-  call starts. The per-frame path then never allocates.
+  (`ResidualLen()` values) and `out` before the call starts. The
+  per-frame path then never allocates. The residual spectrum has one
+  value per frequency bin from 0 Hz to half the rate, `FrameSize + 1`;
+  `RunEcho` uses the first `FrameSize` of them, as SpeexDSP does.
+- **No copy needed.** `RunEcho` can work in place on `Cancel`'s output.
+  The recipes in [usage.md](usage.md) copy it first because they keep
+  the canceller's output; a chain that does not need it can skip the
+  copy.
 - **Filter length.** `echo.Config.FilterLength` must cover the largest
   echo delay plus the echo tail, and no more: a longer filter costs more
-  and adapts more slowly. The `call` wiring of [usage.md](usage.md) uses
-  200 ms (`rate/5` samples).
+  and adapts more slowly. Without a measured delay, start with 200 ms
+  (`rate/5` samples), which the `call` wiring of [usage.md](usage.md)
+  uses, and shorten it once the delay of the calls is known.
 - **Latency.** `echo` adds none, `preprocess` one frame, `agc` 2 ms.
 - **VAD on.** Call `SetVAD(true)` on the preprocessor; with the VAD off,
   `RunEcho` reports every frame as speech.
 - **Gate above the noise.** The VAD reports speech on stationary noise,
   so set `agc.Config.GateLevel` above the noise of the line; see the
-  `agc` package doc.
+  `agc` package doc. To find that level, record the preprocessor's
+  output during a stretch where nobody talks and compute its RMS in dBFS,
+  `20·log10(rms/32768)`; set the gate a few dB above it.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with the tests that
@@ -224,6 +240,17 @@ for either side. `Reset` needs both sides stopped.
 
 Rules for frames through an SPSC:
 
+- **The consumer's schedule.** An SPSC has no blocking read, and the
+  library never waits. Run the consumer on a schedule, for example from
+  a ticker or the device callback once per frame period, and process the
+  whole frames that are there each time. How it waits between runs is
+  the application's choice, outside the library's methods.
+- **Pairs of frames.** When one goroutine delivers both the far-end and
+  the microphone frame of each pair, give each stream its own SPSC,
+  check `Free` on both, and write the far frame first.
+  The SPSC indices are `sync/atomic` values, and Go's atomic operations
+  are sequentially consistent, so a consumer that sees the microphone
+  frame also sees the far frame written before it.
 - **Whole frames.** `Write` stores as much as fits. The producer checks
   `Free() >= len(frame)` and writes a whole frame or drops it; a partial
   frame would shift every later frame boundary. The consumer reads only
@@ -253,7 +280,7 @@ A view is valid only until a documented call.
 stateDiagram-v2
   [*] --> NoView
   NoView --> Live: ReadSlices
-  Live --> Live: Write or Commit under Reject
+  Live --> Live: Write under Reject, or Commit
   Live --> NoView: Read, Consume or Reset
   Live --> NoView: Write under Overwrite
 ```

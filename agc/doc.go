@@ -23,6 +23,7 @@
 //	}
 //	out := make([]int16, 160) // made once, the length of one chunk
 //	for _, chunk := range chunks { // each 160 samples, 20 ms at 8 kHz
+//		speech := true // the VAD decision for chunk, if there is a VAD
 //		if err := a.Process(chunk, out, speech); err != nil {
 //			return err // ErrBufferSize: out shorter than chunk
 //		}
@@ -79,11 +80,11 @@
 //     been seen. Loud frames dominate it, so it follows the peaks of speech
 //     rather than the dips between syllables. Inactive frames leave it
 //     unchanged.
-//  3. Consecutive active frames more than 13 dB above L, one more than a
-//     10 ms click can touch (3 at rates that are multiples of 1000), reset
-//     L to their level and cut the gain at once; an inactive frame ends the
-//     run. Active frames more than 6 dB below L for LevelTime/3 in a row
-//     reset L to their level.
+//  3. A run of consecutive active frames more than 13 dB above L resets L
+//     to their level and cuts the gain at once. The run must be one frame
+//     longer than a 10 ms click can touch, so 3 frames at rates that are
+//     multiples of 1000; an inactive frame ends it. Active frames more than
+//     6 dB below L for LevelTime/3 in a row reset L to their level.
 //  4. The target gain is TargetLevel/L, clamped to [MinGain, MaxGain]. The
 //     AGC gain starts at 0 dB and moves towards it by at most RiseRate dB/s
 //     up, on active frames only, and FallRate dB/s down, on any frame. So

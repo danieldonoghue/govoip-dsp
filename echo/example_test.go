@@ -9,8 +9,7 @@ import (
 )
 
 // farEnd returns n samples of noise-like far-end audio in [-8192, 8191],
-// from a linear congruential generator: integer arithmetic only, so the
-// examples print the same on every platform.
+// in integer arithmetic only, so the examples print the same everywhere.
 func farEnd(n int) []int16 {
 	x := make([]int16, n)
 	seed := uint32(7)
@@ -52,8 +51,8 @@ func erle(mic, out []int16) int {
 
 // The echo canceller removes the far end's echo from the microphone
 // signal, frame by frame. Here the echo arrives 30 ms after the far end
-// and the filter covers 100 ms; the canceller converges within the first
-// second.
+// and the filter covers 100 ms. The filter starts empty, so the first
+// 200 ms keep most of the echo; once it has converged, little is left.
 func Example() {
 	const rate, frameMs, filterMs = 8000, 20, 100
 	c, err := echo.New(echo.Config{

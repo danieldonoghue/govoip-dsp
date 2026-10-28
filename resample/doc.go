@@ -25,7 +25,7 @@
 //
 //	r, err := resample.New(resample.Config{Channels: 1, InRate: 48000, OutRate: 16000, Quality: resample.QualityVoIP})
 //	if err != nil {
-//		return err // wraps ErrConfig, or is ErrAllocFailed
+//		return err // wraps ErrConfig or ErrAllocFailed
 //	}
 //	in := make([]int16, 480)               // 10 ms at 48 kHz
 //	out := make([]int16, r.OutLen(len(in))) // large enough for one call
@@ -134,16 +134,18 @@
 //
 // # Errors
 //
-// New returns an error wrapping ErrConfig for an invalid Config, or
-// ErrAllocFailed where the filter exceeds the size limits; test them with
-// errors.Is. The setters return the sentinels unwrapped: ErrConfig for an
+// New returns an error wrapping ErrConfig for an invalid Config, or one
+// wrapping ErrAllocFailed where the filter exceeds the size limits; test
+// them with errors.Is. The setters return the sentinels unwrapped: ErrConfig for an
 // invalid argument, ErrAllocFailed and ErrOverflow as described above. The
 // process methods return ErrBufferSize for an interleaved length that is
 // not a multiple of Channels(), ErrChannel for a channel index out of
-// range, ErrStride for a stride below 1, ErrAllocFailed while a rejected
-// filter change is in force, and ErrConfig on a zero Resampler; they
-// return 0 frames then. With buffers made as in "Use", none of these
-// occurs on the audio path, so treat them as programming errors.
+// range, ErrStride for a stride below 1, and ErrConfig on a zero
+// Resampler; they process nothing and return 0 frames then. With buffers
+// made as in "Use", these do not occur, so treat them as programming
+// errors. While a filter change that the reference's limits rejected is
+// in force, the process methods also return ErrAllocFailed: they output
+// zeros and count the frames as usual, until a later change succeeds.
 //
 // # Limitations
 //

@@ -441,14 +441,14 @@ func ExamplePreprocessor_SetEchoSuppressActive() {
 func ExamplePreprocessor_EstimateUpdate() {
 	p := newExample()
 	x := noisyTone(8000, 0, 8000, 8000) // 1 s of noise
-	before := fmt.Sprint(x[:4])
+	before := fmt.Sprint(x)
 	for f := 0; f+160 <= len(x); f += 160 {
 		if err := p.EstimateUpdate(x[f : f+160]); err != nil {
 			fmt.Println(err)
 			return
 		}
 	}
-	fmt.Println("frame unchanged:", fmt.Sprint(x[:4]) == before)
+	fmt.Println("frame unchanged:", fmt.Sprint(x) == before)
 	err := p.EstimateUpdate(x[:100])
 	fmt.Println(errors.Is(err, preprocess.ErrBufferSize))
 	// Output:

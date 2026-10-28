@@ -8,7 +8,8 @@
 // against the reference harness (testdata/speexdsp/preprocess).
 //
 // Terms such as frame, frame size, VAD, speech probability, power spectrum
-// and residual echo are defined in the [glossary]. The developer guide
+// and residual echo are defined in the [glossary]; a frame here is a
+// processing frame of FrameSize samples. The developer guide
 // shows the [per-frame call order] of the send path. The SpeexDSP
 // documentation of the same functions is the Speex manual's
 // [preprocessor section] and [preprocessor options], and the header
@@ -43,8 +44,8 @@
 // MaxFrameSize (2048) samples with no prime factor above 17, as the FFT of
 // 2*FrameSize requires; SupportedFrameSize checks a size before New. Typical
 // use is 10 ms or 20 ms frames at 8, 16, 32 or 48 kHz. The upstream header
-// recommends frames of 10 to 20 ms, and the same frame size as the echo
-// canceller for residual-echo suppression. Each frame is analysed in a
+// recommends frames of 10 to 20 ms, and requires the same frame size as
+// the echo canceller for residual-echo suppression. Each frame is analysed in a
 // window of 2*FrameSize samples, the frame and the one before it, so the
 // output is delayed by FrameSize samples (one frame).
 //
@@ -124,9 +125,10 @@
 //
 // The VAD of the reference reports speech on stationary noise and on
 // residual echo, so it cannot keep the AGC from raising noise; a gate above
-// the noise does (package agc). Noise suppression lowers stationary noise
-// most: measured at the default -15 dB, white noise at -35 dBFS by 13 to
-// 14 dB and pink noise at -37 dBFS by 4 to 6 dB. Mono only.
+// the noise does (package agc). How much noise suppression removes
+// depends on the noise: measured at the default -15 dB, white noise at
+// -35 dBFS fell by 13 to 14 dB and pink noise at -37 dBFS by only 4 to
+// 6 dB. Mono only.
 //
 // # Concurrency and allocation
 //

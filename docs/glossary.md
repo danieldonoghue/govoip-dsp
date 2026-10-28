@@ -85,6 +85,12 @@ The property that any way of cutting a stream into chunks gives the same
 output. `resample`, `buffer` and `agc` have it and test it. `echo` and
 `preprocess` take whole processing frames only.
 
+### dB
+
+Decibels: a ratio on a log scale, `10·log10` of a power ratio or
+`20·log10` of an amplitude ratio. +6 dB is about twice the amplitude,
+-20 dB a tenth.
+
 ### dBFS
 
 Decibels relative to full scale on the [16-bit scale](#16-bit-scale):
@@ -125,7 +131,7 @@ coefficients of the ports are often Q15.
 Clamping a result to the range of its type instead of letting it
 [wrap](#wrap): a sum above 32767 that is stored in an `int16` becomes
 32767. The ports saturate exactly where the SpeexDSP code does, and
-nowhere else.
+nowhere else except at the deviations their package docs list.
 
 ### Wrap
 
@@ -151,6 +157,12 @@ for the same input and configuration, sample for sample, not just output
 that sounds the same. `resample`, `echo` and `preprocess` are bit-exact;
 tests compare them with fixtures that the C reference wrote
 ([testing.md](testing.md)).
+
+### Reference harness and fixtures
+
+The C program that runs the [reference](#reference) on test inputs, and
+the output files it writes, which are committed in `testdata/speexdsp/`.
+The bit-exact tests compare the Go output with these fixtures.
 
 ### Behavioural
 
@@ -203,6 +215,17 @@ The way the far-end signal takes from `far` to the microphone samples:
 the loudspeaker, the room, the microphone and any buffering on the way.
 An adaptive filter models it as an [impulse response](#impulse-response).
 
+### Acausal
+
+An echo path whose echo would arrive in the microphone signal before the
+far-end frame that causes it is passed to the canceller. No filter can
+cancel it; the caller must pass the far end earlier.
+
+### Bulk delay
+
+The part of the echo delay before any echo arrives: the device and
+network buffering plus the sound's travel time.
+
 ### Echo delay
 
 The time from a far-end sample being passed to the canceller to its echo
@@ -227,7 +250,7 @@ The span of echo the canceller models, in samples, `echo.Config.FilterLength`,
 rounded up to whole processing frames. It must cover the
 [echo delay](#echo-delay) plus the [echo tail](#echo-tail). Echo outside it
 is not cancelled. A longer filter costs more per frame and adapts more
-slowly. The SpeexDSP API calls it the tail length.
+slowly. The Speex manual calls it the tail length.
 
 ### Impulse response
 
@@ -315,6 +338,18 @@ The grouping of the FFT bins of `preprocess` into 24 bands spaced like
 human hearing. The noise estimate and the speech probability are
 computed per band; `filterbank.c` in SpeexDSP.
 
+### Synthesis
+
+The step after the per-band processing that turns the spectrum back into
+samples and adds the overlapping windows together. "Analysis and
+synthesis" is the whole transform in and out of `preprocess`.
+
+### White noise and pink noise
+
+Random noise with equal power at every frequency (white), or with power
+falling by 3 dB per octave, so more of it is at low frequencies (pink).
+The tests use both as stationary noise.
+
 ### Stationary noise
 
 Noise whose level and spectrum change slowly, such as hiss or hum.
@@ -367,9 +402,10 @@ The output RMS level in dBFS that the AGC drives a steady signal towards,
 
 ### Gate level
 
-The frame RMS level in dBFS below which the AGC ignores a frame:
-`agc.Config.GateLevel`. A frame below it never raises the gain or changes
-the level estimate. It is the AGC's only protection from raising noise in
+The frame RMS level in dBFS below which a frame cannot raise the AGC
+gain: `agc.Config.GateLevel`. A frame below it never raises the gain or
+moves the level estimate, though a gain that is falling may go on
+falling. It is the AGC's only protection from raising noise in
 pauses.
 
 ### Limit level
@@ -377,11 +413,18 @@ pauses.
 The highest output magnitude the AGC lets through, in dBFS,
 `agc.Config.LimitLevel`. A [limiter](#limiter) enforces it.
 
+### Active frame
+
+An AGC frame whose RMS is at or above the gate level and whose samples
+were all passed with `speech` true. Only active frames raise the gain
+and update the level estimate.
+
 ### Limiter
 
 The part of the AGC that lowers the gain of a block whose peak would
-exceed the limit level, before that block is output. It needs the AGC's
-2 ms of [latency](#latency).
+exceed the limit level, before that block is output. It looks ahead at
+input not yet output, so it is called a lookahead limiter, and it needs
+the AGC's 2 ms of [latency](#latency).
 
 ### Rise rate and fall rate
 
@@ -431,6 +474,17 @@ and distortion at more cost and latency. The tested recipes of [usage.md](usage.
 The resampling ratio `num/den` of the input and output rates, reduced to
 lowest terms: 48000 to 16000 Hz is 3/1.
 
+### Encoder and decoder
+
+The codec stages around this library: the encoder compresses the
+cleaned send-path audio into packets, the decoder turns received packets
+back into samples. Codecs are not part of govoip-dsp.
+
+### Jitter buffer
+
+A buffer that turns packets arriving unevenly into a steady stream of
+frames. Not built yet; planned for this library.
+
 ### Jitter
 
 Uneven arrival times of packets or callbacks around their nominal
@@ -443,6 +497,10 @@ example two sound cards both nominally 48000 Hz. Nothing in the library
 corrects it yet.
 
 ## Buffers and concurrency
+
+### FIFO
+
+First in, first out: samples come out in the order they went in.
 
 ### Ring buffer
 
@@ -536,7 +594,9 @@ method here retains a caller slice.
 
 A value of a type that `New` did not make, such as `var c echo.Canceller`.
 No method panics on a zero value: methods with an error result return
-`ErrConfig` and the others do nothing. It is not a usable instance.
+`ErrConfig`, and the others return zero values and change nothing,
+except that the `preprocess` setters store their setting. A zero `Ring`
+or `SPSC` is an empty buffer of capacity 0. It is not a usable instance.
 
 ### Sentinel error
 

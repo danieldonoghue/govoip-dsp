@@ -13,7 +13,9 @@
 //
 // The [developer guide] explains the pieces with diagrams, the [glossary]
 // defines every term these docs use, and the [usage guide] gives tested
-// recipes for wiring a call.
+// recipes for wiring a call. go doc does not print example code: read the
+// examples named below in example_test.go at the module root, or run them
+// with go test -run Example -v.
 //
 // # Packages
 //
@@ -38,7 +40,8 @@
 // The send path cleans the microphone signal of one call before it is
 // encoded and sent, one frame at a time:
 //
-//	microphone -> echo.Canceller.Cancel -> preprocess.Preprocessor.RunEcho -> agc.AGC.Process -> encoder
+//	microphone -> echo.Canceller.Cancel -> preprocess.Preprocessor.RunEcho
+//	           -> agc.AGC.Process -> encoder
 //
 // echo needs the loudspeaker frame (the far end) that each microphone
 // frame's echo comes from. After Cancel, echo.Canceller.Residual gives the
@@ -61,12 +64,15 @@
 //
 //   - Make each processor once, with New and a Config, before the call
 //     starts. New allocates and returns an error wrapping the package's
-//     ErrConfig for an invalid Config; test it with errors.Is.
+//     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
+//     filter too large); test it with errors.Is.
 //   - Per-frame and per-chunk methods (the audio path) do not allocate,
 //     block or panic. They return only unwrapped sentinel errors, such as
 //     ErrBufferSize for a slice of the wrong length; with buffers sized
 //     once from the processor (FrameSize, ResidualLen, OutLen) these do not
-//     occur, so treat them as programming errors (Example_errors).
+//     occur, so treat them as programming errors (Example_errors). The
+//     exception is resample's ErrAllocFailed while a rejected rate or
+//     quality change is in force (see the resample package doc).
 //   - Every processor is for one stream and one goroutine at a time; it is
 //     not safe for concurrent use. Only buffer.SPSC is shared, by exactly
 //     two goroutines.
@@ -77,7 +83,8 @@
 //   - Reset starts a new stream without allocating; each package says
 //     what its Reset keeps.
 //   - A zero value (a processor not made by New) never panics, but is not
-//     usable: its methods with an error result return ErrConfig.
+//     usable: its methods with an error result return ErrConfig, and the
+//     others return zero values.
 //
 // # Limitations
 //

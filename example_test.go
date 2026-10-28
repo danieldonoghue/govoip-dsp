@@ -13,9 +13,8 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/resample"
 )
 
-// noise returns n samples of noise-like audio in [-amp, amp), from a
-// linear congruential generator. Integer arithmetic only, so every example
-// prints the same on every platform.
+// noise returns n samples of noise-like audio in [-amp, amp), in integer
+// arithmetic only, so every example prints the same on every platform.
 func noise(n, amp int, seed uint32) []int16 {
 	x := make([]int16, n)
 	for i := range x {
@@ -42,9 +41,8 @@ func dBFS(x []int16) int {
 	return int(math.Round(10 * math.Log10(energy(x)/float64(len(x))/(32768*32768))))
 }
 
-// sendChain holds the processors of one call's send path and the scratch
-// buffers they share. Everything is made once in newSendChain, so the
-// per-frame path never allocates.
+// sendChain holds one call's send-path processors and scratch buffers,
+// all made once in newSendChain, so the per-frame path never allocates.
 type sendChain struct {
 	ec       *echo.Canceller
 	pre      *preprocess.Preprocessor

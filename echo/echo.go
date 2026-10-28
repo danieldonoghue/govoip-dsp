@@ -20,7 +20,7 @@ import (
 
 // Limits checked by New and SetSampleRate.
 const (
-	// MaxFrameSize is the largest frame size: internal/fft supports
+	// MaxFrameSize, 2048, is the largest frame size: internal/fft supports
 	// transforms of at most 4096 samples, and the window is two frames.
 	MaxFrameSize = fft.MaxSize / 2
 	// MaxFilterLength bounds the filter length in samples, and so the

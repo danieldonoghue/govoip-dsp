@@ -34,7 +34,7 @@ type Config struct {
 	LimitLevel int
 
 	// GateLevel, -80 dBFS to below TargetLevel (default -50), is the frame
-	// RMS below which a frame changes neither the gain nor the level estimate.
+	// RMS below which a frame never raises the gain or moves the level estimate.
 	GateLevel int
 
 	// MaxGain, 0 to 40 dB (default 24), is the highest AGC gain.
