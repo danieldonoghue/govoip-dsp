@@ -521,11 +521,12 @@ Rules for this path:
   so set `agc.Config.GateLevel`, the [gate level](glossary.md#gate-level)
   under which the AGC does not raise the gain, clearly above the noise
   of the line; see the `agc` package doc. The default is -50 dBFS and
-  the range -80 dBFS up to below the target level. The gate is tested on
-  each 10 ms [AGC frame](glossary.md#frame), so noise whose average is
-  below the gate can still be raised: with the default, noise averaging
-  2 to 6 dB below it was raised by 16.5 to 23 dB
-  ([whole-chain measurements](testing.md#whole-chain-measurements-integration-wp7)).
+  the range -80 dBFS up to below the target level. Noise whose average
+  is below the gate can still be raised: with the default, noise
+  averaging 2 to 6 dB below it was raised by 16.5 to 23 dB
+  ([whole-chain measurements](testing.md#whole-chain-measurements-integration-wp7)),
+  probably because the gate is tested on each 10 ms
+  [AGC frame](glossary.md#frame) and the noise varies from frame to frame.
   To find the noise level, record the preprocessor's output during a
   stretch where nobody talks and compute its [RMS](glossary.md#rms) in
   [dBFS](glossary.md#dbfs), `20·log10(rms/32768)`, a negative number.
