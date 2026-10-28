@@ -1499,7 +1499,7 @@ covers the package docs and examples of `resample`, `buffer`, `echo`,
 | D9 glossary | Met | Every term of the list in D9 and every term the newcomer review found undefined is in `docs/glossary.md` |
 | D10 Mermaid | Open | The five diagrams of `docs/guide.md` parse with Mermaid 11.4.1; the visual render in a Markdown preview is still to be done |
 | D11 usage guide | Met | One linking paragraph added; `TestUsageCodeIsTested` passes |
-| D12 accuracy | Met | Two independent reviews of the diff against the code, then four further review rounds; every finding fixed or answered at the final head |
+| D12 accuracy | Met | Two independent reviews of the diff against the code, then five further review rounds; every finding fixed or answered at the final head |
 | D13 newcomer review | Met | Points and resolution below |
 | D14 writing rules | Met | Width, code-span and link-text scripts; `make check` |
 | D15 README | Open | Every part is checked except the five pkg.go.dev links, which return 404: the pkg.go.dev pages are generated after the merge |
