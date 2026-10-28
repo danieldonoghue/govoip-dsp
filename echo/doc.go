@@ -11,6 +11,50 @@
 // a FLOAT_MUL32 shift count leaves [-31, 31], the two reference compilers
 // disagree, and the port saturates (docs/algorithms.md).
 //
+// Terms such as near end, far end, echo delay, echo tail, filter length,
+// residual echo and ERLE are defined in the [glossary]. The developer
+// guide shows the [per-frame call order] of the send path, and
+// docs/usage.md has two tested wiring recipes for a call. The SpeexDSP
+// documentation of the same functions is the Speex manual's
+// [echo cancellation section] and its [troubleshooting] advice, and the
+// header [speex_echo.h].
+//
+// # Use
+//
+// Make one Canceller per call with New. For each frame, pass the
+// microphone frame and the loudspeaker frame its echo comes from to
+// Cancel, then, before the next frame, read Residual for the
+// preprocessor:
+//
+//	c, err := echo.New(echo.Config{FrameSize: 160, FilterLength: 1600, SampleRate: 8000})
+//	if err != nil {
+//		return err // wraps ErrConfig: invalid frame size, filter or rate
+//	}
+//	out := make([]int16, c.FrameSize())        // made once
+//	residual := make([]int32, c.ResidualLen()) // made once
+//	for mic, far := range frames { // pairs of 160-sample frames
+//		if err := c.Cancel(mic, far, out); err != nil {
+//			return err // ErrBufferSize: a slice is not 160 samples
+//		}
+//		if err := c.Residual(residual); err != nil {
+//			return err
+//		}
+//		// then preprocess.Preprocessor.RunEcho(out, residual)
+//	}
+//
+// When playback and capture arrive on separate callbacks, use Playback
+// and Capture instead of Cancel ("Stream alignment" below). Call Reset to
+// start a new call with the same configuration.
+//
+// Choose the filter length to cover the largest echo delay expected plus
+// the echo tail, and no more. The upstream header suggests 100 to 500 ms;
+// the Speex manual suggests about a third of the room's reverberation
+// time, for example 100 ms in a small room, and warns that a filter that
+// is too long is a common reason no echo is cancelled, because it adapts
+// more slowly. The filter needs time to converge: after New, Reset or a
+// change of the echo path, expect little cancellation for a few seconds
+// (docs/usage.md gives measured times).
+//
 // # Configuration
 //
 // A Canceller works on frames of Config.FrameSize samples, at
@@ -103,10 +147,37 @@
 // checks fail (for example after an arithmetic overflow on full-scale
 // input).
 //
+// # Errors
+//
+// New returns an error wrapping ErrConfig for an invalid Config, naming
+// the field; test it with errors.Is and fix the Config. SetSampleRate
+// returns ErrConfig, unwrapped, for a rate out of range, and changes
+// nothing. The frame methods return ErrBufferSize, unwrapped, for a slice
+// of the wrong length and do nothing then; with slices sized from
+// FrameSize, ResidualLen and ImpulseResponseLen it cannot occur, so treat
+// it as a programming error. On a zero Canceller the methods with an error
+// result return ErrConfig.
+//
+// # Limitations
+//
+//   - Mono: one microphone and one loudspeaker. The reference's
+//     multichannel speex_echo_state_init_mc is not ported.
+//   - 8 and 16 kHz only in practice (see "Configuration").
+//   - No delay estimation and no drift correction: the caller aligns the
+//     streams (see "Stream alignment").
+//   - Non-linear distortion, such as a clipping loudspeaker or microphone,
+//     cannot be modelled by the linear filter and is not cancelled.
+//
 // # Concurrency and allocation
 //
 // A Canceller is not safe for concurrent use. Use one per stream. New
 // allocates; no other method allocates. Each frame costs a fixed amount of
 // work for the configuration: nine FFTs of 2*FrameSize points (seven with
 // a one-frame filter) plus work proportional to 2*FilterLength().
+//
+// [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
+// [per-frame call order]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#the-send-path-frame-by-frame
+// [echo cancellation section]: https://www.speex.org/docs/manual/speex-manual/node7.html#SECTION00740000000000000000
+// [troubleshooting]: https://www.speex.org/docs/manual/speex-manual/node7.html#SECTION00741000000000000000
+// [speex_echo.h]: https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_echo.h
 package echo

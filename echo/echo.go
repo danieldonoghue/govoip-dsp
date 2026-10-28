@@ -35,13 +35,19 @@ const (
 // divides by (mdf.c:482, mdf.c:709).
 const maxBlocks = 32767
 
-// Sentinel errors. Methods called per frame return only these.
+// Sentinel errors. Methods called per frame return only these, unwrapped;
+// New wraps ErrConfig.
 var (
-	ErrConfig     = errors.New("echo: invalid configuration")
+	// ErrConfig reports an invalid Config from New, a rate out of range in
+	// SetSampleRate, or a zero Canceller.
+	ErrConfig = errors.New("echo: invalid configuration")
+	// ErrBufferSize reports a frame that is not FrameSize samples, or a dst
+	// shorter than Residual or ImpulseResponse writes.
 	ErrBufferSize = errors.New("echo: buffer length does not match the frame size")
 )
 
-// Config configures a Canceller. Every field must be set.
+// Config configures a Canceller. Every field must be set; none has a
+// default. FrameSize and FilterLength are fixed for the Canceller's life.
 type Config struct {
 	// FrameSize is the number of samples per frame, 1 to MaxFrameSize,
 	// such that internal/fft supports 2*FrameSize (for example 80, 160,
@@ -58,7 +64,7 @@ type Config struct {
 }
 
 // Canceller is a mono acoustic echo canceller: speex_echo_state_init with
-// one microphone and one loudspeaker. See the package doc.
+// one microphone and one loudspeaker. Make it with New; see the package doc.
 type Canceller struct {
 	st *state
 }
