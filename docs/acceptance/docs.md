@@ -53,7 +53,7 @@ D5. **Package docs.** Each public package doc states its purpose, the
     buffer ownership, aliasing and retention, `Reset`, the zero value,
     concurrency, allocation, errors and how to handle them, SpeexDSP
     compatibility or extension status, and limitations. Checked against a
-    list in the handoff, item by item.
+    list in the review request, item by item.
 
 D6. **Text-only go doc.** `go doc` and `go doc -all` on every public
     package and the root package read cleanly as plain text: no Markdown
@@ -69,12 +69,12 @@ D7. **Links from go doc.** Every link from a package doc to a GitHub page
     URL to a local file and each fragment to a GitHub heading anchor.
 
 D8. **Upstream links.** Every link to SpeexDSP documentation or source
-    was fetched and read before it was cited, and the handoff records
-    each URL with its fetch result. Source links are pinned to commit
+    was fetched and read before it was cited, and the review request
+    records each URL with its fetch result. Source links are pinned to commit
     `1b28a0f61bc31162979e1f26f3981fc3637095c8`, never a branch.
 
-D9. **Glossary.** `docs/glossary.md` defines every term in the brief's
-    list (sample, frame, frame size, sample rate, Q15 and Q-format,
+D9. **Glossary.** `docs/glossary.md` defines every term in this list
+    (sample, frame, frame size, sample rate, Q15 and Q-format,
     saturation, residual echo, ERLE, VAD and speech probability, gate
     level, filter length, latency, bit-exact) and every other technical
     term a package doc or `docs/` page of WP8 uses. Each package doc links
@@ -86,8 +86,9 @@ D10. **Mermaid diagrams.** `docs/` has diagrams of the send and receive
      hand-off with the index each side owns, buffer ownership and view
      lifetimes, and the lifecycle of a processor. Each shows one idea and
      is explained in the text beside it. Each renders in a Markdown
-     preview; every diagram is listed in the handoff for that check, which
-     needs a person with VS Code and is not complete until done.
+     preview; every diagram is listed in the review request for that
+     check, which needs a person with VS Code and is not complete until
+     done.
 
 D11. **Usage guide.** `docs/usage.md` stays the single source of the
      wiring recipes; new pages link to it rather than repeat it. If it
@@ -101,7 +102,7 @@ D13. **Newcomer review.** A reviewer who did not write the docs builds the
      send chain (`echo`, `preprocess`, `agc` at 20 ms frames) from the
      docs alone, without reading the source or `integration/`, and
      reports every point where they got stuck or found a doc wrong. Every
-     point is fixed or answered in the handoff.
+     point is fixed or answered in the review request.
 
 D14. **Writing rules.** The rules of `CLAUDE.md`, "Writing" and
      "Comments", hold for every changed file: no em-dashes, prose wrapped
@@ -110,4 +111,21 @@ D14. **Writing rules.** The rules of `CLAUDE.md`, "Writing" and
 
 ## Changes
 
-None yet.
+1. **README (D15, added after the first documentation commit).** The
+   README became part of the documentation after the package docs were
+   written, so its criterion is added here:
+
+   D15. **README.** `README.md` has a "Features" table with one row per
+   public package (what it does, typical use, SpeexDSP status, a link to
+   its pkg.go.dev page and to its section of the developer guide), a
+   short "How they fit together" that links the guide's pipeline
+   diagram, a "Getting started" link to the guide's start and the root
+   package examples, one status line per public package and none for
+   internal packages, a status statement whose every claim is checked
+   (tags, validation levels), and the licence text as decided. Its links
+   pass the check of D7 and D8.
+
+2. **Wording only.** D5, D8, D9, D10 and D13 name the review request as
+   the place where results are recorded, and D9 lists its terms inline,
+   so the criteria point only at documents a reader can open. What each
+   criterion checks is unchanged.
