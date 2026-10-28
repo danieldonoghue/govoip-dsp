@@ -13,10 +13,11 @@
 // the buffers are own designs.
 //
 // The [developer guide] explains the pieces with diagrams, the [glossary]
-// defines every term these docs use, and the [usage guide] gives tested
-// recipes for wiring a call. go doc does not print example code: read the
-// examples named below in example_test.go at the module root, or run them
-// with go test -run Example -v.
+// defines every term these docs use, and the [usage guide] gives tested recipes
+// for wiring a call. Here "frame" means a processing frame, except for
+// resample, where it means a resampler frame (see the glossary). go doc does
+// not print example code: read the examples named below in example_test.go at
+// the module root, or run them with go test -run Example -v.
 //
 // # Packages
 //
@@ -83,7 +84,7 @@
 //     so treat them as programming errors (Example_errors). The exception
 //     is resample's ErrAllocFailed while a rejected rate or quality change
 //     is in force (see the resample package doc). A resample output too
-//     short gives no error but leaves input unread. A size from OutLen(n)
+//     short gives no error but can leave input unread. A size from OutLen(n)
 //     on a new Resampler covers every call of up to n frames while
 //     SkipZeros and the setters are not used; after SkipZeros or any
 //     setter, call OutLen before each call (it does not allocate).
