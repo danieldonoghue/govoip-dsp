@@ -38,32 +38,84 @@ Read the guide in this order to get a first call working:
 
 ## Audio basics
 
-The library works on sound as numbers, one frame at a time. These five
-ideas are enough to use it; the [glossary](glossary.md) has the detail.
+The library works on sound as numbers, one frame at a time. These ideas,
+in four groups, are enough to use it; the [glossary](glossary.md) has the
+detail.
+
+Sound as numbers:
 
 - **Sample.** One number that gives the level of the sound at one
   instant. The packages take `int16` samples, -32768 to 32767
   ([sample](glossary.md#sample)).
-- **Sample rate.** The number of samples in one second, in Hz.
+- **Sample rate.** The number of samples in one second, in hertz (Hz).
   Telephone calls commonly use 8000 Hz (narrowband) or 16000 Hz
-  (wideband); devices and some codecs use 48000 Hz. A stage that
-  combines two streams needs both at the same rate, and `resample`
-  converts between rates ([sample rate](glossary.md#sample-rate)).
+  (wideband); devices and some [codecs](glossary.md#encoder-and-decoder)
+  use 48000 Hz. A stage that combines two [streams](glossary.md#stream)
+  needs both at the same rate, and `resample` converts between rates
+  ([sample rate](glossary.md#sample-rate)).
+- **Level, gain and clipping.** The [level](glossary.md#level) of a
+  signal is how large its samples are over a span, measured as
+  [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs), decibels relative
+  to the full scale of the digital format: 0 dBFS is the largest level
+  an `int16` sample can hold, and quieter signals are negative. Other
+  scales have other zero points. A
+  [gain](glossary.md#gain), in [dB](glossary.md#db), is the factor a
+  stage multiplies a signal by: +6 dB roughly doubles it. A signal
+  pushed past the largest sample is cut flat, which is
+  [clipping](glossary.md#clipping) and sounds distorted.
+- **Channel.** One signal of a multichannel stream such as stereo.
+  `echo`, `preprocess` and `agc` are mono, one channel; `resample` takes
+  [interleaved](glossary.md#interleaved) channels: the first sample of
+  every channel, then the second of every channel
+  ([channel](glossary.md#channel)).
+- **Speech, noise and VAD.** Speech is the voice. Background
+  [noise](glossary.md#noise) is any other sound in the microphone
+  signal, such as a fan or line hiss. A [VAD](glossary.md#vad) (voice
+  activity detection) decides for each frame whether it is speech.
+
+Time and frames:
+
 - **Frame.** A fixed number of samples that `echo` and `preprocess`
-  process in one call; `resample`, `agc` and `buffer` take any length.
-  A frame of `ms` milliseconds at a rate of `rate` Hz is
-  `rate * ms / 1000` samples: 160 samples for 20 ms at 8 kHz
-  ([frame](glossary.md#frame)).
+  process in one call; `resample`, `agc` and `buffer` take any length,
+  a [chunk](glossary.md#chunk). A frame of `ms` milliseconds at a rate
+  of `rate` Hz is `rate * ms / 1000` samples: 160 samples for 20 ms at
+  8 kHz ([frame](glossary.md#frame)).
 - **Why 10 or 20 ms.** Codecs and [RTP](glossary.md#rtp) packets
-  commonly carry 20 ms of audio, and the headers of the C library SpeexDSP,
-  which three of these packages port, ask for frames of 10 to 20 ms. A
-  frame is processed only once all of it has arrived, and `preprocess`
-  holds back one more frame, so a longer frame adds delay to the call.
-- **State.** The processors remember earlier frames: `echo` learns how
-  the room echoes the loudspeaker, `preprocess` keeps an estimate of the
-  background noise, `resample` keeps recent samples for its filter, and
-  `agc` keeps its current gain. So each audio stream needs its own
-  processor, kept for the whole call
+  commonly carry 20 ms of audio, and the headers of SpeexDSP, the C
+  library for the same jobs that three of these packages port, ask for
+  frames of 10 to 20 ms. A frame is processed only once all of it has
+  arrived, and `preprocess` holds back one more frame, so a longer
+  frame adds delay to the call.
+- **Latency.** The delay a stage adds between its input and its output
+  ([latency](glossary.md#latency)).
+
+A call and its streams:
+
+- **Call and stream.** A [call](glossary.md#call) carries audio in both
+  directions. A [stream](glossary.md#stream) is one signal going one
+  way, such as the microphone signal. The [near end](glossary.md#near-end)
+  is the local side, the [far end](glossary.md#far-end) the remote side.
+- **Echo.** [Echo](glossary.md#echo) is far-end sound that the
+  loudspeaker plays and the microphone picks up again, so the far end
+  hears itself. [When each stage is needed](#when-each-stage-is-needed)
+  says when it happens.
+- **Encoder and decoder.** A [codec](glossary.md#encoder-and-decoder)
+  has two halves outside this library: the encoder compresses audio
+  into packets for the network, and the decoder turns received packets
+  back into samples.
+
+Processors and state:
+
+- **Processor.** A [processor](glossary.md#processor) is a value made
+  by `New` that works on the audio frame by frame or chunk by chunk:
+  `resample.Resampler`, `echo.Canceller`, `preprocess.Preprocessor` and
+  `agc.AGC`. The `buffer` types only store samples, so they are not
+  processors.
+- **State.** A processor remembers earlier audio: `echo` learns how the
+  room echoes the loudspeaker, `preprocess` keeps an estimate of the
+  background noise, `resample` keeps the recent input samples that its
+  conversion still needs, and `agc` keeps its current gain. So each
+  audio stream needs its own processor, kept for the whole call
   ([The lifecycle of a processor](#the-lifecycle-of-a-processor)).
 
 ## The packages
@@ -75,10 +127,11 @@ which.
 Three of them, `resample`, `echo` and `preprocess`, are ports of
 SpeexDSP, a C library for the same jobs. In the Parity column,
 [bit-exact](glossary.md#bit-exact) means the port gives the same output
-values as SpeexDSP 1.2.1 for the same input, sample for sample, and
+values as SpeexDSP 1.2.1 for the same input and configuration, sample for
+sample, and
 [own design](glossary.md#own-design) means code with no SpeexDSP code in
-it. A [chunk](glossary.md#chunk) is the samples of one call, of any
-length.
+it. A [chunk](glossary.md#chunk) is the samples passed to one method call,
+of any length.
 
 | Package | Does | Frame rule | Rates | Parity | SpeexDSP counterpart |
 |---|---|---|---|---|---|
@@ -108,52 +161,66 @@ packets to the device.
 ### Which packages you need
 
 Find your application in the left column; the right column lists the
-packages it needs. `agc` is optional in every row;
-[Optional stages](#optional-stages) says when to leave it out.
+packages it needs. `preprocess` gives noise suppression, speech
+detection (the [VAD](glossary.md#vad)) and, after `echo`, suppression of
+the echo that is left. `agc` gives speech a steady
+[level](glossary.md#level). Where a row says "if", the stage is
+optional; [When each stage is needed](#when-each-stage-is-needed) says
+when to use it.
 
 | Application | Packages |
 |---|---|
-| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, `preprocess`, and `agc` if wanted |
-| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess`, and `agc` if wanted |
-| One audio stream and no call, such as a recorder or a monitor | `preprocess`, and `agc` if wanted |
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, then `preprocess` if you need noise suppression, residual-echo suppression or a VAD, then `agc` if you need a steady level |
+| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess` if you need noise suppression or a VAD, then `agc` if you need a steady level |
+| One audio stream and no call, such as a recorder or a monitor | `preprocess` if the audio has noise or you need to know when someone is speaking, then `agc` if you need a steady level |
 | Rate conversion only | `resample` |
 | A hand-off of audio between goroutines | `buffer`, alone or with the others |
 
 Each of the first three also needs `resample` where two rates meet, for
 example an 8 kHz codec and a 48 kHz device.
 
-[Echo](glossary.md#echo) happens when the microphone picks up what the
-loudspeaker plays. The far end's voice comes out of the loudspeaker,
-goes into the microphone and back to the far end, so the far end hears
-itself a moment later. `echo` removes it. With a headset there is no
-acoustic path from the loudspeaker to the microphone, so a call needs
-no `echo` stage.
+### When each stage is needed
 
-### Optional stages
+Each bullet says what a send-path stage does, when you need it, and what
+happens without it, in pipeline order.
 
-`echo` is needed whenever the microphone hears the loudspeaker. The other
-two send-path stages do a job you may not need.
-
-- `agc` brings the level of speech towards a target, raising quiet talkers
-  and lowering loud ones, and its limiter keeps the output from clipping.
-  Leave it out when the level is already right: the source has a known,
-  fixed gain, or something later (the encoder, a server or the listener's
-  device) sets the level. Without it, no stage sets the level: the
-  output of `preprocess` is as loud as its input, less the noise removed.
+- `echo` removes [echo](glossary.md#echo). Echo happens when the
+  microphone picks up what the loudspeaker plays: the far end's voice
+  comes out of the loudspeaker, goes into the microphone and back to the
+  far end, so the far end hears itself a moment later. `echo` is needed
+  whenever the microphone hears the loudspeaker. With a headset there is
+  no acoustic path from the loudspeaker to the microphone, so a call
+  needs no `echo` stage. Without it, where the microphone hears the
+  loudspeaker, the far end hears itself.
 - `preprocess` suppresses noise, finds speech (the VAD) and, after
   `echo`, suppresses the residual echo. Leave it out when the audio is
   already clean and you need no VAD. Without it, the output of `echo`
-  keeps its residual echo. `agc` still works alone, because it takes any
-  chunk: pass `speech` true for every chunk, and then any noise above
-  `GateLevel` is raised like speech.
-- Without `agc`, the VAD decision is not needed by anything else, and
-  `SetVAD(true)` is optional; `preprocess.Preprocessor.SetDenoise(false)`
-  leaves only the VAD.
+  keeps its residual echo. `agc` still works alone, because you can pass
+  `speech` true for every chunk; then any noise above `GateLevel`, the
+  [gate level](glossary.md#gate-level) below which a chunk cannot raise
+  the gain, is raised like speech.
+- `agc` brings the level of speech towards a target, raising quiet
+  talkers and lowering loud ones, and its [limiter](glossary.md#limiter)
+  keeps the output from [clipping](glossary.md#clipping). Leave it out
+  when the level is already right: the source has a known, fixed
+  [gain](glossary.md#gain), or something later (a server or the
+  listener's device) sets the level. Without it, no stage of this
+  library sets the level: the output of `preprocess` is as loud as its
+  input, less what it suppresses.
+- Only `agc` uses the VAD decision, so without `agc` no other stage of
+  this library needs it and `preprocess.Preprocessor.SetVAD(true)` is
+  optional. With the VAD off, `Run` reports every frame as speech, so an
+  `agc` after it raises the gain on noise too.
+- To use `preprocess` only for its VAD, call
+  `preprocess.Preprocessor.SetDenoise(false)`. The output is then close
+  to the input delayed by one frame, not the same samples. This also
+  turns off the residual-echo suppression.
 
-### The full pipeline of a call with a loudspeaker
+### Every stage of a call
 
-This is every stage, for a call where the microphone hears the
-loudspeaker:
+This diagram shows each stage a call can use, here for a call where the
+microphone hears the loudspeaker. [When each stage is needed](#when-each-stage-is-needed)
+says which ones a given setup needs.
 
 ```mermaid
 flowchart LR
@@ -165,15 +232,17 @@ flowchart LR
 1. The microphone signal holds the near end's voice and the echo of what
    the loudspeaker played.
 2. `echo` removes that echo. It needs the
-   [far-end](glossary.md#far-end) reference: the samples the loudspeaker
-   played, at the same rate and aligned with the microphone (the dotted
-   line).
+   [far-end](glossary.md#far-end) reference: a copy of the samples the
+   loudspeaker played, at the same rate and aligned with the microphone
+   (the dotted line in the diagram).
 3. `preprocess` suppresses noise and the
    [residual echo](glossary.md#residual-echo) that `echo` left, and
    decides per frame whether it is speech (the VAD).
-4. `agc` sets the level last, so it sees the cleaned signal, and uses the
-   VAD decision so it does not raise the gain on pauses, where it would
-   otherwise raise the background noise.
+4. `agc` sets the level last, so it sees the cleaned signal. Its `speech`
+   argument is the VAD decision, so it does not raise the gain on pauses.
+   The VAD also reports speech on stationary noise, so only a
+   `GateLevel` above the noise stops `agc` raising it (see "Gate above
+   the noise" in [the send path](#the-send-path-frame-by-frame)).
 5. On the receive path, `resample` converts the decoder's rate to the
    device's. A [jitter buffer](glossary.md#jitter-buffer) between decoder
    and resampler is planned, not built.
@@ -183,7 +252,7 @@ at 48 kHz, resample both the microphone and the far-end reference to
 16 kHz, each with its own `resample.Resampler` of the same
 configuration, so they stay sample-aligned.
 
-### The pipeline without echo cancellation
+### A call without echo cancellation
 
 A call with a headset, where the microphone does not hear the
 loudspeaker, drops `echo` and the far-end reference:
@@ -196,7 +265,7 @@ flowchart LR
 
 1. `preprocess` takes each microphone frame with `Run` instead of
    `RunEcho`, since there is no residual echo to pass in.
-2. `agc` follows it as in the full pipeline, with the VAD decision of
+2. `agc` follows it as in [every stage of a call](#every-stage-of-a-call), with the VAD decision of
    `Run`. Call `SetVAD(true)` on the preprocessor first: with the VAD
    off, `Run` reports every frame as speech.
 3. The receive path is the same, and nothing links it to the send path.
@@ -204,18 +273,19 @@ flowchart LR
 `preprocess` works at the common device rates too, so the send path needs
 `resample` only where the encoder's rate differs from the microphone's.
 The `preprocess` package doc's Use section shows this send path in code.
-A recorder or a monitor applies the same two stages to its one stream,
-also with `SetVAD(true)`.
+A recorder or a monitor uses `preprocess`, and `agc` if it needs a steady
+level, on its one stream; call `SetVAD(true)` when it uses `agc`.
 
 ## The lifecycle of a processor
 
-A processor is a value that keeps state from one frame to the next:
-`echo` learns the room's echo, `resample` keeps recent samples, and
-`buffer` holds samples that are not read yet. So make one processor per
-audio stream, keep it for the whole call, and reuse it for a new stream
-only through `Reset`. Every stateful type (`resample.Resampler`,
-`echo.Canceller`, `preprocess.Preprocessor`, `agc.AGC`, `buffer.Ring`,
-`buffer.SPSC`) has the same life.
+A [processor](glossary.md#processor) keeps state from one frame to the
+next: `echo` learns the room's echo and `resample` keeps recent input
+samples. So make one processor per audio stream, keep it for the whole
+call, and reuse it for a new stream only through `Reset`. The four
+processors (`resample.Resampler`, `echo.Canceller`,
+`preprocess.Preprocessor`, `agc.AGC`) have the same life. The two buffers
+of `buffer` (`Ring`, `SPSC`) store samples and are not processors, but they
+are made once, kept for the stream and reset in the same way.
 
 ```mermaid
 stateDiagram-v2
@@ -226,8 +296,11 @@ stateDiagram-v2
   Ready --> [*]: no reference left
 ```
 
-The loop on `Ready` is the processor in use; steps 2 to 4 explain its
-three kinds of call.
+`Ready` is a processor that `New` made and that you can use; `Rejected` is
+a `New` that returned an error and no processor. The loop on `Ready` is
+the processor in use; steps 2 to 4 explain its three kinds of call. "No
+reference left" means that no variable in your program holds the
+processor, so the garbage collector can free it (step 5).
 
 1. **New.** Build the `Config`, call `New`, and check the error. New
    validates every field, allocates everything the processor will use,
@@ -284,7 +357,7 @@ if !preprocess.SupportedFrameSize(frame) {
 }
 ec, err := echo.New(echo.Config{
 	FrameSize:    frame,
-	FilterLength: rate / 5, // the echo delay plus the echo tail, in samples
+	FilterLength: rate / 5, // 200 ms to start, in samples; see "Filter length"
 	SampleRate:   rate,     // 8000 or 16000
 })
 if err != nil {
@@ -350,25 +423,28 @@ Rules for this path:
   [echo delay](glossary.md#echo-delay) plus the
   [echo tail](glossary.md#echo-tail), and no more: a longer
   [filter](glossary.md#filter-length) costs more and adapts more slowly.
-  The echo delay is the time from a far-end sample being played to its
-  echo reaching the microphone, including device and network buffering;
-  the echo tail is how long the echo of one sample keeps arriving.
+  The echo delay is the time from a far-end sample being passed to
+  `Cancel` to its echo first arriving in the microphone signal,
+  including device and network buffering; the echo tail is how long the
+  echo of one sample keeps arriving.
   Without a measured delay, start with 200 ms
   (`rate/5` samples), which the `call` wiring of [usage.md](usage.md)
   uses, and shorten it once the delay of the calls is known.
 - **Latency.** The delays of the stages add up: `echo` adds none,
-  `preprocess` one frame, `agc` 2 ms. With 20 ms frames the send path
-  delays the audio by about 22 ms before the encoder, plus any
-  `resample` delay ([latency](glossary.md#latency)).
+  `preprocess` one frame, `agc` 2 ms. With 20 ms frames the stages
+  delay the audio by about 22 ms, on top of the 20 ms it takes to
+  collect a frame, plus any `resample` delay ([latency](glossary.md#latency)).
 - **VAD on.** Call `SetVAD(true)` on the preprocessor; with the VAD off,
   `RunEcho` reports every frame as speech.
 - **Gate above the noise.** The VAD reports speech on stationary noise,
-  so set `agc.Config.GateLevel` above the noise of the line; see the
-  `agc` package doc. To find that level, record the preprocessor's
-  output during a stretch where nobody talks and compute its
-  [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs),
-  `20·log10(rms/32768)`, which is a negative number; set the gate a few
-  dB above it, for example -55 for noise at -60.
+  so set `agc.Config.GateLevel`, the [gate level](glossary.md#gate-level)
+  below which a frame cannot raise the gain, above the noise of the
+  line; see the `agc` package doc. To find that level, record the
+  preprocessor's output during a stretch where nobody talks and compute
+  its [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs),
+  `20·log10(rms/32768)`, a negative number; set the gate a few dB above
+  it, for example -55 for noise at -60. The `dBFS` helper in
+  [example_test.go](../example_test.go) computes it for a `[]int16`.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.
@@ -414,6 +490,12 @@ callback) and is processed on another. Every processor is single-owner,
 so only a `buffer.SPSC` crosses between goroutines. It has exactly one
 producer goroutine, which writes, and one consumer goroutine, which
 reads.
+
+An SPSC is a [ring buffer](glossary.md#ring-buffer): fixed storage
+of [slots](glossary.md#slot-and-index), one per sample, used as a circle,
+so that after the last slot it continues at the first. An index is the
+position of a slot: the write index is where the next sample is written,
+and the read index is where the next one is read.
 
 ```mermaid
 flowchart LR
@@ -480,6 +562,12 @@ The buffers also return views: slices into their own storage, from
 `ReadSlices` and `WriteSlices`, for reading or writing without a copy.
 A view is valid only until a documented call.
 
+`Reject` and `Overwrite` are the two
+[overflow policies](glossary.md#overflow-policy) of a `Ring`: what a
+write does when the buffer is full. `Reject` keeps the stored samples and
+stores only what fits; `Overwrite` discards the oldest unread samples.
+The diagram shows the view from `ReadSlices` of a `buffer.Ring`:
+
 ```mermaid
 stateDiagram-v2
   [*] --> NoView
@@ -489,10 +577,7 @@ stateDiagram-v2
   Live --> NoView: Write under Overwrite
 ```
 
-`Reject` and `Overwrite` in the diagram are the two
-[overflow policies](glossary.md#overflow-policy) of a `Ring`: what a
-write does when the buffer is full. This is the read view of a
-`buffer.Ring`:
+These are its steps:
 
 1. `ReadSlices` returns the unread samples as two segments; the second
    is empty unless they wrap around the end of the storage.

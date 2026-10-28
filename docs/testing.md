@@ -1522,11 +1522,11 @@ the opening paragraphs, "Parity" the paragraph that starts with it):
 | Compatibility | Parity | Parity | Parity | Parity | Parity |
 | Limitations | Limitations, Noise protection | Limitations | Limitations | Limitations | Limitations |
 
-The diagrams for D10 are, in `docs/guide.md`: the full pipeline of a
-call with a loudspeaker (flowchart), the pipeline without echo
-cancellation (flowchart), the lifecycle of a processor (state diagram),
-the send path frame by frame (sequence diagram), the SPSC hand-off
-(flowchart) and the Ring read view (state diagram).
+The diagrams for D10 are, in `docs/guide.md`: every stage of a call
+(flowchart), a call without echo cancellation (flowchart), the lifecycle
+of a processor (state diagram), the send path frame by frame (sequence
+diagram), the SPSC hand-off (flowchart) and the Ring read view (state
+diagram).
 
 ### Upstream link fetch results
 
