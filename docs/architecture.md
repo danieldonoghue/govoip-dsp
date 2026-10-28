@@ -1,9 +1,9 @@
 # Architecture
 
-This document describes how the packages fit together. Components add their
-own sections as they land. Component status is in the
-[README](../README.md#component-status); the work packages that build them
-are listed [at the end](#work-packages).
+This document describes how the packages fit together. The
+[developer guide](guide.md) explains how to use them. Component status is in
+the [README](../README.md#component-status); the work packages that build
+them are listed [at the end](#work-packages).
 
 ## Packages
 
@@ -18,6 +18,7 @@ are listed [at the end](#work-packages).
 | `internal/fft` | Fixed-point real FFT | Bit-exact with KISS FFT via `fftwrap.c` |
 | `internal/testutil` | Test signals, metrics, fixture loader | Test-only |
 | `integration` | Tests of the whole chain and the recipes of [usage.md](usage.md) | Test-only; the echo and preprocess pairing is bit-exact with the C chain |
+| `govoipdsp` (root) | Overview of the library and end-to-end examples; no library code | n/a |
 | `internal/kernels` (planned, WP9) | Architecture-specific kernels | Must be bit-exact with the portable code |
 
 The public packages do not import each other. Shared arithmetic lives in
@@ -28,17 +29,22 @@ passes on ([contracts.md](contracts.md) section 12).
 ## Typical VoIP pipeline
 
 The send path cleans the microphone signal before encoding; the receive path
-reorders and resamples decoded audio for the device.
+reorders and resamples decoded audio for the device. The diagram shows every
+stage; which ones a pipeline has depends on its use case
+([guide](guide.md#which-packages-you-need)): `echo` only where the
+microphone hears the loudspeaker, `preprocess` and `agc` only where their
+jobs are needed, and `resample` where two rates meet.
 
 ```mermaid
 flowchart LR
-  mic[Microphone] --> echo[echo] --> pre[preprocess] --> agc[agc] --> enc[Encoder]
-  dec[Decoder] --> jit[jitter] --> rs[resample] --> spk[Speaker]
-  rs -. far-end reference .-> echo
+  mic[Microphone] --> mrs[resample] --> echo[echo] --> pre[preprocess] --> agc[agc] --> enc[Encoder]
+  dec[Decoder] --> jit[jitter, planned] --> rs[resample] --> spk[Loudspeaker]
+  spk -. far-end reference, resampled the same way .-> echo
 ```
 
-1. `echo` needs the far-end signal exactly as it was played, aligned with
-   the capture; the dotted line is that reference.
+1. `echo` needs the far-end signal exactly as it was played, paired frame
+   for frame with the capture and at the same rate; the dotted line is that
+   reference.
 2. `preprocess` runs on the echo canceller's output and takes its residual
    echo spectrum.
 3. `agc` runs last on the send path, so it sees speech with noise and echo
@@ -70,8 +76,9 @@ reference on every architecture. Optimised kernels are planned for WP9 in
 
 ## Threading model
 
-Every stateful type is single-owner: one instance per stream, used from one
-goroutine at a time, with no locks. The only type designed for two
+Every stateful type is single-owner: one instance per stream (an
+`echo.Canceller`: the two streams of one call), used from one goroutine at a
+time, with no locks. The only type designed for two
 goroutines is the SPSC ring buffer in `buffer`, which hands audio between the
 audio path and a device or network goroutine without blocking either side
 (requirements §16).
@@ -123,8 +130,9 @@ Recorded so it is not lost; none of it is scheduled.
    belongs in the planned codec repository
    ([ADR `codecs-separate-repo`](decisions/codecs-separate-repo.md)).
 3. **AGC noise input.** After `preprocess`, with the default gate of
-   -50 dBFS, the AGC raises white noise from about -40 dBFS and pink noise
-   from about -52 dBFS at the input by 16 to 23 dB
+   -50 dBFS, the AGC raises what is left of white noise from about
+   -40 dBFS and pink noise from about -52 dBFS at the input by 16.5 to
+   23 dB; against the input, the chain raises that noise by 3.5 to 18.6 dB
    ([testing.md](testing.md#whole-chain-measurements-integration-wp7)).
    A higher default gate, or the preprocess noise estimate fed to `agc`
    (an `agc` API change), needs a decision
