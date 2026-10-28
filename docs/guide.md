@@ -190,8 +190,9 @@ the echo that is left. `agc` gives speech a steady
 | A hand-off of audio between goroutines | `buffer` | Any of the others |
 
 The stages of a row run in the order listed: `echo`, then `preprocess`,
-then `agc`. Each of the first three rows also needs `resample` where two
-rates meet, for example an 8 kHz codec and a 48 kHz device.
+then `agc`. Each of the first three rows also needs `resample` if two
+parts of the path use different sample rates, for example a 48 kHz
+device and an 8 kHz codec.
 
 ### When each stage is needed
 
