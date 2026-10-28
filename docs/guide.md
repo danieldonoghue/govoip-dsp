@@ -101,8 +101,7 @@ stateDiagram-v2
    It does not allocate, block or panic. It returns only unwrapped
    sentinel errors (for example `ErrBufferSize` for a slice of the wrong
    length), which cannot occur when the buffers are sized once from the
-   processor (a `resample` output sized with `OutLen`: again after a
-   setter). Treat them as programming errors. One exception:
+   processor. Treat them as programming errors. One exception:
    `resample` returns `ErrAllocFailed` from its process methods while a
    rejected rate or quality change is in force (see [Errors](#errors)).
 3. **Setters.** Settings that SpeexDSP changes on the fly are methods
@@ -196,7 +195,7 @@ r, err := resample.New(resample.Config{Channels: 1, InRate: 8000, OutRate: 48000
 if err != nil {
 	return err
 }
-out := make([]int16, r.OutLen(160)) // 961: room for one 20 ms frame's output
+out := make([]int16, r.OutLen(160))        // 961: room for one 20 ms frame's output
 _, written, err := r.Process(decoded, out) // reads all of decoded
 if err != nil {
 	return err
@@ -208,11 +207,11 @@ With `OutLen(n)` samples of room (times `Channels()` for interleaved
 input), a call always consumes its whole input. A size read on a new
 `Resampler` stays enough for every call of up to `n` frames until a
 setter changes the filter; after a setter, call `OutLen` again (it does
-not allocate). The output per call can
-vary by one sample at fractional ratios, so pass on `out[:written]`, not
-a fixed length. The resampler delays the signal by `OutputLatency()`
-output samples. `Example_receiveChain` in the root package runs this
-path.
+not allocate). A smaller output gives no error: the call leaves input
+unread. The output per call can vary by one sample at fractional ratios,
+so pass on `out[:written]`, not a fixed length. The resampler delays the
+signal by `OutputLatency()` output samples. `Example_receiveChain` in
+the root package runs this path.
 
 ## Handing audio between goroutines
 

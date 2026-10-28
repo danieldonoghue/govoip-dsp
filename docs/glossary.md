@@ -422,7 +422,7 @@ estimate, both `FrameSize()` values.
 
 ### FFT
 
-Fast Fourier transform: the step that turns a block of samples into its
+Fast Fourier transform: the step that turns a span of samples into its
 frequency bins and back. `echo` and `preprocess` use a fixed-point FFT of
 `2*FrameSize` samples, which limits the supported frame sizes.
 
