@@ -24,8 +24,8 @@
 // # Use
 //
 // Make one Canceller per call with New. For each frame, pass the
-// microphone frame and the loudspeaker frame its echo comes from to
-// Cancel, then, before the next frame, read Residual for the
+// microphone frame and the loudspeaker frame played while it was captured
+// to Cancel, then, before the next frame, read Residual for the
 // preprocessor:
 //
 //	c, err := echo.New(echo.Config{FrameSize: 160, FilterLength: 1600, SampleRate: 8000})
