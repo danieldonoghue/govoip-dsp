@@ -246,11 +246,14 @@ Rules for frames through an SPSC:
   whole frames that are there each time. How it waits between runs is
   the application's choice, outside the library's methods.
 - **Pairs of frames.** When one goroutine delivers both the far-end and
-  the microphone frame of each pair, give each stream its own SPSC,
-  check `Free` on both, and write the far frame first.
-  The SPSC indices are `sync/atomic` values, and Go's atomic operations
-  are sequentially consistent, so a consumer that sees the microphone
-  frame also sees the far frame written before it.
+  the microphone frame of each pair, give each stream its own SPSC. The
+  producer checks `Free` on both and writes the far frame first. The
+  consumer checks `Len` of the microphone SPSC first, then reads one
+  frame from each, and drops a backlog by the same count on both. The
+  SPSC indices are `sync/atomic` values, so the producer's store of the
+  far index happens before its store of the microphone index, which
+  happens before the consumer's load that sees it: a consumer that sees
+  a microphone frame also sees its far frame.
 - **Whole frames.** `Write` stores as much as fits. The producer checks
   `Free() >= len(frame)` and writes a whole frame or drops it; a partial
   frame would shift every later frame boundary. The consumer reads only

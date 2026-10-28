@@ -90,7 +90,25 @@ recorded as ADRs in [docs/decisions/](docs/decisions/README.md).
 go get github.com/danieldonoghue/govoip-dsp
 ```
 
-Requires Go 1.26 or later. See [Getting started](#getting-started).
+Requires Go 1.26 or later. Converting one 20 ms frame of 8 kHz
+telephony audio to a 48 kHz device:
+
+```go
+r, err := resample.New(resample.Config{
+	Channels: 1, InRate: 8000, OutRate: 48000, Quality: resample.QualityVoIP,
+})
+if err != nil {
+	log.Fatal(err)
+}
+decoded := make([]int16, 160)                // one 20 ms frame at 8 kHz
+out := make([]int16, r.OutLen(len(decoded))) // 961: room for one call's output
+read, written, err := r.Process(decoded, out)
+// read == 160; hand out[:written] to the device
+```
+
+`Process` keeps its filter state between calls, accepts chunks of any
+size and does not allocate. See [Getting started](#getting-started) for
+the send chain.
 
 ## Tests and benchmarks
 

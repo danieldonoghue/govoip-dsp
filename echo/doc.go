@@ -13,8 +13,9 @@
 //
 // Terms such as near end, far end, echo delay, echo tail, filter length,
 // residual echo and ERLE are defined in the [glossary]. A frame here is a
-// processing frame: FrameSize samples, passed whole to every frame method. The developer
-// guide shows the [per-frame call order] of the send path, and
+// processing frame: FrameSize samples, passed whole to every frame
+// method. The developer guide shows the [per-frame call order] of the
+// send path, and
 // docs/usage.md has two tested wiring recipes for a call. The SpeexDSP
 // documentation of the same functions is the Speex manual's
 // [echo cancellation section] and its [troubleshooting] advice, and the

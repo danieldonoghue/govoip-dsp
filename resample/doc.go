@@ -136,12 +136,12 @@
 //
 // New returns an error wrapping ErrConfig for an invalid Config, or one
 // wrapping ErrAllocFailed where the filter exceeds the size limits; test
-// them with errors.Is. The setters return the sentinels unwrapped: ErrConfig for an
-// invalid argument, ErrAllocFailed and ErrOverflow as described above. The
-// process methods return ErrBufferSize for an interleaved length that is
-// not a multiple of Channels(), ErrChannel for a channel index out of
-// range, ErrStride for a stride below 1, and ErrConfig on a zero
-// Resampler; they process nothing and return 0 frames then. With buffers
+// them with errors.Is. The setters return the sentinels unwrapped:
+// ErrConfig for an invalid argument, ErrAllocFailed and ErrOverflow as
+// described above. The process methods return ErrBufferSize for an
+// interleaved length that is not a multiple of Channels(), ErrChannel for
+// a channel index out of range, ErrStride for a stride below 1, and
+// ErrConfig on a zero Resampler; they process nothing and return 0 frames then. With buffers
 // made as in "Use", these do not occur, so treat them as programming
 // errors. While a filter change that the reference's limits rejected is
 // in force, the process methods also return ErrAllocFailed: they output
