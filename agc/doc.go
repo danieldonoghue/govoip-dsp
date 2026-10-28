@@ -9,7 +9,10 @@
 // docs/acceptance/agc.md.
 //
 // Terms such as dBFS, RMS, gate level and VAD are defined in the
-// [glossary]. The [developer guide] shows where the AGC sits in a call.
+// [glossary]. A frame here is an AGC frame, ten blocks of SampleRate/1000
+// samples (see "Algorithm"), except where the text names the send chain's
+// processing frame. The [developer guide] shows where the AGC sits in a
+// call.
 //
 // # Use
 //
@@ -45,7 +48,9 @@
 //   - SampleRate: 8000 to 48000 Hz, no default. Sets the block length,
 //     SampleRate/1000 samples, and so every time constant.
 //   - TargetLevel: -40 to -3 dBFS, default -24. The output RMS a steady
-//     signal above the gate converges to.
+//     signal above the gate converges to, if the gain that needs is within
+//     MinGain to MaxGain; otherwise the gain stops at that limit (with the
+//     defaults, a -49 dBFS input settles at -25 dBFS).
 //   - LimitLevel: -20 to 0 dBFS and above TargetLevel, default -1. Every
 //     output sample's magnitude is at most
 //     min(32767, round(32768·10^(LimitLevel/20))).
@@ -84,7 +89,8 @@
 //     to their level and cuts the gain at once. The run must be one frame
 //     longer than a 10 ms click can touch, so 3 frames at rates that are
 //     multiples of 1000; an inactive frame ends it. Active frames more than
-//     6 dB below L for LevelTime/3 in a row reset L to their level.
+//     6 dB below L for LevelTime/3 in a row reset L to their level; inactive
+//     frames between them neither count nor end that run.
 //  4. The target gain is TargetLevel/L, clamped to [MinGain, MaxGain]. The
 //     AGC gain starts at 0 dB and moves towards it by at most RiseRate dB/s
 //     up, on active frames only, and FallRate dB/s down, on any frame. So
@@ -94,11 +100,12 @@
 //     recovers towards the AGC gain with a 20 ms time constant. The applied
 //     gain ramps linearly from block to block.
 //
-// TargetLevel is therefore the output RMS that a stationary signal above
-// the gate converges to, as long as its peaks at that gain stay under
-// LimitLevel; otherwise the limiter holds it lower. For speech, the AGC
-// holds the order-4 power mean of active frame RMS at the target, so the
-// active-speech RMS of the output is somewhat below it. The ideas of items
+// TargetLevel is therefore the output RMS that a stationary signal above the
+// gate converges to, as long as the gain that needs is within MinGain to
+// MaxGain and its peaks at that gain stay under LimitLevel; otherwise the gain
+// limit holds it lower or higher, or the limiter holds it lower. For speech,
+// the AGC holds the order-4 power mean of active frame RMS at the target, so
+// the active-speech RMS of the output is somewhat below it. The ideas of items
 // 2 to 4 come from the floating-point AGC of SpeexDSP 1.2.1; the design and
 // code are our own. docs/algorithms.md gives the design and its measured
 // behaviour.
@@ -119,9 +126,11 @@
 // noise before the AGC sees it, and set GateLevel above the residual noise.
 // At the default suppression (-15 dB), preprocess was measured to reduce
 // white noise at -35 dBFS by 13 to 14 dB and pink noise at -37 dBFS by only
-// 4 to 6 dB. Through the whole chain with the default gate, white noise from
-// about -40 dBFS and pink noise from about -52 dBFS at the input are raised
-// by 16 to 23 dB (docs/testing.md, "Whole-chain measurements").
+// 4 to 6 dB. Through the whole chain with the default gate, the AGC raises
+// the residual of white noise from about -40 dBFS and pink noise from about
+// -52 dBFS at the input by 16 to 23 dB, so that noise leaves the chain 3.5 to
+// 18.6 dB louder than it entered (docs/testing.md, "Whole-chain
+// measurements").
 //
 // # Limitations
 //
@@ -131,12 +140,12 @@
 //
 // # Rates, chunking and latency
 //
-// SampleRate is 8000 to 48000 Hz; there is no frame size. Process accepts
-// any number of samples, including zero, and its output does not depend on
-// how the stream is split into calls, as long as the speech flag is the
-// same for every sample. The output is the input delayed by Latency
-// samples (2 ms at rates that are multiples of 1000); the first Latency
-// output samples of a stream are zero.
+// SampleRate is 8000 to 48000 Hz; there is no frame size. Process accepts any
+// number of samples, including zero, and its output does not depend on how the
+// stream is split into calls, as long as each sample is passed with the same
+// speech flag in every split. The output is the input delayed by Latency
+// samples (2 ms at rates that are multiples of 1000); the first Latency output
+// samples of a stream are zero.
 //
 // # Buffers, aliasing and retention
 //
@@ -177,7 +186,7 @@
 // len(in) and never blocks. No method panics, on an AGC returned by New or
 // on a zero AGC.
 //
-// [preprocess.c]: https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/libspeexdsp/preprocess.c#L563-610
+// [preprocess.c]: https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/libspeexdsp/preprocess.c#L563-612
 // [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
 // [developer guide]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#the-pipeline
 package agc

@@ -25,8 +25,8 @@ type Config struct {
 	// samples.
 	SampleRate int
 
-	// TargetLevel, -40 to -3 dBFS (default -24), is the output RMS that a
-	// steady input above the gate converges to while its peaks fit LimitLevel.
+	// TargetLevel, -40 to -3 dBFS (default -24), is the output RMS a steady
+	// input above the gate converges to, within the gain limits and LimitLevel.
 	TargetLevel int
 
 	// LimitLevel, -20 to 0 dBFS above TargetLevel (default -1), caps output
