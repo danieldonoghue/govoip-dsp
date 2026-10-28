@@ -12,21 +12,31 @@ There is no tagged release yet, and the API may change until v1.0.
 
 | Package | What it does | Typical use | SpeexDSP status | Docs |
 |---|---|---|---|---|
-| `echo` | Acoustic echo cancellation: removes the far end's voice, played by the loudspeaker, from the microphone signal | Send path of a call at 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
-| `preprocess` | Noise suppression, voice activity detection (VAD) and residual-echo suppression | After `echo`, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `echo` | Acoustic echo cancellation: removes the far end's voice, played by the loudspeaker, from the microphone signal | Send path of a call where the microphone hears the loudspeaker, at 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `preprocess` | Noise suppression, voice activity detection (VAD) and residual-echo suppression | Send path, after `echo` where there is one, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `agc` | Automatic gain control with a lookahead limiter | Last stage of the send path, before the encoder | Own design; SpeexDSP has no fixed-point AGC | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/agc), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `resample` | Sample-rate conversion, any ratio within its size limits, 1 to 256 channels, any chunk size | Decoder rate to device rate; 48 kHz down to 16 kHz for `echo` | Bit-exact port of `resample.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/resample), [guide](docs/guide.md#the-receive-path) |
 | `buffer` | `Ring`, a sample FIFO for one goroutine, and `SPSC`, a wait-free FIFO between two | Handing frames from a network or device goroutine to the processing goroutine | Own design; `buffer.c` was design input only | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/buffer), [guide](docs/guide.md#handing-audio-between-goroutines) |
 
 ## How they fit together
 
-The send path cleans the microphone signal of a call, one frame at a
-time: `echo` removes the echo, `preprocess` suppresses noise and the
-echo that is left and decides whether the frame is speech, and `agc`
-sets the level, raising it only on speech. The receive path converts
-decoded audio to the device rate with `resample`. `buffer.SPSC` carries
-audio between goroutines without blocking either side. The developer
-guide draws the [pipeline](docs/guide.md#the-pipeline).
+A call needs only some of the packages, and which ones depends on
+whether its microphone can hear its loudspeaker.
+
+- **Speakerphone, hands-free, conference room.** The microphone picks
+  up what the loudspeaker plays, so the far end would hear itself. The
+  send path cleans the microphone signal one frame at a time: `echo`
+  removes the echo, `preprocess` suppresses noise and the echo that is
+  left and decides whether the frame is speech, and `agc` sets the
+  level, raising it only on speech.
+- **Headset, or a handset at the ear.** There is no echo, so the send
+  path is `preprocess` then `agc`.
+
+The receive path converts decoded audio to the device rate with
+`resample`. `buffer.SPSC` carries audio between goroutines without
+blocking either side. The developer guide lists the
+[packages for each use case](docs/guide.md#which-packages-you-need) and
+draws the [pipeline](docs/guide.md#the-pipeline).
 
 ## Getting started
 
