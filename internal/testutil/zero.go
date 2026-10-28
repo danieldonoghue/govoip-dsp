@@ -46,7 +46,7 @@ func zeroArgs(k int, typ reflect.Type) []reflect.Value {
 		}
 		for _, n := range zeroSliceLens {
 			if n == 0 {
-				vs = append(vs, reflect.Zero(typ))
+				vs = append(vs, reflect.Zero(typ), reflect.MakeSlice(typ, 0, 0))
 				continue
 			}
 			s := reflect.MakeSlice(typ, n, n)
@@ -64,6 +64,7 @@ func zeroArgs(k int, typ reflect.Type) []reflect.Value {
 func CallZeroValue[T any](t testing.TB, visit func(ZeroCall)) {
 	t.Helper()
 	ptr := reflect.PointerTo(reflect.TypeFor[T]())
+	calls, skipped := 0, false
 	for i := range ptr.NumMethod() {
 		m := ptr.Method(i)
 		var sets [][]reflect.Value
@@ -72,7 +73,7 @@ func CallZeroValue[T any](t testing.TB, visit func(ZeroCall)) {
 			vs := zeroArgs(j, m.Type.In(j))
 			if vs == nil {
 				t.Errorf("%v.%s: no zero-value arguments for parameter type %v", ptr, m.Name, m.Type.In(j))
-				ok = false
+				ok, skipped = false, true
 				break
 			}
 			sets = append(sets, vs)
@@ -81,8 +82,12 @@ func CallZeroValue[T any](t testing.TB, visit func(ZeroCall)) {
 			continue
 		}
 		eachCombination(sets, func(args []reflect.Value) {
+			calls++
 			visit(callZero(m, args))
 		})
+	}
+	if calls == 0 && !skipped {
+		t.Errorf("%v has no exported methods to call", ptr)
 	}
 }
 
@@ -197,7 +202,9 @@ func formatArgs(args []reflect.Value) string {
 		if i > 0 {
 			s += ", "
 		}
-		if a.Kind() == reflect.Slice {
+		if a.Kind() == reflect.Slice && a.IsNil() {
+			s += "nil"
+		} else if a.Kind() == reflect.Slice {
 			s += fmt.Sprintf("len %d", a.Len())
 		} else {
 			s += fmt.Sprint(a)

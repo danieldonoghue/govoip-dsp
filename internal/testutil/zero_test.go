@@ -58,6 +58,9 @@ type zeroChanges struct{ v bool }
 
 func (z *zeroChanges) Reset() { z.v = true }
 
+// zeroNoMethods is a type with no methods, such as a Config passed by mistake.
+type zeroNoMethods struct{}
+
 type zeroUnsupported struct{}
 
 func (z *zeroUnsupported) Name(s string) {}
@@ -74,13 +77,14 @@ func TestCheckZeroValueFails(t *testing.T) {
 		check func(testing.TB)
 		want  string
 	}{
-		{"panic", func(tb testing.TB) { CheckZeroValue[zeroPanics](tb, errZeroConfig) }, "zeroPanics.Process(len 0) panics"},
+		{"panic", func(tb testing.TB) { CheckZeroValue[zeroPanics](tb, errZeroConfig) }, "zeroPanics.Process(nil) panics"},
 		{"error", func(tb testing.TB) { CheckZeroValue[zeroWrongError](tb, errZeroConfig) }, "returns error <nil>"},
 		{"result", func(tb testing.TB) { CheckZeroValue[zeroNonzero](tb, errZeroConfig) }, "returns 1 as result 0"},
 		{"write", func(tb testing.TB) { CheckZeroValue[zeroWrites](tb, errZeroConfig) }, "Read(len 1) writes into an argument"},
 		{"copy", func(tb testing.TB) { CheckZeroValue[zeroCopies](tb, errZeroConfig) }, "Process(len 1, len 1) writes into an argument"},
 		{"change", func(tb testing.TB) { CheckZeroValue[zeroChanges](tb, errZeroConfig) }, "Reset() changes the zero value"},
 		{"store", func(tb testing.TB) { CheckZeroValue[zeroGood](tb, errZeroConfig) }, "SetN(-9223372036854775808) changes the zero value"},
+		{"none", func(tb testing.TB) { CheckZeroValue[zeroNoMethods](tb, errZeroConfig) }, "zeroNoMethods has no exported methods to call"},
 		{"type", func(tb testing.TB) { CheckZeroValue[zeroUnsupported](tb, errZeroConfig) }, "no zero-value arguments for parameter type string"},
 	} {
 		r := run(t, c.check)
@@ -99,7 +103,7 @@ func TestCallZeroValueArguments(t *testing.T) {
 			seen["Narrow max"]++
 		}
 	})
-	want := map[string]int{"Len": 1, "Process": 4 * 4 * 2, "SetN": 7, "Floats": 4, "Narrow": 7, "Narrow max": 3}
+	want := map[string]int{"Len": 1, "Process": 5 * 5 * 2, "SetN": 7, "Floats": 5, "Narrow": 7, "Narrow max": 3}
 	for k, n := range want {
 		if seen[k] != n {
 			t.Errorf("%s called %d times, want %d", k, seen[k], n)
