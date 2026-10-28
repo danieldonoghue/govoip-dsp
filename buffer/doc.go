@@ -24,7 +24,9 @@
 // as many of the oldest unread samples as needed, and returns the number
 // stored; the caller can compute the number discarded from Len before and
 // after. SPSC always rejects. Read returns fewer samples than asked for when
-// fewer are stored, and never pads.
+// fewer are stored, and never pads. A zero Ring or SPSC (not made by New or
+// NewSPSC) is an empty buffer of capacity 0: every method returns 0 or empty
+// views and changes nothing.
 //
 // # Views
 //
