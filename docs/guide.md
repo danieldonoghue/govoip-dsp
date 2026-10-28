@@ -4,8 +4,9 @@ This guide is for a Go developer who is new to audio processing and wants
 to clean the audio of a VoIP call with govoip-dsp. It explains what each
 package does, the order to call them in, who owns which buffer, and how
 to hand audio between goroutines. The [glossary](glossary.md) defines
-every term it uses. [usage.md](usage.md) builds on it with two tested
-recipes for wiring a whole call.
+the terms it uses, and the first use of most of them is a link.
+[usage.md](usage.md) builds on it with two tested recipes for wiring a
+whole call.
 
 The package docs are the reference for each type and method; read them
 with `go doc`, for example
@@ -54,10 +55,10 @@ ideas are enough to use it; the [glossary](glossary.md) has the detail.
   `rate * ms / 1000` samples: 160 samples for 20 ms at 8 kHz
   ([frame](glossary.md#frame)).
 - **Why 10 or 20 ms.** Codecs and [RTP](glossary.md#rtp) packets
-  commonly carry 20 ms of audio, and the SpeexDSP echo and preprocessor
-  headers ask for frames of 10 to 20 ms. A frame is processed only once
-  all of it has arrived, and `preprocess` holds back one more frame, so a
-  longer frame adds delay to the call.
+  commonly carry 20 ms of audio, and the headers of the C library SpeexDSP,
+  which three of these packages port, ask for frames of 10 to 20 ms. A
+  frame is processed only once all of it has arrived, and `preprocess`
+  holds back one more frame, so a longer frame adds delay to the call.
 - **State.** The processors remember earlier frames: `echo` learns how
   the room echoes the loudspeaker, `preprocess` keeps an estimate of the
   background noise, `resample` keeps recent samples for its filter, and
@@ -71,13 +72,21 @@ Five public packages each do one job on the audio. A call uses only the
 ones it needs; [Which packages you need](#which-packages-you-need) says
 which.
 
+Three of them, `resample`, `echo` and `preprocess`, are ports of
+SpeexDSP, a C library for the same jobs. In the Parity column,
+[bit-exact](glossary.md#bit-exact) means the port gives the same output
+values as SpeexDSP 1.2.1 for the same input, sample for sample, and
+[own design](glossary.md#own-design) means code with no SpeexDSP code in
+it. A [chunk](glossary.md#chunk) is the samples of one call, of any
+length.
+
 | Package | Does | Frame rule | Rates | Parity | SpeexDSP counterpart |
 |---|---|---|---|---|---|
-| `resample` | Converts between sample rates | Any chunk | Any ratio within the size limits; 1 to 256 channels | Bit-exact | [`speex_resampler.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h) |
-| `echo` | Removes the far end's echo from the microphone signal | `FrameSize` samples per call | 8 and 16 kHz (accepts up to 48 kHz) | Bit-exact | [`speex_echo.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_echo.h) |
-| `preprocess` | Noise suppression, VAD, residual-echo suppression | `FrameSize` samples per call | 4 Hz to 65535 Hz | Bit-exact | [`speex_preprocess.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_preprocess.h) |
-| `agc` | Automatic gain control with a limiter | Any chunk | 8000 to 48000 Hz | Own design | None in the fixed-point build |
-| `buffer` | `Ring` for one goroutine, `SPSC` between two | Any chunk | Any | Own design | [`buffer.c`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/libspeexdsp/buffer.c), design input only |
+| `resample` | Converts between sample rates | Any [chunk](glossary.md#chunk) | Any ratio within the size limits; 1 to 256 channels | Bit-exact | [`speex_resampler.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h) |
+| `echo` | Removes the [far end](glossary.md#far-end)'s echo from the microphone signal | `FrameSize` samples per call | 8 and 16 kHz; it accepts up to 48 kHz but cancels poorly there ([Limitations](#limitations)) | Bit-exact | [`speex_echo.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_echo.h) |
+| `preprocess` | Noise suppression, voice activity detection ([VAD](glossary.md#vad)), suppression of [residual echo](glossary.md#residual-echo) | `FrameSize` samples per call | 4 Hz to 65535 Hz | Bit-exact | [`speex_preprocess.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_preprocess.h) |
+| `agc` | Automatic gain control ([AGC](glossary.md#agc)) with a [limiter](glossary.md#limiter), which stops the output from clipping | Any chunk | 8000 to 48000 Hz | Own design | None in the fixed-point build |
+| `buffer` | `Ring` for one goroutine, `SPSC` ([single producer, single consumer](glossary.md#spsc)) between two | Any chunk | Any | Own design | [`buffer.c`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/libspeexdsp/buffer.c), design input only |
 
 The packages under `internal/` serve these packages and are not for
 callers. The public packages do not import each other: where one
@@ -89,9 +98,12 @@ The pipeline is the chain of stages that the audio of a call passes
 through, in order. Which stages a call needs depends mostly on one
 question: can its microphone hear its loudspeaker?
 
-A call has two directions. The send path cleans what the microphone
-picks up before it is encoded and sent. The receive path brings decoded
-audio to the device.
+A call has two directions
+([send path and receive path](glossary.md#send-path-and-receive-path)).
+The send path cleans what the microphone picks up before an
+[encoder](glossary.md#encoder-and-decoder) compresses it and it is sent.
+The receive path brings the audio that a decoder made from the received
+packets to the device.
 
 ### Which packages you need
 
@@ -102,18 +114,19 @@ packages it needs.
 |---|---|
 | A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, `preprocess`, `agc` |
 | A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess`, `agc` |
-| Receive only, such as a recorder or a monitor | `preprocess`, `agc` |
+| One audio stream and no call, such as a recorder or a monitor | `preprocess`, `agc` |
 | Rate conversion only | `resample` |
 | A hand-off of audio between goroutines | `buffer`, alone or with the others |
 
 Each of the first three also needs `resample` where two rates meet, for
 example an 8 kHz codec and a 48 kHz device.
 
-Echo happens when the microphone picks up what the loudspeaker plays.
-The far end's voice comes out of the loudspeaker, goes into the
-microphone and back to the far end, so the far end hears itself a
-moment later. `echo` removes it. With a headset there is no such path,
-so a call needs no `echo` stage.
+[Echo](glossary.md#echo) happens when the microphone picks up what the
+loudspeaker plays. The far end's voice comes out of the loudspeaker,
+goes into the microphone and back to the far end, so the far end hears
+itself a moment later. `echo` removes it. With a headset there is no
+acoustic path from the loudspeaker to the microphone, so a call needs
+no `echo` stage.
 
 ### The full pipeline of a call with a loudspeaker
 
@@ -129,16 +142,19 @@ flowchart LR
 
 1. The microphone signal holds the near end's voice and the echo of what
    the loudspeaker played.
-2. `echo` removes that echo. It needs the far-end reference: the samples
-   the loudspeaker played, at the same rate and aligned with the
-   microphone (the dotted line).
-3. `preprocess` suppresses noise and the echo `echo` left, and decides
-   per frame whether it is speech (the VAD).
+2. `echo` removes that echo. It needs the
+   [far-end](glossary.md#far-end) reference: the samples the loudspeaker
+   played, at the same rate and aligned with the microphone (the dotted
+   line).
+3. `preprocess` suppresses noise and the
+   [residual echo](glossary.md#residual-echo) that `echo` left, and
+   decides per frame whether it is speech (the VAD).
 4. `agc` sets the level last, so it sees the cleaned signal, and uses the
-   VAD decision so it does not raise the gain on pauses.
+   VAD decision so it does not raise the gain on pauses, where it would
+   otherwise raise the background noise.
 5. On the receive path, `resample` converts the decoder's rate to the
-   device's. A jitter buffer between decoder and resampler is planned,
-   not built.
+   device's. A [jitter buffer](glossary.md#jitter-buffer) between decoder
+   and resampler is planned, not built.
 
 `echo` works well at 8 and 16 kHz only. Where the device or network runs
 at 48 kHz, resample both the microphone and the far-end reference to
@@ -159,14 +175,15 @@ flowchart LR
 1. `preprocess` takes each microphone frame with `Run` instead of
    `RunEcho`, since there is no residual echo to pass in.
 2. `agc` follows it as in the full pipeline, with the VAD decision of
-   `Run`.
+   `Run`. Call `SetVAD(true)` on the preprocessor first: with the VAD
+   off, `Run` reports every frame as speech.
 3. The receive path is the same, and nothing links it to the send path.
 
 `preprocess` works at the common device rates too, so the send path needs
 `resample` only where the encoder's rate differs from the microphone's.
 The `preprocess` package doc's Use section shows this send path in code.
-A receive-only application applies the same two stages to the audio it
-receives.
+A recorder or a monitor applies the same two stages to its one stream,
+also with `SetVAD(true)`.
 
 ## The lifecycle of a processor
 
@@ -182,9 +199,9 @@ only through `Reset`. Every stateful type (`resample.Resampler`,
 stateDiagram-v2
   [*] --> Ready: New(cfg) returns no error
   [*] --> Rejected: New(cfg) returns an error
-  Rejected --> Ready: New with a fixed Config
+  Rejected --> Ready: New with a corrected Config
   Ready --> Ready: per-frame calls, setters, Reset
-  Ready --> [*]: last reference dropped
+  Ready --> [*]: no reference left
 ```
 
 The loop on `Ready` is the processor in use; steps 2 to 4 explain its
@@ -195,7 +212,8 @@ three kinds of call.
    and returns an error wrapping the package's `ErrConfig` for an invalid
    `Config` (`resample` also `ErrAllocFailed`, above its size limits).
    Test it with `errors.Is`; the message names the field.
-   Retrying with the same `Config` cannot help.
+   Calling `New` again with the same `Config` fails the same way: correct
+   the `Config` first.
 2. **Per-frame calls.** Call the process method once per frame or chunk.
    It does not allocate, block or panic. It returns only unwrapped
    sentinel errors (for example `ErrBufferSize` for a slice of the wrong
@@ -211,10 +229,11 @@ three kinds of call.
    What `Reset` keeps differs: `echo` keeps some learned state as
    SpeexDSP does, `preprocess` keeps its settings, `resample` keeps its
    rates. The package docs list it.
-5. **End.** There is no `Close`; drop the last reference and the garbage
+5. **End.** There is no `Close`; when no reference is left, the garbage
    collector frees the memory.
 
-A zero value, such as `var c echo.Canceller`, is not a processor: it was
+A [zero value](glossary.md#zero-value), such as `var c echo.Canceller`,
+is not a processor: it was
 not made by `New`. No method panics on it, but the methods with an error
 result return `ErrConfig`, and the others return zero values and change
 nothing, except that the `preprocess` setters store their setting and
@@ -223,10 +242,45 @@ the getters of those settings return what was stored.
 ## The send path, frame by frame
 
 The send path cleans the microphone signal for the encoder, one frame
-at a time. This section follows the full pipeline, with `echo`; without
-it, skip steps 1 and 2 and call `Run` in step 3. For each 20 ms frame,
-the send path calls four methods in a fixed order, because each call
-uses what the one before it produced.
+at a time. This section follows the full pipeline, with `echo`. Without
+it, skip steps 1 and 2: `clean` is then the microphone frame itself,
+which `Run(clean)` in step 3 rewrites in place, so a caller that needs
+the unprocessed frame copies it first.
+
+First make the processors, once, before the first frame. They share one
+sample rate and one frame size. This code is adapted from `newSendChain`
+in the root package's [example_test.go](../example_test.go), which
+`Example_sendChain` runs; it uses the 200 ms filter that the filter rule
+below suggests as a start.
+
+```go
+const rate, frameMs = 8000, 20
+frame := rate * frameMs / 1000 // samples per frame: 160
+
+if !preprocess.SupportedFrameSize(frame) {
+	return fmt.Errorf("no preprocessor for %d-sample frames", frame)
+}
+ec, err := echo.New(echo.Config{
+	FrameSize:    frame,
+	FilterLength: rate / 5, // the echo delay plus the echo tail, in samples
+	SampleRate:   rate,     // 8000 or 16000
+})
+if err != nil {
+	return err
+}
+pre, err := preprocess.New(preprocess.Config{SampleRate: rate, FrameSize: frame})
+if err != nil {
+	return err
+}
+pre.SetVAD(true) // the VAD decision tells the AGC which frames are speech
+gc, err := agc.New(agc.DefaultConfig(rate)) // the defaults for the rate
+if err != nil {
+	return err
+}
+```
+
+For each 20 ms frame, the full send path calls four methods in a fixed
+order, because each call uses what the one before it produced.
 
 ```mermaid
 sequenceDiagram
@@ -256,30 +310,43 @@ Rules for this path:
 
 - **One frame size.** `echo` and `preprocess` use the same `FrameSize`
   and sample rate. A frame is `rate * ms / 1000` samples: 160 for 20 ms
-  at 8 kHz, 320 at 16 kHz. Check it with `preprocess.SupportedFrameSize`
-  before `New`.
+  at 8 kHz, 320 at 16 kHz. `preprocess.SupportedFrameSize` accepts 1 to
+  2048 samples with no prime factor above 17, which includes 10 and 20 ms
+  at 8, 16, 32 and 48 kHz; check it before `New`.
 - **Buffers made once.** Make `clean` (`FrameSize` samples), `residual`
   (`ResidualLen()` values) and `out` before the call starts. The
-  per-frame path then never allocates. The residual spectrum has one
-  value per frequency bin from 0 Hz to half the rate, `FrameSize + 1`;
-  `RunEcho` uses the first `FrameSize` of them, as SpeexDSP does.
+  per-frame path then never allocates. The
+  [residual-echo spectrum](glossary.md#residual-echo-spectrum) has one
+  value per frequency [bin](glossary.md#bin) from 0 Hz to half the rate,
+  `FrameSize + 1`; `RunEcho` uses the first `FrameSize` of them, as
+  SpeexDSP does.
 - **No copy needed.** `RunEcho` can work in place on `Cancel`'s output.
   The recipes in [usage.md](usage.md) copy it first because they keep
   the canceller's output; a chain that does not need it can skip the
   copy.
 - **Filter length.** `echo.Config.FilterLength` must cover the largest
-  echo delay plus the echo tail, and no more: a longer filter costs more
-  and adapts more slowly. Without a measured delay, start with 200 ms
+  [echo delay](glossary.md#echo-delay) plus the
+  [echo tail](glossary.md#echo-tail), and no more: a longer
+  [filter](glossary.md#filter-length) costs more and adapts more slowly.
+  The echo delay is the time from a far-end sample being played to its
+  echo reaching the microphone, including device and network buffering;
+  the echo tail is how long the echo of one sample keeps arriving.
+  Without a measured delay, start with 200 ms
   (`rate/5` samples), which the `call` wiring of [usage.md](usage.md)
   uses, and shorten it once the delay of the calls is known.
-- **Latency.** `echo` adds none, `preprocess` one frame, `agc` 2 ms.
+- **Latency.** The delays of the stages add up: `echo` adds none,
+  `preprocess` one frame, `agc` 2 ms. With 20 ms frames the send path
+  delays the audio by about 22 ms before the encoder, plus any
+  `resample` delay ([latency](glossary.md#latency)).
 - **VAD on.** Call `SetVAD(true)` on the preprocessor; with the VAD off,
   `RunEcho` reports every frame as speech.
 - **Gate above the noise.** The VAD reports speech on stationary noise,
   so set `agc.Config.GateLevel` above the noise of the line; see the
   `agc` package doc. To find that level, record the preprocessor's
-  output during a stretch where nobody talks and compute its RMS in dBFS,
-  `20·log10(rms/32768)`; set the gate a few dB above it.
+  output during a stretch where nobody talks and compute its
+  [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs),
+  `20·log10(rms/32768)`, which is a negative number; set the gate a few
+  dB above it, for example -55 for noise at -60.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.
@@ -301,7 +368,7 @@ if err != nil {
 	return err
 }
 out := make([]int16, r.OutLen(160))        // 961: room for one 20 ms frame's output
-_, written, err := r.Process(decoded, out) // reads all of decoded, up to 160
+_, written, err := r.Process(decoded, out) // reads all of decoded: out is sized by OutLen
 if err != nil {
 	return err
 }
@@ -345,7 +412,7 @@ flowchart LR
    stores the read index, which frees the slots.
 
 So neither side ever waits for the other, and no lock is needed: every
-method is wait-free. The memory-ordering argument is in
+method is [wait-free](glossary.md#wait-free). The memory-ordering argument is in
 [algorithms.md](algorithms.md#spsc-memory-ordering).
 
 Producer methods are `Write`, `WriteSlices`, `Commit` and `Free`.
@@ -400,7 +467,10 @@ stateDiagram-v2
   Live --> NoView: Write under Overwrite
 ```
 
-This is the read view of a `buffer.Ring`:
+`Reject` and `Overwrite` in the diagram are the two
+[overflow policies](glossary.md#overflow-policy) of a `Ring`: what a
+write does when the buffer is full. This is the read view of a
+`buffer.Ring`:
 
 1. `ReadSlices` returns the unread samples as two segments; the second
    is empty unless they wrap around the end of the storage.
@@ -450,7 +520,8 @@ These are the things the library does not do, so a design can allow for
 them from the start.
 
 - `echo` and `preprocess` are mono.
-- `echo` works well at 8 and 16 kHz only; resample higher rates down.
+- `echo` works well at 8 and 16 kHz only: it accepts rates up to 48 kHz
+  but cancels poorly there, so resample higher rates down.
 - `echo` does not estimate the echo delay or correct clock drift: the
   caller keeps the far-end reference aligned with the microphone. Echo
   outside the filter length is not cancelled.
