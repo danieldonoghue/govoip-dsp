@@ -48,7 +48,7 @@
 //   - SampleRate: 8000 to 48000 Hz, no default. Sets the block length,
 //     SampleRate/1000 samples, and so every time constant.
 //   - TargetLevel: -40 to -3 dBFS, default -24. The output RMS a steady
-//     signal above the gate converges to, if the gain that needs is within
+//     signal above the gate converges to, if the gain this needs is within
 //     MinGain to MaxGain; otherwise the gain stops at that limit (with the
 //     defaults, a -49 dBFS input settles at -25 dBFS).
 //   - LimitLevel: -20 to 0 dBFS and above TargetLevel, default -1. Every
@@ -101,7 +101,7 @@
 //     gain ramps linearly from block to block.
 //
 // TargetLevel is therefore the output RMS that a stationary signal above the
-// gate converges to, as long as the gain that needs is within MinGain to
+// gate converges to, as long as the gain this needs is within MinGain to
 // MaxGain and its peaks at that gain stay under LimitLevel; otherwise the gain
 // limit holds it lower or higher, or the limiter holds it lower. For speech,
 // the AGC holds the order-4 power mean of active frame RMS at the target, so

@@ -7,8 +7,9 @@
 // design input only, and docs/algorithms.md says where this package differs.
 //
 // Terms such as view, producer, consumer, wait-free and backlog are defined
-// in the [glossary]. The developer guide has diagrams of the
-// [SPSC hand-off] and of [view lifetimes].
+// in the [glossary]. This package has no frames of its own; "frame" here
+// is a caller's processing frame passed through a buffer. The developer
+// guide has diagrams of the [SPSC hand-off] and of [view lifetimes].
 //
 // # Use
 //
@@ -113,9 +114,9 @@
 //
 // Every SPSC method is wait-free: at most two atomic loads, at most one atomic
 // store of the caller's own index (Reset, which needs quiescence, stores both),
-// and one copy of the samples, in up to two pieces. There is no lock, no
-// compare-and-swap and no retry, so neither side can block or delay the other.
-// The memory-ordering argument and the interleaving trace are in
+// and at most one copy of the samples, in up to two pieces. There is no lock,
+// no compare-and-swap and no retry, so neither side can block or delay the
+// other. The memory-ordering argument and the interleaving trace are in
 // docs/algorithms.md.
 //
 // # Dropping a backlog
