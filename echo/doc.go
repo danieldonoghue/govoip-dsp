@@ -144,12 +144,12 @@
 // happens depends on the far end and on the frame and filter lengths, not
 // on the filter's duration alone. Measured over 60 s of the package
 // examples' far end at 8 kHz, echo delayed 30 ms: with 20 ms frames the
-// first non-zero residual came after 0.42 s (100 ms filter), 0.50 s (120
-// ms), 0.66 s (150 and 160 ms) and 0.82 s (200 ms), and never with 240,
-// 300 or 500 ms; with 10 ms frames after 0.41 s (100 ms), 0.49 s (120 ms)
-// and 0.61 s (150 ms), and never with 160 to 500 ms. With a silent far end
-// it never adapts. After Reset it still reflects the echo estimate from
-// before the Reset (see "Reset").
+// first non-zero residual came after 0.42 s (100 ms filter),
+// 0.50 s (120 ms), 0.66 s (150 and 160 ms) and 0.82 s (200 ms), and never
+// with 240, 300 or 500 ms; with 10 ms frames after 0.41 s (100 ms),
+// 0.49 s (120 ms) and 0.61 s (150 ms), and never with 160, 200, 240, 300
+// and 500 ms. With a silent far end it never adapts. After Reset it still
+// reflects the echo estimate from before the Reset (see "Reset").
 //
 // # Reset
 //
