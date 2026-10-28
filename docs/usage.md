@@ -37,10 +37,11 @@ the [glossary](glossary.md) defines the terms this page uses.
   single-owner: make one set per call and use it from one goroutine. Only
   `buffer.SPSC` is shared, between exactly two goroutines.
 - **One audio stream and no call.** An application such as a recorder or
-  a monitor has no far end to hear an echo. Neither recipe is needed
-  there: use `preprocess.Preprocessor.Run` if the audio has noise or you
-  need a VAD, and `agc.AGC.Process` if you need a steady level. Call
-  `SetVAD(true)` when you need the VAD or when `agc` follows. Each is optional
+  a monitor has no far end whose echo could return. Neither recipe is
+  needed there: use `preprocess.Preprocessor.Run` if the audio has noise
+  or you need a VAD, and `agc.AGC.Process` if you need a steady level.
+  Call `SetVAD(true)` when you need the VAD or when `agc` follows. Each
+  is optional
   ([When each stage is needed](guide.md#when-each-stage-is-needed)).
 
 ## Recipe A: sending paced by the received frames
