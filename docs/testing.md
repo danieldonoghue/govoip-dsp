@@ -1497,7 +1497,7 @@ covers the package docs and examples of `resample`, `buffer`, `echo`,
 | D7 links to GitHub | Met | A script resolved every `github.com/danieldonoghue/govoip-dsp/blob/master/` URL to a file and heading of the repository |
 | D8 upstream links | Met | Fetch results below |
 | D9 glossary | Met | Every term of the list in D9 and every term the newcomer review found undefined is in `docs/glossary.md` |
-| D10 Mermaid | Open | The five diagrams of `docs/guide.md` parse with Mermaid 11.4.1; the visual render in a Markdown preview is still to be done |
+| D10 Mermaid | Open | The six diagrams of `docs/guide.md` parse with Mermaid 11.4.1; the visual render in a Markdown preview is still to be done |
 | D11 usage guide | Met | One linking paragraph added; `TestUsageCodeIsTested` passes |
 | D12 accuracy | Met | Two independent reviews of the diff against the code, then five further review rounds; every finding fixed or answered at the final head |
 | D13 newcomer review | Met | Points and resolution below |
@@ -1522,10 +1522,11 @@ the opening paragraphs, "Parity" the paragraph that starts with it):
 | Compatibility | Parity | Parity | Parity | Parity | Parity |
 | Limitations | Limitations, Noise protection | Limitations | Limitations | Limitations | Limitations |
 
-The diagrams for D10 are, in `docs/guide.md`: the pipeline (flowchart),
-the lifecycle of a processor (state diagram), the send path frame by
-frame (sequence diagram), the SPSC hand-off (flowchart) and the Ring
-read view (state diagram).
+The diagrams for D10 are, in `docs/guide.md`: the full pipeline of a
+call with a loudspeaker (flowchart), the pipeline without echo
+cancellation (flowchart), the lifecycle of a processor (state diagram),
+the send path frame by frame (sequence diagram), the SPSC hand-off
+(flowchart) and the Ring read view (state diagram).
 
 ### Upstream link fetch results
 
