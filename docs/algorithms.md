@@ -150,7 +150,7 @@ these ways:
 | Single owner only | `SPSC` for a hand-off between two goroutines |
 
 **Parameters.** `Capacity` (1 to `MaxCapacity`, 2^29 samples, so the SPSC
-index arithmetic, which reaches 3·Cap, fits a 32-bit `int`) and, for `Ring`,
+index arithmetic, which reaches 4·Cap-2, fits a 32-bit `int`) and, for `Ring`,
 `Overflow`. A free-running 32-bit sample counter was rejected: it wraps
 after 2^32 samples (about 25 hours at 48 kHz), and with a capacity that is
 not a power of two the slot mapping breaks at the wrap. Indices modulo 2·Cap
@@ -460,8 +460,9 @@ accepts a size, and `New` uses it; it accepts the 10 and 20 ms sizes at 8,
 16, 32 and 48 kHz (80, 160, 320, 480, 640, 960). Defaults: denoise on,
 VAD off, `prob_start` 35% (Q15 11469), `prob_continue` 20% (6554), noise
 suppress -15 dB, echo suppress -40 dB, echo suppress while active -15 dB.
-The getters for the thresholds truncate: the default `prob_start` reads
-back as 34.
+The getters for the thresholds truncate: the defaults read back as 35 and
+20, but `SetProbStart(35)` reads back as 34 and `SetProbContinue(20)` as
+19.
 
 **Floating point and libm.** None in the fixed-point build. `toBARK` uses
 the integer `spx_atan`; `toMEL` and the `exp` calls are in float-build
@@ -679,9 +680,11 @@ first `2K` output samples of a stream are zero.
 
 - **Noise protection is the level gate only.** The `speech` flag helps only if
   the caller's VAD rejects noise, and the VAD of the SpeexDSP 1.2.1 fixed-point
-  preprocessor reports speech on every frame of stationary white and pink noise
-  (section "Preprocessor" above). Stationary noise whose 10 ms frames reach the
-  gate is therefore driven to the target: with `speech = true`, white or pink
+  preprocessor reports speech on nearly every frame of stationary white and pink
+  noise loud enough to reach the gate (section "Preprocessor" above; N1 in
+  [testing.md](testing.md#whole-chain-measurements-integration-wp7)).
+  Stationary noise whose 10 ms frames reach the gate is therefore driven to
+  the target: with `speech = true`, white or pink
   noise at −45 to −24 dBFS ends at −23.98 to −25.18 dBFS, with gains up to +21
   dB, and pink noise at −52 dBFS gets +23.86 dB (N5). Pink noise at −55 dBFS
   long-term, whose loudest frames just cross the −50 dBFS gate, reaches +23.16
