@@ -31,7 +31,9 @@
 //		if err != nil {
 //			return err // ErrBufferSize: the frame is not 160 samples
 //		}
-//		// pass frame and speech on, for example to agc.AGC.Process
+//		if err := a.Process(frame, frame, speech); err != nil { // a: an agc.AGC
+//			return err
+//		}
 //	}
 //
 // Reset starts a new stream with the same settings. A different rate or

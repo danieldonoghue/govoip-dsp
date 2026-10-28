@@ -165,11 +165,12 @@ func Example() {
 }
 
 // Check a frame size before New, for example one computed from a frame
-// duration. The FFT of 2*n samples must exist: n may have no prime factor
-// above 17.
+// duration. n must be at most MaxFrameSize, and the FFT of 2*n samples
+// must exist: n must have no prime factor above 17.
 func ExampleSupportedFrameSize() {
-	// 161 = 7·23 and 2·2049 = 2·3·683: prime factors above 17.
-	for _, n := range []int{160, 441, 882, 1000, 161, 2049} {
+	// 161 = 7·23 and 166 = 2·83 have prime factors above 17; 2049 is above
+	// MaxFrameSize.
+	for _, n := range []int{160, 441, 882, 1000, 161, 166, 2049} {
 		fmt.Println(n, preprocess.SupportedFrameSize(n))
 	}
 	fmt.Println("largest:", preprocess.MaxFrameSize)
@@ -179,6 +180,7 @@ func ExampleSupportedFrameSize() {
 	// 882 true
 	// 1000 true
 	// 161 false
+	// 166 false
 	// 2049 false
 	// largest: 2048
 }
@@ -216,11 +218,13 @@ func ExampleConfig() {
 
 // A Preprocessor holds one stream's state. Its output is delayed by one
 // frame: the first frame out is near silence, and the input comes out a
-// frame later. With denoise off, the analysis and synthesis still round, so a
-// sample may differ from the input by one.
+// frame later. With denoise off, the analysis and synthesis still run and
+// are not transparent: on this constant input a sample differs from the
+// input by one; on loud noise the difference reaches tens (docs/algorithms.md
+// measures 39.6 to 54.5 dB SNR to the input).
 func ExamplePreprocessor() {
 	p := newExample()
-	p.SetDenoise(false) // pass the signal through the analysis unchanged
+	p.SetDenoise(false) // no noise suppression; the analysis and synthesis still run
 	frame := make([]int16, p.FrameSize())
 	for i := range frame {
 		frame[i] = 1000
