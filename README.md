@@ -4,7 +4,7 @@ Pure-Go real-time audio DSP for VoIP, WebRTC-style communication and
 streaming media: resampling, echo cancellation, noise suppression with voice
 activity detection, and automatic gain control.
 
-**Status: pre-release.** All five packages are validated against their
+**Status: pre-release.** All five public packages are validated against their
 acceptance criteria ([work packages](docs/architecture.md#work-packages)).
 There is no tagged release yet, and the API may change until v1.0.
 
@@ -15,7 +15,7 @@ There is no tagged release yet, and the API may change until v1.0.
 | `echo` | Acoustic echo cancellation: removes the far end's voice, played by the loudspeaker, from the microphone signal | Send path of a call at 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `preprocess` | Noise suppression, voice activity detection (VAD) and residual-echo suppression | After `echo`, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `agc` | Automatic gain control with a lookahead limiter | Last stage of the send path, before the encoder | Own design; SpeexDSP has no fixed-point AGC | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/agc), [guide](docs/guide.md#the-send-path-frame-by-frame) |
-| `resample` | Sample-rate conversion, any ratio and channel count, any chunk size | Decoder rate to device rate; 48 kHz down to 16 kHz for `echo` | Bit-exact port of `resample.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/resample), [guide](docs/guide.md#the-receive-path) |
+| `resample` | Sample-rate conversion, any ratio within its size limits, 1 to 256 channels, any chunk size | Decoder rate to device rate; 48 kHz down to 16 kHz for `echo` | Bit-exact port of `resample.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/resample), [guide](docs/guide.md#the-receive-path) |
 | `buffer` | `Ring`, a sample FIFO for one goroutine, and `SPSC`, a wait-free FIFO between two | Handing frames from a network or device goroutine to the processing goroutine | Own design; `buffer.c` was design input only | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/buffer), [guide](docs/guide.md#handing-audio-between-goroutines) |
 
 ## How they fit together

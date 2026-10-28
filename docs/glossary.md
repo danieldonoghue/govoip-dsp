@@ -77,7 +77,10 @@ of 1000 Hz. The AGC's limiter and gain ramp work per block.
 
 The samples passed in one call to a method that takes any length
 (`resample`, `buffer`, `agc`). A stream is cut into chunks; for these
-packages the cut does not change the output.
+packages the cut does not change the output, under conditions each
+package doc states: `agc` needs the same `speech` flag for every
+sample, `resample` needs all input eventually consumed, and `buffer`
+needs no write to overflow.
 
 ### Chunk-partition invariance
 
@@ -164,11 +167,19 @@ The C program that runs the [reference](#reference) on test inputs, and
 the output files it writes, which are committed in `testdata/speexdsp/`.
 The bit-exact tests compare the Go output with these fixtures.
 
+### Wrapped error
+
+An error that carries another error inside it, made with
+`fmt.Errorf("%w: ...", err)`. `errors.Is(err, echo.ErrConfig)` finds the
+inner error; `err == echo.ErrConfig` does not. Constructors return
+wrapped errors, per-frame methods unwrapped sentinels.
+
 ### Behavioural
 
 A component with no reference to match. Its correctness is defined by
 signal measurements with thresholds written before the implementation
-(`docs/acceptance/`). `agc` and `buffer` are behavioural or own designs.
+(`docs/acceptance/`). `agc` is behavioural; `buffer` and `agc` are own
+designs.
 
 ### Own design
 
@@ -223,8 +234,10 @@ cancel it; the caller must pass the far end earlier.
 
 ### Bulk delay
 
-The part of the echo delay before any echo arrives: the device and
-network buffering plus the sound's travel time.
+The pure-delay part of the echo path: the time during which the echo
+path passes nothing, before its first reflection. It is the
+[echo delay](#echo-delay) seen as a property of the path; a bulk delay
+larger than the filter length leaves nothing to cancel.
 
 ### Echo delay
 
@@ -297,7 +310,7 @@ in `RunEcho` to suppress that echo further, as SpeexDSP does with
 
 Echo return loss enhancement: how much the canceller lowers the echo, in
 dB, `10·log10(echo energy / residual energy)` over the same span. 0 dB
-means no cancellation; the tests ask for about 15 dB or more.
+means no cancellation.
 
 ### Playback queue
 
@@ -318,6 +331,12 @@ microphone signal before the canceller models the echo. The rate sets its
 cut-off.
 
 ## Noise suppression and voice activity
+
+### Dereverberation
+
+Removing the room's reverberation from the microphone signal. SpeexDSP
+1.2.1 has a switch for it whose settings do not work, so `preprocess`
+does not offer it.
 
 ### Noise suppression
 
@@ -385,6 +404,23 @@ above `ProbStart`, and keeps speech going while it is above
 
 ## Gain control
 
+### Send path and receive path
+
+The two directions of a call. The send path takes the microphone signal
+through `echo`, `preprocess` and `agc` to the encoder; the receive path
+takes decoded audio through `resample` to the loudspeaker.
+
+### Pipeline
+
+The chain of stages audio passes through, in order, such as the send
+path. The developer guide draws it.
+
+### Attenuation
+
+The opposite of gain: how much a stage lowers a level, in dB.
+`preprocess` settings give the most attenuation of noise and residual
+echo as negative dB.
+
 ### Gain
 
 The factor by which a stage multiplies its input, in dB: 0 dB leaves the
@@ -431,6 +467,18 @@ the AGC's 2 ms of [latency](#latency).
 How fast the AGC gain may move, in dB per second: up (on speech only)
 and down. Other AGCs call them attack and release.
 
+### Time constant
+
+The time a one-pole smoother takes to move about 63% of the way to a new
+value. `agc.Config.LevelTime` is the time constant of the level
+estimate; the limiter recovers with 20 ms.
+
+### Power mean
+
+The mean of values raised to a power, then the root of that power: the
+order-4 power mean of `x` is the fourth root of the mean of `x^4`. Large
+values weigh more than in a plain mean. The AGC's level estimate is one.
+
 ### Level estimate
 
 The AGC's running measure of the speech level it sees, from which it
@@ -454,8 +502,19 @@ filter's impulse response) sampled at the filter's phases.
 ### Magic samples
 
 In `resample`, input samples left over after a rate or quality change
-shortens the filter. The next process calls output them first; `OutLen`
-counts them.
+shortens the filter. The next process calls process them first;
+`OutLen` counts them.
+
+### Downsampling and upsampling
+
+Resampling to a lower rate (downsampling, for example 48000 to
+16000 Hz) or to a higher one (upsampling). Downsampling needs a longer
+filter, in proportion to the factor.
+
+### Taps
+
+The coefficients of a filter, one per input sample it weighs. A filter
+of 64 taps combines 64 input samples into each output sample.
 
 ### Filter delay
 
@@ -566,11 +625,6 @@ live call they are stale; `buffer.SPSC.Consume` drops them.
 Every method a caller calls per frame or per chunk: the process, cancel,
 run, read and write methods. On it nothing allocates, blocks or panics
 ([requirements §16](requirements.md#16-real-time-and-memory-safety-rules)).
-
-### Steady state
-
-Operation after construction and the first calls, when every buffer has
-its final size. From then on the audio path does not allocate.
 
 ### Single owner
 

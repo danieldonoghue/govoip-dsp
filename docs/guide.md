@@ -32,7 +32,7 @@ is [example_test.go](../example_test.go)), or run them with
 
 | Package | Does | Frame rule | Rates | Parity | SpeexDSP counterpart |
 |---|---|---|---|---|---|
-| `resample` | Converts between sample rates | Any chunk | Any ratio | Bit-exact | [`speex_resampler.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h) |
+| `resample` | Converts between sample rates | Any chunk | Any ratio within the size limits; 1 to 256 channels | Bit-exact | [`speex_resampler.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h) |
 | `echo` | Removes the far end's echo from the microphone signal | `FrameSize` samples per call | 8 and 16 kHz (accepts up to 48 kHz) | Bit-exact | [`speex_echo.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_echo.h) |
 | `preprocess` | Noise suppression, VAD, residual-echo suppression | `FrameSize` samples per call | 4 Hz to 65535 Hz | Bit-exact | [`speex_preprocess.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_preprocess.h) |
 | `agc` | Automatic gain control with a limiter | Any chunk | 8000 to 48000 Hz | Own design | None in the fixed-point build |
@@ -83,7 +83,7 @@ the same life.
 stateDiagram-v2
   [*] --> Ready: New(cfg) returns no error
   [*] --> Rejected: New(cfg) returns an error
-  Rejected --> [*]: fix the Config
+  Rejected --> Ready: New with a fixed Config
   Ready --> Ready: per-frame call
   Ready --> Ready: Reset, for a new stream
   Ready --> Ready: setter, between frames
@@ -245,15 +245,10 @@ Rules for frames through an SPSC:
   a ticker or the device callback once per frame period, and process the
   whole frames that are there each time. How it waits between runs is
   the application's choice, outside the library's methods.
-- **Pairs of frames.** When one goroutine delivers both the far-end and
-  the microphone frame of each pair, give each stream its own SPSC. The
-  producer checks `Free` on both and writes the far frame first. The
-  consumer checks `Len` of the microphone SPSC first, then reads one
-  frame from each, and drops a backlog by the same count on both. The
-  SPSC indices are `sync/atomic` values, so the producer's store of the
-  far index happens before its store of the microphone index, which
-  happens before the consumer's load that sees it: a consumer that sees
-  a microphone frame also sees its far frame.
+- **Pairs of frames.** Where each received frame must stay paired with
+  the far-end frame sent at the same time, follow the tested wiring of
+  [usage.md](usage.md#sources-that-deliver-the-pairing): its `drain`
+  keeps each pair together, also when it drops a backlog.
 - **Whole frames.** `Write` stores as much as fits. The producer checks
   `Free() >= len(frame)` and writes a whole frame or drops it; a partial
   frame would shift every later frame boundary. The consumer reads only
