@@ -232,8 +232,8 @@ func TestZeroPreprocessor(t *testing.T) {
 		t.Errorf("EstimateUpdate: %v, want ErrConfig", err)
 	}
 	p.Reset()
-	if err := p.PSD(nil); err != nil {
-		t.Errorf("PSD: %v", err)
+	if err := p.PSD(nil); err != ErrConfig {
+		t.Errorf("PSD: %v, want ErrConfig", err)
 	}
 }
 
@@ -393,4 +393,10 @@ func TestDiv32x16Q8Wraps(t *testing.T) {
 			t.Fatalf("div32x16Q8(%d, %d) = %d", 128*b-1, b, got)
 		}
 	}
+}
+
+// Every exported method of a zero value is safe (ADR wp7-zero-value-safety).
+func TestZeroValueMethods(t *testing.T) {
+	testutil.CheckZeroValue[Preprocessor](t, ErrConfig, "SetDenoise", "SetVAD", "SetProbStart",
+		"SetProbContinue", "SetNoiseSuppress", "SetEchoSuppress", "SetEchoSuppressActive")
 }

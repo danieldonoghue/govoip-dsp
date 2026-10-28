@@ -79,6 +79,9 @@ func (p *Preprocessor) PSDLen() int { return p.frameSize }
 // PSD is SPEEX_PREPROCESS_GET_PSD: the last frame's power spectrum into
 // dst[:PSDLen()], or ErrBufferSize if dst is shorter.
 func (p *Preprocessor) PSD(dst []int32) error {
+	if p.fft == nil {
+		return ErrConfig
+	}
 	if len(dst) < p.frameSize {
 		return ErrBufferSize
 	}
@@ -89,6 +92,9 @@ func (p *Preprocessor) PSD(dst []int32) error {
 // NoisePSD is SPEEX_PREPROCESS_GET_NOISE_PSD: it writes the noise estimate
 // into dst[:PSDLen()], or returns ErrBufferSize if dst is shorter.
 func (p *Preprocessor) NoisePSD(dst []int32) error {
+	if p.fft == nil {
+		return ErrConfig
+	}
 	if len(dst) < p.frameSize {
 		return ErrBufferSize
 	}

@@ -46,7 +46,8 @@
 // retains a caller slice. Reset clears the adaptive state and keeps the
 // settings; the reference has no reset, and Reset equals a new instance with
 // the same settings. On a zero Preprocessor (not made by New) the frame
-// methods return ErrConfig.
+// methods, PSD and NoisePSD return ErrConfig, the setters store their
+// setting, the other methods return zero values, and Reset does nothing.
 //
 // # Arithmetic
 //
