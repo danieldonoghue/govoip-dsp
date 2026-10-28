@@ -55,8 +55,8 @@ var (
 type Config struct {
 	// Channels is the number of channels, 1 to 256 (the resource cap).
 	Channels int
-	// InRate and OutRate are the sampling rates in Hz. Unless RatioNum and
-	// RatioDen are set, they also give the ratio and must be at least 1.
+	// InRate and OutRate, in Hz, 0 to 2^32-1 and with no default, give the
+	// ratio (then each at least 1) unless RatioNum and RatioDen are set.
 	InRate, OutRate int
 	// RatioNum and RatioDen, when both are non-zero, set the resampling
 	// ratio exactly (speex_resampler_init_frac); InRate and OutRate are

@@ -28,9 +28,12 @@
 //		return err // wraps ErrConfig or ErrAllocFailed
 //	}
 //	in := make([]int16, 480)               // 10 ms at 48 kHz
-//	out := make([]int16, r.OutLen(len(in))) // large enough for one call
-//	nIn, nOut, err := r.Process(in, out)
-//	// out[:nOut] is the output; nIn == len(in), because out is OutLen long
+//	out := make([]int16, r.OutLen(len(in))) // made once, before any setter
+//	_, nOut, err := r.Process(in, out)      // reads all of in
+//	if err != nil {
+//		return err // a programming error (see "Errors")
+//	}
+//	play(out[:nOut]) // the output of this call
 //
 // Reset restarts the stream with the same settings. A higher quality
 // (Config.Quality, 0 to 10) gives less noise and distortion at more cost
@@ -54,11 +57,13 @@
 // change nothing. Where the reference's ratio or table limits reject the
 // filter, they return it and follow C (see ErrAllocFailed); the
 // reference's memory limit is always above the cap. A filter is roughly 8
-// to 256 taps times the downsampling factor, so the cap allows
-// downsampling by about 21000 to 32000 (mono, quality 10). The cap bounds
-// each configuration; since buffers only grow, a sequence of changes can
-// hold somewhat more (measured: 1.14 times the cap). Frames may be any
-// length; a call may consume and produce nothing.
+// to 256 taps times the downsampling factor, so for a ratio with a small
+// denominator the limits allow downsampling by about 21000 to 32000 (mono,
+// quality 10). With a large denominator they can reject far smaller factors: at
+// quality 10, 129345385/44100, about 2933, is rejected. The cap bounds each
+// configuration; since buffers only grow, a sequence of changes can hold
+// somewhat more (measured: 1.14 times the cap). Frames may be any length; a
+// call may consume and produce nothing.
 //
 // # Chunking and output exhaustion
 //
@@ -77,19 +82,16 @@
 // current position and any magic samples pending after a filter change,
 // plus 1 when n > 0. For Process and ProcessFloat the buffer is OutLen(n)
 // times Channels() samples. The result is clamped to 2^31-1, where the
-// guarantee no longer holds (see OutLen).
+// guarantee no longer holds (see OutLen). OutLen(n) of a new Resampler,
+// read before SkipZeros, covers every call of up to n frames until a
+// setter changes the filter; Reset and SkipZeros keep it valid. After a
+// setter, read OutLen again; it does not allocate. Read after SkipZeros,
+// it covers the next call only.
 //
 // Interleaved calls (Process, ProcessFloat) process every channel with the
 // same offered lengths and report the counts of the last channel, as the
 // reference does. ProcessChannel and ProcessChannelFloat process one channel
 // through strides, and let channels advance independently.
-//
-// Offered lengths above 2^31-1 frames are clamped to 2^31-1. C would stop
-// making progress there. C feeds zeros for a NULL input; here, pass zeros.
-// After a rejected rate change, the input position saturates at 2^31-1
-// where C's int position would overflow. With a ratio of 2^31 or more the
-// output is zeros either way, but the number of zeros produced can differ
-// from the -fwrapv reference build.
 //
 // # Buffers, aliasing and retention
 //
@@ -139,8 +141,10 @@
 // # Errors
 //
 // New returns an error wrapping ErrConfig for an invalid Config, or one
-// wrapping ErrAllocFailed where the filter exceeds the size limits; test
-// them with errors.Is. The setters return the sentinels unwrapped:
+// wrapping ErrAllocFailed where the filter exceeds the size limits: the
+// Go-only cap (including more than 256 channels), a filter length that
+// would wrap to 0, or the reference's ratio and table limits; test them
+// with errors.Is. The setters return the sentinels unwrapped:
 // ErrConfig for an invalid argument, ErrAllocFailed and ErrOverflow as
 // described above. The process methods return ErrBufferSize for an
 // interleaved length that is not a multiple of Channels(), ErrChannel for
@@ -151,6 +155,24 @@
 // limits rejected is in force, the process methods also return
 // ErrAllocFailed: they output zeros and count the frames as usual, until
 // a later change succeeds.
+//
+// # Deviations
+//
+// Where the reference is undefined, or would fail in a way a Go caller
+// cannot handle, this package differs:
+//
+//   - NaN float32 input becomes 0; C is undefined there ("Float32 samples").
+//   - Offered lengths above 2^31-1 frames are clamped to 2^31-1, where C
+//     would stop making progress.
+//   - The Go-only cap, and a filter length that would wrap to 0, give
+//     ErrAllocFailed and change nothing, where C would allocate or is
+//     undefined ("Rates, ratios and frames").
+//   - A SetRateFrac that returns ErrOverflow changes nothing; C changes
+//     part of its state there, after which its behaviour is undefined.
+//   - After a rejected rate change, the input position saturates at 2^31-1
+//     where C's int position would overflow. With a ratio of 2^31 or more
+//     the output is zeros either way, but the number of zeros produced can
+//     differ from the -fwrapv reference build.
 //
 // # Limitations
 //
