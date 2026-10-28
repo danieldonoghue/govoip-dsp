@@ -209,7 +209,7 @@ happens without it, in pipeline order.
   loudspeaker, the far end hears itself.
 - `preprocess` suppresses noise, finds speech (the VAD) and, after
   `echo`, suppresses the residual echo. Leave it out when the audio is
-  already clean and you do not need a VAD. Without it, the output of
+  already clean and you don't need a VAD. Without it, the output of
   `echo` keeps its residual echo. `agc` still works alone, because you
   can pass `speech` true for every chunk; then any noise above
   `GateLevel`, the [gate level](glossary.md#gate-level) below which a

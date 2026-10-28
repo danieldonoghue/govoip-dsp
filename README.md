@@ -38,7 +38,7 @@ hear its loudspeaker:
 already right, for example a source of known, fixed gain; `agc` still
 works without `preprocess`, with its `speech` argument true, but then it
 raises noise above its gate level like speech. Leave out `preprocess`
-when the audio is already clean and you do not need a VAD; after `echo`,
+when the audio is already clean and you don't need a VAD; after `echo`,
 that also drops the suppression of the echo that is left.
 
 The receive path converts decoded audio to the device rate with
