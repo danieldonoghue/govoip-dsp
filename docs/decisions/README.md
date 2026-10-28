@@ -38,4 +38,4 @@ was written down at the time.
 | [wp7-recipes](wp7-recipes.md) | Two wiring recipes, with `Cancel` for paced sending |
 | [wp7-report-flag](wp7-report-flag.md) | Reported-only measurements behind -report |
 | [wp7-teaching-comments](wp7-teaching-comments.md) | Longer comments in teaching code |
-| [wp7-zero-value-safety](wp7-zero-value-safety.md) | Zero values return ErrConfig |
+| [wp7-zero-value-safety](wp7-zero-value-safety.md) | Zero values never panic |

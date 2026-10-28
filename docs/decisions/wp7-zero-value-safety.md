@@ -1,27 +1,41 @@
-# ADR wp7-zero-value-safety: Zero values return ErrConfig
+# ADR wp7-zero-value-safety: Zero values never panic
 
-- **Status:** accepted; not yet implemented.
+- **Status:** accepted; implemented in WP7b.
 - **Date:** 2026-10-27
 
 ## Context
 
-The zero values of the stateful types behave differently. `preprocess` and
-`internal/fft` return `ErrConfig`. A zero `echo.Canceller` panics on its
-frame methods (`Cancel`, `Capture`, `Playback`, `Residual`), on `Reset`
-and on its getters. A zero `resample.Resampler` panics on `Process`,
-`ProcessFloat` and `OutLen`. Neither is documented. A zero `agc.AGC`
-panics on `Process`; its package documentation gives the no-panic
-guarantee only for an AGC returned by `New`.
+The zero values of the stateful types, a `T{}` not made by `New`, behaved
+differently. `preprocess` and `internal/fft` returned `ErrConfig` from
+their frame methods. A zero `echo.Canceller` panicked on every method
+(`SetSampleRate` only for a valid rate). A zero `resample.Resampler`
+panicked on `Process`, `ProcessFloat`, `OutLen`, `OutputLatency` and its
+rate and quality setters, and its per-channel methods returned
+`ErrChannel`. A zero `agc.AGC` panicked on `Process`. Requirements §16
+allows no panics for any input, and `docs/contracts.md` section 2 says
+nothing panics on caller input.
 
 ## Decision
 
-Frame methods of every stateful type return `ErrConfig` on a zero value, as
-`preprocess` and `internal/fft` do. This becomes a contract in
-`docs/contracts.md` together with the fixes.
+- No exported method of a stateful type panics on its zero value, for
+  any arguments.
+- Methods with an `error` result return `ErrConfig` and write nothing.
+- The other methods return zero values and change nothing, except setters
+  that only store a setting, such as those of `preprocess`.
+- A nil `*T` receiver is not covered.
 
 ## Consequences
 
-- `echo` and `resample` need fixes, and `agc` a documentation and code
-  change, in work package WP7b (`docs/architecture.md`, "Work packages"),
-  before the developer documentation of WP8.
-- Until then the types behave as described above.
+- `docs/contracts.md` section 2 states the rule, each package doc states
+  its zero-value behaviour, and each package tests every exported method
+  with `testutil.CheckZeroValue`.
+- `preprocess` `PSD` and `NoisePSD` return `ErrConfig` on a zero value
+  instead of nil.
+- Instances made by `New` behave as before. Measured on a loaded machine,
+  the geomean change of the `resample`, `agc` and `echo` benchmarks is
+  within 1.2% (`docs/performance.md`).
+
+## Alternatives considered
+
+- **Frame methods only**, the first wording of this decision. It would
+  leave getters, setters and `Reset` able to panic.
