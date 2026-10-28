@@ -5,8 +5,7 @@ use. Each term has one meaning everywhere, except "frame", which has the
 three senses given under [Frame](#frame), and "block", which has the two
 senses given under [Block](#block).
 
-The terms are grouped by topic. Within a group, a term is defined before
-the terms that use it.
+The terms are grouped by topic. Terms link to the terms they use.
 
 ## Signals and samples
 
@@ -393,8 +392,9 @@ half the rate, `FrameSize()+1` values; `preprocess.PSD` gives the first
 ### Filterbank
 
 The grouping of the FFT bins of `preprocess` into 24 bands spaced like
-human hearing. The noise estimate and the speech probability are
-computed per band; `filterbank.c` in SpeexDSP.
+human hearing; `filterbank.c` in SpeexDSP. The noise estimate is updated
+per bin and copied into the bands; the speech probability is computed
+from the bands.
 
 ### Synthesis
 
@@ -665,10 +665,10 @@ method here retains a caller slice.
 
 ### Zero value
 
-A value of a type that `New` did not make, such as `var c echo.Canceller`.
-No method panics on a zero value: methods with an error result return
-`ErrConfig`, and the others return zero values and change nothing,
-except that the `preprocess` setters store their setting and the getters
+A value of a type that `New` did not make, such as `var c echo.Canceller`. No
+method panics on a zero value: methods with an error result return `ErrConfig`,
+and the others return zero values and change nothing, except that the
+`preprocess` setters store their setting and the getters of those settings
 return what was stored. A zero `Ring` or `SPSC` is an empty buffer of
 capacity 0. It is not a usable instance.
 

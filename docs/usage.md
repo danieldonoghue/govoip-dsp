@@ -12,8 +12,8 @@ whose echo may return in the received audio.
 | [B, separate callbacks](#recipe-b-separate-capture-and-playback-callbacks) | playback and capture are delivered apart, each on its own timing | `Playback` and `Capture` |
 
 Each recipe opens with the situations it fits and does not fit, then its
-caveats, then the code. Every Go block on this page is copied from the
-tests in `integration/` (`paced_test.go`, `buffered_test.go`,
+caveats, then the code. Every Go code block on this page is copied from
+the tests in `integration/` (`paced_test.go`, `buffered_test.go`,
 `call_test.go` and `usage_test.go`), and `TestUsageCodeIsTested` fails if
 one is not. Each section names the tests that back it.
 
@@ -772,9 +772,10 @@ In short:
   LibriSpeech speech.
 - The VAD reports speech on stationary noise and on residual echo, so
   `GateLevel` is the AGC's only protection. With the default gate of
-  -50 dBFS, white noise from about -40 dBFS and pink noise from about
-  -52 dBFS at the input are raised by 16 to 23 dB. Set `GateLevel` above
-  the residual noise of the line.
+  -50 dBFS, the AGC raises what noise suppression leaves of white noise
+  from about -40 dBFS and pink noise from about -52 dBFS at the input by
+  16 to 23 dB, so that noise leaves the chain 3.5 to 18.6 dB louder than
+  it entered. Set `GateLevel` above the residual noise of the line.
 - On the chain resampled from 48 kHz the echo canceller cancelled less
   (16 dB) and the AGC held the near end lower (-33 dBFS), a reported
   finding.

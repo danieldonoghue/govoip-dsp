@@ -137,9 +137,10 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   rates down first.
 - The VAD reports speech on stationary noise and on residual echo, so the
   AGC's level gate is its only noise protection. With the default gate,
-  white noise from about -40 dBFS and pink noise from about -52 dBFS at
-  the input are raised by 16 to 23 dB after noise suppression; set
-  `GateLevel` above the residual noise
+  the AGC raises what noise suppression leaves of white noise from about
+  -40 dBFS and pink noise from about -52 dBFS at the input by 16 to
+  23 dB, so that noise leaves the chain 3.5 to 18.6 dB louder than it
+  entered; set `GateLevel` above the residual noise
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
 - The whole chain, tested in `integration`, passes every pipeline
   criterion at 8 and 16 kHz. On the chain resampled from 48 kHz two
