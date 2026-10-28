@@ -140,10 +140,11 @@
 // preprocess.Preprocessor.RunEcho takes (docs/contracts.md section 12).
 // Calling it does not change any later output, and two calls in a row give
 // the same values. After New it writes zeros until the filter has adapted
-// (mdf.c:1173-1185): with a far end like the package examples', about
-// 0.4 s with a 100 ms filter and 0.8 s with a 200 ms filter, longer with a
-// longer filter, and never while the far end is silent. After Reset it
-// still reflects the echo estimate from before the Reset (see "Reset").
+// (mdf.c:1173-1185): with a far end like the package examples', for about
+// 0.4 s with a 100 ms filter and 0.8 s with a 200 ms filter. With a longer
+// filter, or a far end that is silent, it can take many seconds or never
+// happen. After Reset it still reflects the echo estimate from before the
+// Reset (see "Reset").
 //
 // # Reset
 //
