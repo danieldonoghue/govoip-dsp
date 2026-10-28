@@ -123,7 +123,7 @@ if err != nil {
 	log.Fatal(err)
 }
 decoded := make([]int16, 160)                // one 20 ms frame at 8 kHz
-out := make([]int16, r.OutLen(len(decoded))) // 961: room for one call's output
+out := make([]int16, r.OutLen(len(decoded))) // 961: room for one Process's output
 read, written, err := r.Process(decoded, out)
 if err != nil {
 	log.Fatal(err)

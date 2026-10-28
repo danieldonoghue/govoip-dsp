@@ -48,8 +48,8 @@
 // microphone picks up what the loudspeaker plays, so the far end would hear
 // itself, and package echo removes it. With a headset, or a handset at the ear,
 // there is no echo, and the send path can be preprocess.Preprocessor.Run
-// followed by agc.AGC.Process, with SetVAD(true) so that agc receives the
-// speech decision.
+// followed by agc.AGC.Process, with preprocess.Preprocessor.SetVAD(true) so
+// that agc receives the speech decision.
 //
 // preprocess and agc are optional. Leave out agc when the level is already
 // right, for example a source of known, fixed gain. agc still works without
@@ -105,9 +105,9 @@
 //     on a new Resampler covers every call of up to n frames while
 //     SkipZeros and the setters are not used; after SkipZeros or any
 //     setter, call OutLen before each call (it does not allocate).
-//   - Every processor, and Ring, is for one stream and one goroutine at a
-//     time; it is not safe for concurrent use. Only buffer.SPSC is shared,
-//     by exactly two goroutines.
+//   - Every processor, and Ring, is for one call (a Resampler: one stream)
+//     and one goroutine at a time; it is not safe for concurrent use. Only
+//     buffer.SPSC is shared, by exactly two goroutines.
 //   - Samples are int16 on the 16-bit scale, -32768 to 32767.
 //   - No method retains a caller's slice. Input and output must not
 //     overlap, except where a method says so (preprocess rewrites its

@@ -4,8 +4,8 @@ This page defines the terms that the package docs and the pages in `docs/`
 use. Each term has one meaning everywhere, except "frame", which has the
 three senses given under [Frame](#frame), "block", which has the two
 senses given under [Block](#block), and "call", which names a
-[call](#call) of a VoIP application or, as "method call", one invocation
-of a method.
+[call](#call) of a VoIP application or, where a method is the subject,
+one invocation of that method.
 
 The terms are grouped by topic. Terms link to the terms they use.
 
@@ -114,10 +114,10 @@ Decibels: a ratio on a log scale, `10·log10` of a power ratio or
 
 Decibels relative to full scale on the [16-bit scale](#16-bit-scale):
 `20·log10(level/32768)`. 0 dBFS is amplitude 32768, one step above the
-largest `int16` sample; a sample beyond full scale clips. -6 dBFS is
+largest `int16` sample; a sample beyond the `int16` range clips. -6 dBFS is
 about half of it, and all-zero [silence](#silence) is minus infinity.
-Full scale is a peak and the levels here are [RMS](#rms), so a full-scale
-sine wave is about -3 dBFS by this definition; AES17 calls that level
+Full scale is a peak. The `agc` target and gate levels are [RMS](#rms), so
+a full-scale sine wave is about -3 dBFS on them; AES17 calls that level
 0 dBFS. Other scales have other zero points: a mixing desk meters in dBu,
 where 0 dBu is 0.775 V RMS, or in VU, where 0 VU is a nominal operating
 level with headroom above it, and sound in air is in dB SPL. The
