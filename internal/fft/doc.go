@@ -36,10 +36,10 @@
 //
 // Forward and Inverse take caller slices of exactly Size samples and return
 // ErrBufferSize, touching nothing, for any other length. On a zero FFT (not
-// made by New) they return ErrConfig. Forward rewrites its input as
-// described above; Inverse leaves its input unchanged. Input and output must
-// not overlap. Neither retains a slice. No state carries from one call to
-// the next, so there is no Reset.
+// made by New) they return ErrConfig and Size returns 0. Forward rewrites
+// its input as described above; Inverse leaves its input unchanged. Input
+// and output must not overlap. Neither retains a slice. No state carries
+// from one call to the next, so there is no Reset.
 //
 // # Concurrency and allocation
 //

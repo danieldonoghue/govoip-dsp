@@ -288,3 +288,8 @@ func benchTransform(b *testing.B, op func(*FFT, []int16, []int16) error) {
 		})
 	}
 }
+
+// Every exported method of a zero value is safe (ADR wp7-zero-value-safety).
+func TestZeroValueMethods(t *testing.T) {
+	testutil.CheckZeroValue[FFT](t, ErrConfig)
+}
