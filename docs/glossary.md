@@ -162,8 +162,8 @@ through the stages the call needs, in order, to the encoder: `echo`
 
 ### Pipeline
 
-The chain of [stages](#stage) audio passes through, in order, such as the send
-path. The developer guide draws it.
+The chain of [stages](#stage) audio passes through, in order, such as
+the send path. The developer guide draws it.
 
 ### Stage
 
@@ -175,7 +175,7 @@ converting the rate. A [processor](#processor) does the work of a stage.
 A value that does one job on the audio, one frame or chunk per method call:
 `resample.Resampler`, `echo.Canceller`, `preprocess.Preprocessor` or
 `agc.AGC`. Each is created by its package's `New` function, keeps state
-between calls and is [single owner](#single-owner). The `buffer` types
+between method calls and is [single owner](#single-owner). The `buffer` types
 store samples and are not processors.
 
 ### RTP

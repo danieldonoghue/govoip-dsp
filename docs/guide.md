@@ -139,9 +139,8 @@ Processors and state:
 ## The packages
 
 Five public packages each do one job on the audio: four process it and
-`buffer` stores it. A call uses only the
-ones it needs; [Which packages you need](#which-packages-you-need) says
-which.
+`buffer` stores it. A call uses only the ones it needs;
+[Which packages you need](#which-packages-you-need) says which.
 
 Three of them, `resample`, `echo` and `preprocess`, are ports of
 SpeexDSP, a C library for the same jobs. In the Parity column,
@@ -204,7 +203,10 @@ parts of the path use different sample rates, for example a 48 kHz
 device and an 8 kHz codec. The first row needs it too when the audio
 that reaches `echo` is not at 8 or 16 kHz, even if the device and the
 codec use the same rate, because `echo` works well at those two rates
-only. `agc` after `preprocess` also needs `SetVAD(true)`.
+only.
+
+Where `agc` follows `preprocess`, call `SetVAD(true)` on the preprocessor,
+so that `agc` gets a real speech decision.
 
 ### When each stage is needed
 
@@ -313,10 +315,9 @@ next: `echo` learns the room's echo and `resample` keeps recent input
 samples. So make a call's processors once and keep them for the whole
 call, never share one between calls, give each stream that is resampled
 its own `resample.Resampler`, and reuse a processor for a new stream only
-through `Reset`. The four
-processors (`resample.Resampler`, `echo.Canceller`,
-`preprocess.Preprocessor`, `agc.AGC`) have the same life. The two buffers
-of `buffer` (`Ring`, `SPSC`) store samples and are not processors, but they
+through `Reset`. The four processors (`resample.Resampler`,
+`echo.Canceller`, `preprocess.Preprocessor`, `agc.AGC`) have the same
+life. The two buffers of `buffer` (`Ring`, `SPSC`) store samples and are not processors, but they
 are made once, kept for the stream and reset in the same way.
 
 ```mermaid
@@ -344,7 +345,7 @@ processor, so the garbage collector can free it (step 5).
    Test it with `errors.Is`; the message names the field.
    Calling `New` again with the same `Config` fails the same way: correct
    the `Config` first.
-2. **Per-frame calls.** Call the process method once per frame or chunk.
+2. **Per-frame method calls.** Call the process method once per frame or chunk.
    It does not allocate, block or panic. It returns only unwrapped
    sentinel errors (for example `ErrBufferSize` for a slice of the wrong
    length), which cannot occur when the buffers are sized once from the
@@ -434,8 +435,8 @@ sequenceDiagram
 
 1. `Cancel(mic, far, clean)` removes the echo of `far` from `mic` and
    writes `clean`. `far` is the loudspeaker frame played while `mic` was
-   captured; an echo that arrives later than that frame is covered by the
-   filter length.
+   captured. The filter models echo that reaches `mic` up to about the
+   filter length after `far`.
 2. `Residual(residual)` reads the spectrum of the echo that `Cancel` left
    in this frame. Read it before the next `Cancel`, which replaces it.
 3. `RunEcho(clean, residual)` suppresses noise and that echo in `clean`,
@@ -552,8 +553,8 @@ Audio often arrives on one goroutine (a network reader, a device
 callback) and is processed on another. Every processor is
 [single-owner](glossary.md#single-owner), so only a `buffer.SPSC` crosses
 between goroutines. It has exactly one
-[producer](glossary.md#producer-and-consumer) goroutine, which writes,
-and one consumer goroutine, which reads.
+[producer](glossary.md#producer-and-consumer) goroutine, which writes, and
+one consumer goroutine, which reads.
 
 An SPSC is a [ring buffer](glossary.md#ring-buffer): fixed storage
 of [slots](glossary.md#slot-and-index), one per sample, used as a circle,
