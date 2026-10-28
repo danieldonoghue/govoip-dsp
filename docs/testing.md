@@ -1476,3 +1476,75 @@ go test ./echo -run '^$' -fuzz FuzzCanceller -fuzztime 60s
 ```
 
 No corpus is committed; the seeds are `f.Add` only.
+
+## Developer documentation (WP8)
+
+Results of the criteria in `docs/acceptance/docs.md`. The documentation
+covers the package docs and examples of `resample`, `buffer`, `echo`,
+`preprocess` and `agc`, the root package `govoipdsp`, `docs/guide.md`,
+`docs/glossary.md` and `README.md`.
+
+### Criteria results
+
+| Criterion | Result | How it was checked |
+|---|---|---|
+| D1 doc comments | Met | A `go/doc` script listed no exported identifier or `Config` field without a comment in any of the six packages; each field gives unit, range, default and effect in its comment or package doc |
+| D2 examples | Met | The same script matched an example to every exported function, type and method, and found every exported constant and variable used in an example |
+| D3 checked output | Met | Every example has an ordered, non-empty `// Output:`; `go test -run Example ./...` passes |
+| D4 end-to-end examples | Met | `Example_sendChain`, `Example_receiveChain` and `Example_handoff` in the root package, plus `Example_errors`; with the far end replaced by silence, the send chain prints 8 dB of echo removed instead of 52 dB (caught) |
+| D5 package docs | Met | Each package doc has sections for use (lifecycle), rates and frames, chunking, buffers, aliasing and retention, `Reset`, the zero value, concurrency and allocation, errors, parity and limitations |
+| D6 text-only go doc | Met | `go doc -all` of the six packages read as text; link definitions print at the end, as go doc prints them |
+| D7 links to GitHub | Met | A script resolved every `github.com/danieldonoghue/govoip-dsp/blob/master/` URL to a file and heading of the repository |
+| D8 upstream links | Met | Fetch results below |
+| D9 glossary | Met | Every term of the list in D9 and every term the newcomer review found undefined is in `docs/glossary.md` |
+| D10 Mermaid | Open | The five diagrams of `docs/guide.md` parse with Mermaid 11.4.1; the visual render in a Markdown preview is still to be done |
+| D11 usage guide | Met | One linking paragraph added; `TestUsageCodeIsTested` passes |
+| D12 accuracy | Met | Two independent reviews of the diff against the code, and a further review round; every finding fixed or answered |
+| D13 newcomer review | Met | Points and resolution below |
+| D14 writing rules | Met | Width, code-span and link-text scripts; `make check` |
+| D15 README | Met, links pending | The pkg.go.dev links return 404 until the module is indexed |
+
+The diagrams for D10 are, in `docs/guide.md`: the pipeline (flowchart),
+the lifecycle of a processor (state diagram), the send path frame by
+frame (sequence diagram), the SPSC hand-off (flowchart) and the Ring
+read view (state diagram).
+
+### Upstream link fetch results
+
+Fetched on 2026-10-28.
+
+| Link | Result |
+|---|---|
+| Speex manual, `node7.html`, sections 7.3, 7.4, 7.4.1, 7.6, 7.9 | 200; the section anchors exist; read |
+| Speex manual, `node4.html`, section 4.3 | 200; read |
+| Speex API reference on speex.org | Exists for Speex 1.2-beta2 only; not cited. No SpeexDSP 1.2.1 API reference exists (`speexdsp-api-reference`: 404) |
+| gitlab.xiph.org blob pages at commit `1b28a0f6`: `speex_echo.h`, `speex_preprocess.h`, `speex_resampler.h`, `mdf.c`, `preprocess.c` (lines 563 to 610), `resample.c`, `filterbank.c`, `buffer.c` | 200, titled with the file; the content, which the page loads in the browser, read through the `/-/raw/` URL of the same commit and path (200) |
+| gitlab.xiph.org tree at commit `1b28a0f6` | 200 |
+| pkg.go.dev pages of the five packages | 404: the module is not indexed yet |
+
+### Newcomer review
+
+A reviewer who had not written the docs built the send chain (`echo`,
+`preprocess` with the residual, `agc` with the VAD decision, 20 ms at
+8 kHz, frames handed over through `buffer.SPSC`) from `go doc` and the
+pages in `docs/` alone. It ran, removing 30.7 dB of echo in the
+canceller and 46.4 dB through the chain. The points raised and their
+resolution:
+
+| Point | Resolution |
+|---|---|
+| `go doc` does not show the examples the docs cite | The root doc and the guide say where to read and run them |
+| The `echo` and `agc` use snippets were not valid Go | Fixed |
+| How the consumer of an SPSC waits | The guide: run it on a schedule; the SPSC has no blocking read |
+| How to keep far-end and microphone frames paired | The guide links the tested wiring of `docs/usage.md` |
+| No starting filter length | The guide: 200 ms until the delay is known |
+| How to find the gate level | The guide: measure the preprocessor output's RMS in a pause |
+| Whether to copy before `RunEcho` | The guide: no copy is needed |
+| Why `ResidualLen` is one more than the frame | The guide: one value per bin from 0 Hz to half the rate |
+| The zero-value rule read differently in different docs | One wording everywhere |
+| `echo` did not say which sense of "frame" it uses | `echo` and `preprocess` state it |
+| Two hard-to-parse sentences (`echo` acausal path, `agc` click rule) | Rewritten |
+| Terms not in the glossary | Added |
+| Link definitions print at the end of `go doc` | Answered: that is go doc's text form |
+| `MaxFrameSize = fft.MaxSize / 2` names an internal package | Answered: it is code; the comment states 2048 |
+| Internal names such as `spec_average` in the `echo` doc | Answered: they cite upstream and are not caller terms |
