@@ -71,6 +71,14 @@ Rules:
 5. Choosing an interface, registry or hook over a concrete type needs
    approval (requirements §2) before it is built.
 
+Added by WP7b, accepted (ADR `wp7-zero-value-safety`): no exported method
+of a stateful type panics on its zero value (a `T{}` not made by `New`),
+for any arguments. There, every method with an `error` result returns
+`ErrConfig` and writes nothing, and the other methods return zero values
+and change nothing, except setters that only store a setting. Each
+package tests this for every exported method with
+`testutil.CheckZeroValue`, and its package doc states the behaviour.
+
 ## 3. Samples and conversion
 
 - Samples are `int16` on the 16-bit scale `[-32768, 32767]`.
