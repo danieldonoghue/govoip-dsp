@@ -86,7 +86,7 @@
 // Resampler covers every call of up to n frames while SkipZeros and the
 // setters are not used. After SkipZeros or any setter, call OutLen before
 // each call; it does not allocate. An output shorter than OutLen gives no
-// error: the call leaves input unread.
+// error: the call can leave input unread.
 //
 // Interleaved calls (Process, ProcessFloat) process every channel with the
 // same offered lengths and report the counts of the last channel, as the
