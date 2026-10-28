@@ -503,12 +503,15 @@ nine signals; the inputs were added for them (`docs/acceptance/fft.md`,
 
 #### Zero value (WP7b)
 
+On commit 42f42a9, before the zero-value changes,
+`TestZeroValueMethods` passed: a zero `FFT` already met the rule.
+
 Run with `go test ./internal/fft -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
 
 | Mutation | Result |
 |---|---|
-| no zero-value guard in `Forward` | caught: `Forward(len 0, len 0)` panics, index out of range |
+| no zero-value guard in `Forward` | caught: `Forward(nil, nil)` panics, index out of range [64] with length 64 |
 
 ### `buffer` (WP2)
 
@@ -575,12 +578,16 @@ results on the code with the drop path (`spsc.go` unchanged).
 
 #### Zero value (WP7b)
 
+On commit 42f42a9, before the zero-value changes,
+`TestZeroValueMethods` passed: a zero `Ring` and `SPSC` already met the
+rule.
+
 Run with `go test ./buffer -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
 
 | Mutation | Result |
 |---|---|
-| `SPSC.slot` as `i % len(s.buf)`, equal for a buffer from `NewSPSC` | caught: `ReadSlices` and `WriteSlices` panic, integer divide by zero |
+| `SPSC.slot` as `i % len(s.buf)`, equal for a buffer from `NewSPSC` | caught: `ReadSlices()` and `WriteSlices()` panic, integer divide by zero |
 
 ### `resample` (WP1)
 
@@ -637,14 +644,21 @@ restored after each.
 
 #### Zero value (WP7b)
 
+On commit 42f42a9, before the zero-value changes,
+`TestZeroValueMethods` failed: `OutLen`, `OutputLatency`, `Process`,
+`ProcessFloat`, `SetRate` and `SetRateFrac` panicked with an integer
+divide by zero, `ProcessChannel` and `ProcessChannelFloat` returned
+`ErrChannel`, and `SetQuality` returned nil for quality 0 and panicked
+for the other valid qualities.
+
 Run with `go test ./resample -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
 
 | Mutation | Result |
 |---|---|
-| no zero-value guard in `Process` | caught: `Process(len 0, len 0)` panics, integer divide by zero |
-| no zero-value guard in `ProcessChannel` | caught: returns `ErrChannel` |
-| no zero-value check in `SetQuality` | caught: `SetQuality(0)` returns nil |
+| no zero-value guard in `Process` | caught: `Process(nil, nil)` panics, integer divide by zero |
+| no zero-value guard in `ProcessChannel` | caught: `ProcessChannel(math.MinInt, nil, math.MinInt, nil, math.MinInt)` returns `ErrChannel`, want `ErrConfig` |
+| no zero-value check in `SetQuality` | caught: `SetQuality(0)` returns nil, want `ErrConfig` |
 
 ### `preprocess` (WP5)
 
@@ -710,13 +724,17 @@ not caught and equivalent, and 1 not caught as a test gap (the VAD start
 
 #### Zero value (WP7b)
 
+On commit 42f42a9, before the zero-value changes,
+`TestZeroValueMethods` failed: `PSD` and `NoisePSD` returned nil instead
+of `ErrConfig`.
+
 Run with `go test ./preprocess -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
 
 | Mutation | Result |
 |---|---|
-| no zero-value guard in `Run` | caught: `Run(len 0)` panics, nil pointer dereference |
-| no zero-value guard in `PSD` | caught: `PSD(len 0)` returns nil |
+| no zero-value guard in `Run` | caught: `Run(nil)` panics, nil pointer dereference |
+| no zero-value guard in `PSD` | caught: `PSD(nil)` returns nil, want `ErrConfig` |
 
 ### `agc` (WP4)
 
@@ -814,12 +832,17 @@ passes), restoring `agc.go` after each.
 
 #### Zero value (WP7b)
 
+On commit 42f42a9, before the zero-value changes,
+`TestZeroValueMethods` failed: `Process` returned nil for empty input
+and panicked on other input when `out` was long enough, and `Reset`
+changed the zero value.
+
 Run with `go test ./agc -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
 
 | Mutation | Result |
 |---|---|
-| no zero-value guard in `Process` | caught: `Process(len 0, len 0, false)` returns nil |
+| no zero-value guard in `Process` | caught: `Process(nil, nil, false)` returns nil, want `ErrConfig` |
 | no zero-value guard in `Reset` | caught: `Reset` changes the zero value |
 
 ### `echo` (WP6)
@@ -878,13 +901,17 @@ twice (`docs/acceptance/echo.md`, "Changes").
 
 #### Zero value (WP7b)
 
+On commit 42f42a9, before the zero-value changes,
+`TestZeroValueMethods` failed: every exported method panicked with a nil
+pointer dereference (`SetSampleRate` only for a valid rate).
+
 Run with `go test ./echo -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
 
 | Mutation | Result |
 |---|---|
-| no zero-value guard in `Cancel` | caught: `Cancel(len 0, len 0, len 0)` panics, nil pointer dereference |
-| no zero-value guard in `ResidualLen` | caught: panics, nil pointer dereference |
+| no zero-value guard in `Cancel` | caught: `Cancel(nil, nil, nil)` panics, nil pointer dereference |
+| no zero-value guard in `ResidualLen` | caught: `ResidualLen()` panics, nil pointer dereference |
 
 ### `integration` (WP7)
 

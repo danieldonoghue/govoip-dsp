@@ -180,6 +180,20 @@ Construction (`BenchmarkResamplerNew`), which builds the sinc table with
 inlined in the kernels; `cubicCoef`, called once per output sample, is
 not inlined.
 
+### Zero-value check (WP7b)
+
+Mac (Apple M1 Pro), 2026-10-28: test binaries built from master 42f42a9
+(before the zero-value check) and from commit 3d0ae87 (with it), run
+interleaved, 8 rounds of `-benchtime 100ms`, compared with `benchstat`.
+The machine was not quiet: the 1-minute load average was 2.42 at the
+start and 8.72 at the end.
+
+`BenchmarkResamplerProcess`, all 192 configurations: geomean +0.28%.
+Eight changes are significant (p at most 0.05), from -1.6% to +1.5%; the
+rest are not. A separate run of the 8 q5 8k→16k configurations (10
+rounds of 200 ms, load 3.29 to 2.78) gives geomean -0.01%, with no
+significant change. Every configuration stays at 0 allocs/op.
+
 ## Preprocessor (`preprocess`, WP5)
 
 Mac (M1 Pro, macOS 27.0.1, Go 1.26.5), 2026-10-26:
@@ -243,6 +257,17 @@ per-frame level estimate and the rest in the per-sample loop.
 Target (`docs/acceptance/agc.md`): at most 10 µs per 10 ms frame at 48 kHz,
 0 allocs/op. Measured 1.3 µs. Not measured on the Linux VM.
 
+### Zero-value check (WP7b)
+
+Mac (Apple M1 Pro), 2026-10-28: test binaries built from master 42f42a9
+(before the zero-value check) and from commit 3d0ae87 (with it), run
+interleaved, 8 rounds of `-benchtime 100ms`, compared with `benchstat`.
+The machine was not quiet: the 1-minute load average was 2.42 at the
+start and 8.72 at the end.
+
+`BenchmarkAGCProcess`, 6 configurations: geomean +0.67%, no significant
+change. Every configuration stays at 0 allocs/op.
+
 ## Acoustic echo canceller (`echo`, WP6)
 
 Mac, 2026-10-27, three runs (the range of `ns/op` is shown):
@@ -272,6 +297,18 @@ Target (`docs/acceptance/echo.md`): every 10 ms case at most 10% of the
 frame duration on the Mac. Met: the largest is 2.3% (48 kHz). No Linux VM
 numbers yet. The work per frame is nine FFTs of `2F` points plus loops
 over `M*2F` values; no profile-guided optimisation has been done.
+
+### Zero-value check (WP7b)
+
+Mac (Apple M1 Pro), 2026-10-28: test binaries built from master 42f42a9
+(before the zero-value check) and from commit 3d0ae87 (with it), run
+interleaved, 8 rounds of `-benchtime 100ms`, compared with `benchstat`.
+The machine was not quiet: the 1-minute load average was 2.42 at the
+start and 8.72 at the end.
+
+`BenchmarkCancellerCancel`, 9 configurations: geomean -1.11%. Three
+changes are significant, from -1.5% to -2.3%; the rest are not. Every
+configuration stays at 0 allocs/op.
 
 ## Whole chain (`integration`, WP7)
 
