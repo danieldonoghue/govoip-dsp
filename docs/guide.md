@@ -64,9 +64,9 @@ Sound as numbers:
   [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs), decibels relative
   to the full scale of the digital format: 0 dBFS is full scale,
   amplitude 32768, one step above the largest `int16` sample, and
-  quieter signals are negative. Levels are RMS, so by this definition a
-  full-scale sine wave is about -3 dBFS. Other scales have other zero
-  points.
+  quieter signals are negative. Levels such as the `agc` target are RMS,
+  so on them a full-scale sine wave is about -3 dBFS. Other scales have
+  other zero points.
   A [gain](glossary.md#gain) is the factor a stage multiplies a signal
   by. It is given in [dB](glossary.md#db), a logarithmic scale
   (`20·log10` of the factor): +6 dB roughly doubles the amplitude,
@@ -89,7 +89,7 @@ Sound as numbers:
 Time and frames:
 
 - **Frame.** A fixed number of samples that `echo` and `preprocess`
-  process in one call; `resample`, `agc` and `buffer` take any length,
+  process in one method call; `resample`, `agc` and `buffer` take any length,
   a [chunk](glossary.md#chunk). A frame of `ms` milliseconds at a rate
   of `rate` Hz is `rate * ms / 1000` samples: 160 samples for 20 ms at
   8 kHz ([frame](glossary.md#frame)).
@@ -186,12 +186,15 @@ it cannot do without; "Add if you need" lists the optional ones, each
 with what it gives. `preprocess` gives noise suppression, speech
 detection (the [VAD](glossary.md#vad)) and, after `echo`, suppression of
 the echo that is left. `agc` gives speech a steady
-[level](glossary.md#level).
+[level](glossary.md#level). Its `Process(in, out, speech)` takes a
+`speech` flag, normally the VAD decision, and raises the gain only when
+the flag is true and the frame is above `GateLevel`, the
+[gate level](glossary.md#gate-level).
 [When each stage is needed](#when-each-stage-is-needed) says more.
 
 | Application | Needs | Add if you need |
 |---|---|---|
-| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo` | `preprocess`: noise suppression, residual-echo suppression or a VAD (`SetVAD(true)`); `agc`: a steady level |
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo` | `preprocess`: noise suppression, residual-echo suppression (`RunEcho`; see [the send path](#the-send-path-frame-by-frame)) or a VAD (`SetVAD(true)`); `agc`: a steady level |
 | A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | None | `preprocess`: noise suppression or a VAD (`SetVAD(true)`); `agc`: a steady level |
 | One audio stream and no call, such as a recorder or a monitor | None | `preprocess`: noise suppression, or to know when someone is speaking (`SetVAD(true)`); `agc`: a steady level |
 | Rate conversion only | `resample` | |
@@ -314,12 +317,13 @@ A [processor](glossary.md#processor) keeps state from one frame to the
 next: `echo` learns the room's echo and `resample` keeps recent input
 samples. So make a call's processors once and keep them for the whole
 call, never share one between calls, give each stream that is resampled
-its own `resample.Resampler`, and reuse a processor for a new stream only
-through `Reset`. The four processors (`resample.Resampler`,
-`echo.Canceller`, `preprocess.Preprocessor`, `agc.AGC`) have the same
-life. The two buffers of `buffer` (`Ring`, `SPSC`) store samples and are
-not processors, but they are made once, kept for the stream and reset in
-the same way.
+its own `resample.Resampler`, and reuse a processor for a new call (a
+`resample.Resampler`: a new stream) only through `Reset`. The four
+processors (`resample.Resampler`, `echo.Canceller`,
+`preprocess.Preprocessor`, `agc.AGC`) have the same life. The two
+buffers of `buffer` (`Ring`, `SPSC`) store samples and are not
+processors, but they are made once, kept for the stream and reset in the
+same way.
 
 ```mermaid
 stateDiagram-v2
@@ -353,10 +357,13 @@ processor, so the garbage collector can free it (step 5).
    processor. Treat them as programming errors. One exception:
    `resample` returns `ErrAllocFailed` from its process methods while a
    rejected rate or quality change is in force (see [Errors](#errors)).
-3. **Setters.** Settings that SpeexDSP changes on the fly are methods
-   (`preprocess.Preprocessor.SetVAD`, `echo.Canceller.SetSampleRate`,
-   `resample.Resampler.SetRate`); call them between frames. Settings
-   that need a new instance are `Config` fields.
+3. **Setters.** Settings that can change while the processor runs are
+   methods (`preprocess.Preprocessor.SetVAD`,
+   `echo.Canceller.SetSampleRate`, `resample.Resampler.SetRate`); call
+   them between frames. Settings that need a new instance are `Config`
+   fields only: the frame size of `echo` and `preprocess`, the filter
+   length of `echo`, the sample rate of `preprocess`, the channel count
+   of `resample`, and every `agc` setting.
 4. **Reset.** Start a new stream on the same instance without allocating.
    What `Reset` keeps differs: `echo` keeps some learned state as
    SpeexDSP does, `preprocess` keeps its settings, `resample` keeps its
@@ -378,6 +385,10 @@ at a time. This section follows a call where the microphone hears the
 loudspeaker, with `echo`. Without it, skip steps 1 and 2: `clean` is
 then the microphone frame itself, which `Run(clean)` in step 3 rewrites
 in place, so a caller that needs the unprocessed frame copies it first.
+
+The Go snippets in this guide are function bodies that return `error`.
+They use `fmt` and the `agc`, `echo`, `preprocess` and `resample`
+packages of `github.com/danieldonoghue/govoip-dsp`.
 
 First make the processors, once, before the first frame. They share one
 sample rate and one frame size. This code is adapted from `newSendChain`
@@ -404,8 +415,8 @@ pre, err := preprocess.New(preprocess.Config{SampleRate: rate, FrameSize: frame}
 if err != nil {
 	return err
 }
-pre.SetVAD(true) // the VAD decision tells the AGC which frames are speech
-gc, err := agc.New(agc.DefaultConfig(rate)) // the defaults for the rate
+pre.SetVAD(true)                            // the VAD decision tells the AGC which frames are speech
+gc, err := agc.New(agc.DefaultConfig(rate)) // GateLevel -50 dBFS; see "Gate above the noise"
 if err != nil {
 	return err
 }
@@ -436,7 +447,11 @@ sequenceDiagram
 
 1. `Cancel(mic, far, clean)` removes the echo of `far` from `mic` and
    writes `clean`. `far` is the loudspeaker frame played while `mic` was
-   captured. The filter models echo that reaches `mic` up to about the
+   captured: the exact samples your code handed to the loudspeaker
+   device, cut into `FrameSize` frames (the receive path's output length
+   varies, so re-cut it), or a frame of silence when nothing was played.
+   [usage.md](usage.md#sources-that-deliver-the-pairing) shows the
+   wiring. The filter models echo that reaches `mic` up to about the
    filter length after `far`.
 2. `Residual(residual)` reads the spectrum of the echo that `Cancel` left
    in this frame. Read it before the next `Cancel`, which replaces it.
@@ -498,12 +513,15 @@ Rules for this path:
   `preprocess` one frame, `agc` 2 ms. With 20 ms frames the stages
   delay the audio by about 22 ms, on top of the 20 ms it takes to
   collect a frame, plus any `resample` delay ([latency](glossary.md#latency)).
-- **VAD on.** Call `SetVAD(true)` on the preprocessor; with the VAD off,
-  `RunEcho` reports every frame as speech.
+- **VAD on.** When `agc` follows, call `SetVAD(true)` on the preprocessor;
+  with the VAD off, `RunEcho` reports every frame as speech.
 - **Gate above the noise.** The VAD reports speech on stationary noise,
   so set `agc.Config.GateLevel`, the [gate level](glossary.md#gate-level)
   under which the AGC does not raise the gain, above the noise of the
-  line; see the `agc` package doc. To find that level, record the
+  line; see the `agc` package doc. The default is -50 dBFS and the range
+  -80 dBFS up to below the target level. The default is a start for a
+  quiet line; raise the gate when the line noise is above it. To find
+  the noise level, record the
   preprocessor's output during a stretch where nobody talks and compute
   its [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs),
   `20·log10(rms/32768)`, a negative number; set the gate a few dB above
@@ -578,7 +596,8 @@ In the diagram, solid arrows are stores and copies, and dotted arrows
 are loads.
 
 1. Each side owns one index and is the only goroutine that stores it:
-   the producer the write index, the consumer the read index.
+   the producer the write index, the consumer the read index. Every
+   store and load of an index is atomic: a reader never sees half a value.
 2. Each side only loads the other's index, to learn how much it may
    write (`Free`) or read (`Len`).
 3. The producer copies samples into free slots, then stores the write
