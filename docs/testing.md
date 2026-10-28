@@ -1536,7 +1536,7 @@ Fetched on 2026-10-28.
 | Speex manual, `node7.html`, sections 7.3, 7.4, 7.4.1, 7.6, 7.9 | 200; the section anchors exist; read |
 | Speex manual, `node4.html`, section 4.3 | 200; read |
 | Speex API reference on speex.org | Exists for Speex 1.2-beta2 only; not cited. No SpeexDSP 1.2.1 API reference exists (`speexdsp-api-reference`: 404) |
-| gitlab.xiph.org blob pages at commit `1b28a0f6`: `speex_echo.h`, `speex_preprocess.h`, `speex_resampler.h`, `mdf.c`, `preprocess.c` (lines 563 to 610), `resample.c`, `filterbank.c`, `buffer.c` | 200, titled with the file; the content, which the page loads in the browser, read through the `/-/raw/` URL of the same commit and path (200) |
+| gitlab.xiph.org blob pages at commit `1b28a0f6`: `speex_echo.h`, `speex_preprocess.h`, `speex_resampler.h`, `mdf.c`, `preprocess.c` (lines 563 to 612), `resample.c`, `filterbank.c`, `buffer.c` | 200, titled with the file; the content, which the page loads in the browser, read through the `/-/raw/` URL of the same commit and path (200) |
 | gitlab.xiph.org tree at commit `1b28a0f6` | 200 |
 | pkg.go.dev pages of the five packages | 404: the module is not indexed yet |
 
@@ -1559,7 +1559,7 @@ re-run. The points raised and their resolution:
 | How to find the gate level | The guide: measure the preprocessor output's RMS in a pause |
 | Whether to copy before `RunEcho` | The guide: no copy is needed |
 | Why `ResidualLen` is one more than the frame | The guide: one value per bin from 0 Hz to half the rate |
-| The zero-value rule read differently in different docs | One wording everywhere |
+| The zero-value rule read differently in different docs | The root doc, the guide, the glossary and the package docs state the same rule |
 | `echo` did not say which sense of "frame" it uses | `echo` and `preprocess` state it |
 | Two hard-to-parse sentences (`echo` acausal path, `agc` click rule) | Rewritten |
 | Terms not in the glossary | Added |

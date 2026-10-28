@@ -2,7 +2,8 @@
 
 This page defines the terms that the package docs and the pages in `docs/`
 use. Each term has one meaning everywhere, except "frame", which has the
-three senses given under [Frame](#frame).
+three senses given under [Frame](#frame), and "block", which has the two
+senses given under [Block](#block).
 
 The terms are grouped by topic. Within a group, a term is defined before
 the terms that use it.
@@ -30,7 +31,7 @@ frequency).
 
 One signal of a multichannel stream, such as the left or right signal of
 stereo. `echo`, `preprocess` and `agc` are mono: one channel. `resample`
-takes any number of channels.
+takes 1 to 256 channels.
 
 ### Interleaved
 
@@ -66,12 +67,18 @@ The number of samples in one processing frame, `Config.FrameSize` of
 ### Frame duration
 
 The time one processing frame covers, usually 10 or 20 ms. VoIP codecs
-and RTP packets commonly carry 20 ms.
+and [RTP](#rtp) packets commonly carry 20 ms.
 
 ### Block
 
-Inside `agc`, `SampleRate/1000` samples: 1 ms at rates that are multiples
-of 1000 Hz. The AGC's limiter and gain ramp work per block.
+"Block" has two senses, one per package:
+
+1. **AGC block.** Inside `agc`, `SampleRate/1000` samples: 1 ms at rates
+   that are multiples of 1000 Hz. The AGC's limiter and gain ramp work
+   per block.
+2. **MDF block.** Inside `echo`, one partition of the adaptive filter,
+   one processing frame long (see [MDF](#mdf)). The caller does not see
+   it.
 
 ### Chunk
 
@@ -122,6 +129,11 @@ takes decoded audio through `resample` to the loudspeaker.
 
 The chain of stages audio passes through, in order, such as the send
 path. The developer guide draws it.
+
+### RTP
+
+Real-time Transport Protocol (RFC 3550): the protocol that carries the
+encoded audio of a call over the network, usually one packet per frame.
 
 ### Encoder and decoder
 
@@ -359,7 +371,8 @@ does not offer it.
 ### Noise suppression
 
 Lowering stationary background noise, such as fan or line hiss, while
-keeping speech. `preprocess` does it per frequency band; SpeexDSP and
+keeping speech. `preprocess` does it in the frequency domain, per
+[bin](#bin) and per [filterbank](#filterbank) band; SpeexDSP and
 `preprocess` call it denoise.
 
 ### Analysis window
@@ -368,6 +381,14 @@ The span of samples that `preprocess` transforms per frame: the current
 frame and the one before it, `2*FrameSize` samples, weighted so that
 consecutive windows add up smoothly. It is why `preprocess` delays its
 output by one frame.
+
+### Bin
+
+One frequency of an [FFT](#fft)'s output. An FFT of `2*FrameSize`
+samples gives bins spaced `SampleRate/(2*FrameSize)` Hz apart, from 0 Hz
+upwards. `echo.Canceller.Residual` gives one value per bin from 0 Hz to
+half the rate, `FrameSize()+1` values; `preprocess.PSD` gives the first
+`FrameSize()` bins.
 
 ### Filterbank
 
@@ -395,7 +416,7 @@ speech when the speech is just as steady.
 
 ### Power spectrum
 
-The power of a frame in each frequency band (bin). `preprocess.PSD`
+The power of a frame in each frequency [bin](#bin). `preprocess.PSD`
 returns the power spectrum of the last frame and `NoisePSD` the noise
 estimate, both `FrameSize()` values.
 
@@ -647,8 +668,9 @@ method here retains a caller slice.
 A value of a type that `New` did not make, such as `var c echo.Canceller`.
 No method panics on a zero value: methods with an error result return
 `ErrConfig`, and the others return zero values and change nothing,
-except that the `preprocess` setters store their setting. A zero `Ring`
-or `SPSC` is an empty buffer of capacity 0. It is not a usable instance.
+except that the `preprocess` setters store their setting and the getters
+return what was stored. A zero `Ring` or `SPSC` is an empty buffer of
+capacity 0. It is not a usable instance.
 
 ### Sentinel error
 
@@ -665,6 +687,7 @@ wrapped errors, per-frame methods unwrapped sentinels.
 
 ### Reset
 
-A method that returns an instance to its starting state without
-allocating, so it can start a new stream. What each `Reset` keeps
-differs; each package doc says.
+A method that clears an instance's stream state without allocating, so
+it can start a new stream. What each `Reset` keeps differs: `echo` keeps
+some learned state, and `resample` with more than one channel may keep
+old history. Each package doc says.

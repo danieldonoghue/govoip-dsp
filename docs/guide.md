@@ -10,10 +10,11 @@ recipes for wiring a whole call.
 The package docs are the reference for each type and method; read them
 with `go doc`, for example
 `go doc -all github.com/danieldonoghue/govoip-dsp/echo`.
-The root package, `go doc github.com/danieldonoghue/govoip-dsp`, has the
-end-to-end examples this guide cites. `go doc` does not print example
-code: read the examples in each package's `example_test.go` (the root's
-is [example_test.go](../example_test.go)), or run them with
+The root package holds the end-to-end examples this guide cites;
+`go doc github.com/danieldonoghue/govoip-dsp` prints its overview.
+`go doc` does not print example code: read the examples in each
+package's `example_test.go` (the root's is
+[example_test.go](../example_test.go)), or run them with
 `go test <package> -run Example -v`.
 
 ## Start here
@@ -93,14 +94,15 @@ stateDiagram-v2
 1. **New.** Build the `Config`, call `New`, and check the error. New
    validates every field, allocates everything the processor will use,
    and returns an error wrapping the package's `ErrConfig` for an invalid
-   `Config` (`resample` also `ErrAllocFailed`, above its resource cap).
+   `Config` (`resample` also `ErrAllocFailed`, above its size limits).
    Test it with `errors.Is`; the message names the field.
    Retrying with the same `Config` cannot help.
 2. **Per-frame calls.** Call the process method once per frame or chunk.
    It does not allocate, block or panic. It returns only unwrapped
    sentinel errors (for example `ErrBufferSize` for a slice of the wrong
    length), which cannot occur when the buffers are sized once from the
-   processor. Treat them as programming errors. One exception:
+   processor (a `resample` output sized with `OutLen`: again after a
+   setter). Treat them as programming errors. One exception:
    `resample` returns `ErrAllocFailed` from its process methods while a
    rejected rate or quality change is in force (see [Errors](#errors)).
 3. **Setters.** Settings that SpeexDSP changes on the fly are methods
@@ -118,7 +120,7 @@ A zero value, such as `var c echo.Canceller`, is not a processor: it was
 not made by `New`. No method panics on it, but the methods with an error
 result return `ErrConfig`, and the others return zero values and change
 nothing, except that the `preprocess` setters store their setting and
-its getters return the stored setting.
+the getters return what was stored.
 
 ## The send path, frame by frame
 
@@ -178,15 +180,16 @@ Rules for this path:
   `20·log10(rms/32768)`; set the gate a few dB above it.
 
 `Example_sendChain` in the root package runs this path on a synthetic
-call, and [usage.md](usage.md) has the full recipes, with the tests that
-check them bit for bit against the same chain in C.
+call, and [usage.md](usage.md) has the full recipes, with their tests.
+The tests check the echo and preprocess steps bit for bit against the
+same steps in C; the AGC has no C counterpart.
 
 ## The receive path
 
 The receive path resamples decoded frames to the device rate. A
 `resample.Resampler` accepts any chunk size and keeps its filter history
 between calls, so it needs no framing. Size its output once with
-`OutLen`:
+`OutLen` on the new `Resampler`:
 
 ```go
 r, err := resample.New(resample.Config{Channels: 1, InRate: 8000, OutRate: 48000, Quality: resample.QualityVoIP})
@@ -194,12 +197,18 @@ if err != nil {
 	return err
 }
 out := make([]int16, r.OutLen(160)) // 961: room for one 20 ms frame's output
-read, written, err := r.Process(decoded, out)
-// read == len(decoded); hand out[:written] to the device
+_, written, err := r.Process(decoded, out) // reads all of decoded
+if err != nil {
+	return err
+}
+play(out[:written]) // hand the output to the device
 ```
 
 With `OutLen(n)` samples of room (times `Channels()` for interleaved
-input), a call always consumes its whole input. The output per call can
+input), a call always consumes its whole input. A size read on a new
+`Resampler` stays enough for every call of up to `n` frames until a
+setter changes the filter; after a setter, call `OutLen` again (it does
+not allocate). The output per call can
 vary by one sample at fractional ratios, so pass on `out[:written]`, not
 a fixed length. The resampler delays the signal by `OutputLatency()`
 output samples. `Example_receiveChain` in the root package runs this
@@ -317,7 +326,7 @@ same buffer.
 | `agc` | `ErrBufferSize` | `out` shorter than `in` | Make `out` at least as long as `in` |
 | `resample` | `ErrBufferSize` | An interleaved length that is not a multiple of `Channels()` | Pass whole frames |
 | `resample` | `ErrChannel`, `ErrStride` | A channel index out of range, a stride below 1 | Pass a valid index and stride |
-| `resample` | `ErrAllocFailed` | A filter too large for the size limits, from `New` or a setter; then every process call while a rejected change is in force | Choose a smaller ratio, quality or channel count |
+| `resample` | `ErrAllocFailed` | A filter too large for the size limits, from `New` or a setter. A setter change rejected by the reference's limits also makes every process call return it, outputting zeros, until a later change succeeds; one rejected by the Go-only cap changes nothing | Choose a smaller ratio, quality or channel count |
 | `resample` | `ErrOverflow` | A `SetRateFrac` that would overflow the stream position | The resampler is unchanged; choose another ratio |
 
 `buffer` methods other than `New` and `NewSPSC` return no errors: a

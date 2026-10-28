@@ -67,8 +67,10 @@ go test github.com/danieldonoghue/govoip-dsp -run Example -v
 | Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
 | AGC | `agc` | Validated (own design, behavioural criteria) |
 
-The internal packages and the work packages that built them are listed
-in [docs/architecture.md](docs/architecture.md#packages). The chain as a
+The internal packages are listed in
+[docs/architecture.md](docs/architecture.md#packages), and the work
+packages that built them under
+[Work packages](docs/architecture.md#work-packages). The chain as a
 whole is tested in `integration`; its results are under
 [Limitations](#limitations).
 
@@ -103,7 +105,10 @@ if err != nil {
 decoded := make([]int16, 160)                // one 20 ms frame at 8 kHz
 out := make([]int16, r.OutLen(len(decoded))) // 961: room for one call's output
 read, written, err := r.Process(decoded, out)
-// read == 160; hand out[:written] to the device
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(read, written) // 160 960: hand out[:written] to the device
 ```
 
 `Process` keeps its filter state between calls, accepts chunks of any

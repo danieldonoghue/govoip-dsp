@@ -97,7 +97,8 @@
 //   - A zero value (a processor not made by New) never panics, but is not
 //     usable: its methods with an error result return ErrConfig, and the
 //     others return zero values and change nothing, except that the
-//     preprocess setters store their setting and its getters return it.
+//     preprocess setters store their setting and the getters return what
+//     was stored.
 //
 // # Limitations
 //
