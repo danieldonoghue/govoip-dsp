@@ -207,11 +207,11 @@ With `OutLen(n)` samples of room (times `Channels()` for interleaved input), a
 call of `n` frames always consumes its whole input. A size from `OutLen(n)` on a
 new `Resampler` covers every call of up to `n` frames while `SkipZeros` and the
 setters are not used. After `SkipZeros` or any setter, call `OutLen` before each
-call (it does not allocate). A smaller output gives no error: the call leaves
-input unread. The output per call can vary by one sample at fractional ratios,
-so pass on `out[:written]`, not a fixed length. The resampler delays the signal
-by `OutputLatency()` output samples. `Example_receiveChain` in the root package
-runs this path.
+call (it does not allocate). A smaller output gives no error: the call can
+leave input unread. The output per call can vary by one sample at fractional
+ratios, so pass on `out[:written]`, not a fixed length. The resampler delays
+the signal by `OutputLatency()` output samples. `Example_receiveChain` in the
+root package runs this path.
 
 ## Handing audio between goroutines
 

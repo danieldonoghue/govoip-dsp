@@ -393,7 +393,7 @@ half the rate, `FrameSize()+1` values; `preprocess.PSD` gives the first
 
 The grouping of the FFT bins of `preprocess` into 24 bands spaced like
 human hearing; `filterbank.c` in SpeexDSP. The noise estimate is updated
-per bin and copied into the bands; the speech probability is computed
+per bin and summed into the bands; the speech probability is computed
 from the bands.
 
 ### Synthesis
