@@ -4,12 +4,41 @@ Pure-Go real-time audio DSP for VoIP, WebRTC-style communication and
 streaming media: resampling, echo cancellation, noise suppression with voice
 activity detection, and automatic gain control.
 
-**Status: under construction.** The resampler (`resample`), the ring
-buffers (`buffer`), the echo canceller (`echo`), noise suppression with VAD
-(`preprocess`) and the AGC (`agc`) are usable, and are tested together as
-the send path of a call ([docs/usage.md](docs/usage.md)). Developer
-documentation (WP8) is next. See the table below and the
-[work packages](docs/architecture.md#work-packages).
+**Status: pre-release.** All five packages are validated against their
+acceptance criteria ([work packages](docs/architecture.md#work-packages)).
+There is no tagged release yet, and the API may change until v1.0.
+
+## Features
+
+| Package | What it does | Typical use | SpeexDSP status | Docs |
+|---|---|---|---|---|
+| `echo` | Acoustic echo cancellation: removes the far end's voice, played by the loudspeaker, from the microphone signal | Send path of a call at 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `preprocess` | Noise suppression, voice activity detection (VAD) and residual-echo suppression | After `echo`, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `agc` | Automatic gain control with a lookahead limiter | Last stage of the send path, before the encoder | Own design; SpeexDSP has no fixed-point AGC | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/agc), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `resample` | Sample-rate conversion, any ratio and channel count, any chunk size | Decoder rate to device rate; 48 kHz down to 16 kHz for `echo` | Bit-exact port of `resample.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/resample), [guide](docs/guide.md#the-receive-path) |
+| `buffer` | `Ring`, a sample FIFO for one goroutine, and `SPSC`, a wait-free FIFO between two | Handing frames from a network or device goroutine to the processing goroutine | Own design; `buffer.c` was design input only | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/buffer), [guide](docs/guide.md#handing-audio-between-goroutines) |
+
+## How they fit together
+
+The send path cleans the microphone signal of a call, one frame at a
+time: `echo` removes the echo, `preprocess` suppresses noise and the
+echo that is left and decides whether the frame is speech, and `agc`
+sets the level, raising it only on speech. The receive path converts
+decoded audio to the device rate with `resample`. `buffer.SPSC` carries
+audio between goroutines without blocking either side. The developer
+guide draws the [pipeline](docs/guide.md#the-pipeline).
+
+## Getting started
+
+Start with the [developer guide](docs/guide.md#start-here), which links
+the [glossary](docs/glossary.md) and the tested wiring recipes of
+[docs/usage.md](docs/usage.md). The root package's
+[examples](example_test.go) run the send chain, the receive chain and a
+goroutine hand-off end to end:
+
+```sh
+go test github.com/danieldonoghue/govoip-dsp -run Example -v
+```
 
 ## Design
 
@@ -32,16 +61,16 @@ documentation (WP8) is next. See the table below and the
 
 | Component | Package | Status |
 |---|---|---|
-| Fixed-point arithmetic | `internal/fixed` | Validated (bit-exact with the harness) |
-| Test support | `internal/testutil` | Implemented |
 | Resampler | `resample` | Validated (bit-exact with SpeexDSP 1.2.1) |
-| Ring buffer | `buffer` | Validated (own design; lock-free SPSC variant) |
-| FFT | `internal/fft` | Validated (bit-exact with the harness) |
-| AGC | `agc` | Validated (own design, behavioural criteria) |
-| Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
+| Ring buffers | `buffer` | Validated (own design; lock-free SPSC variant) |
 | Echo canceller | `echo` | Validated (bit-exact with SpeexDSP 1.2.1; supported at 8 and 16 kHz) |
-| Whole chain (tests only) | `integration` | Implemented: the echo and preprocess pairing is bit-exact with the C chain; two behavioural criteria fail on the chain resampled from 48 kHz, and both recipes of [docs/usage.md](docs/usage.md) fail U6, a 32 ms echo with up to 30 ms of jitter ([docs/testing.md](docs/testing.md#whole-chain-measurements-integration-wp7)) |
-| Developer documentation | root package `govoipdsp`, `docs/` | Planned (WP8); [docs/usage.md](docs/usage.md) holds tested wiring recipes |
+| Noise suppression and VAD | `preprocess` | Validated (bit-exact with SpeexDSP 1.2.1) |
+| AGC | `agc` | Validated (own design, behavioural criteria) |
+
+The internal packages and the work packages that built them are listed
+in [docs/architecture.md](docs/architecture.md#packages). The chain as a
+whole is tested in `integration`; its results are under
+[Limitations](#limitations).
 
 Status levels are defined in
 [requirements §14](docs/requirements.md#14-status-levels). Decisions are
@@ -61,25 +90,7 @@ recorded as ADRs in [docs/decisions/](docs/decisions/README.md).
 go get github.com/danieldonoghue/govoip-dsp
 ```
 
-Requires Go 1.26 or later. Converting one 20 ms frame of 8 kHz telephony
-audio to 16 kHz:
-
-```go
-const inRate, outRate, frameMs = 8000, 16000, 20
-
-r, err := resample.New(resample.Config{
-	Channels: 1, InRate: inRate, OutRate: outRate, Quality: 5,
-})
-if err != nil {
-	log.Fatal(err)
-}
-in := make([]int16, inRate*frameMs/1000) // one 20 ms frame
-out := make([]int16, r.OutLen(len(in)))  // always large enough for one call
-read, written, err := r.Process(in, out)
-```
-
-`Process` keeps its filter state between calls, accepts chunks of any size
-and does not allocate.
+Requires Go 1.26 or later. See [Getting started](#getting-started).
 
 ## Tests and benchmarks
 
@@ -107,6 +118,11 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   the input are raised by 16 to 23 dB after noise suppression; set
   `GateLevel` above the residual noise
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
+- The whole chain, tested in `integration`, passes every pipeline
+  criterion at 8 and 16 kHz. On the chain resampled from 48 kHz two
+  behavioural criteria fail: the echo stage cancels less and the AGC
+  holds the near end lower
+  ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
 - The recipes of [docs/usage.md](docs/usage.md) cancel echo within the
   delays measured in simulated calls with up to 30 ms of jitter: 40 to
   200 ms for recipe A (paced sending, `Cancel`), 60 to 200 ms for recipe
@@ -122,7 +138,6 @@ This project does not accept contributions yet.
 
 ## Licence
 
-The project is licensed under the BSD 3-Clause licence ([LICENSE](LICENSE)).
-Code derived from SpeexDSP and KISS FFT also keeps the upstream copyright
-notices and BSD 3-Clause terms; see
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [LICENSES/](LICENSES/).
+BSD 3-Clause ([LICENSE](LICENSE)). Parts are derived from SpeexDSP and
+KISS FFT, also BSD 3-Clause; their notices are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
