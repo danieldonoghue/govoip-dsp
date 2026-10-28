@@ -195,6 +195,9 @@ func (a *AGC) Latency() int { return len(a.delay) }
 
 // Reset returns the AGC to the state New produced, without allocating.
 func (a *AGC) Reset() {
+	if a.delay == nil {
+		return
+	}
 	clear(a.delay)
 	a.pos, a.n, a.block = 0, 0, 0
 	a.energy, a.peak, a.voiced = 0, 0, true
@@ -207,6 +210,9 @@ func (a *AGC) Reset() {
 // Process writes the delayed, gain-controlled in to out[:len(in)], or returns
 // ErrBufferSize. speech is the VAD decision for all of in (true if none).
 func (a *AGC) Process(in, out []int16, speech bool) error {
+	if a.delay == nil {
+		return ErrConfig
+	}
 	if len(out) < len(in) {
 		return ErrBufferSize
 	}

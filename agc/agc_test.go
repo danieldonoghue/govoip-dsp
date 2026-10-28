@@ -578,3 +578,8 @@ func TestFirstFrameClick(t *testing.T) {
 	}
 	t.Logf("gain after the click and 1 s of speech: %.2f dB", q15dB(a.gain))
 }
+
+// Every exported method of a zero value is safe (ADR wp7-zero-value-safety).
+func TestZeroValueMethods(t *testing.T) {
+	testutil.CheckZeroValue[AGC](t, ErrConfig)
+}

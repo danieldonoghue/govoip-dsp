@@ -71,7 +71,9 @@
 //
 // Process writes exactly len(in) samples to out and returns ErrBufferSize,
 // writing nothing, if out is shorter. in and out may be the same slice;
-// any other overlap is unsupported. No caller slice is retained.
+// any other overlap is unsupported. No caller slice is retained. On a zero
+// AGC (not made by New), Process returns ErrConfig, Latency returns 0, and
+// Reset does nothing.
 //
 // # Reset and reconfiguration
 //
@@ -86,6 +88,7 @@
 // # Concurrency and allocation
 //
 // An AGC is not safe for concurrent use. Use one per stream. New allocates;
-// no other method allocates. For an AGC returned by New, each Process call
-// does work proportional to len(in), and never blocks or panics.
+// no other method allocates. Each Process call does work proportional to
+// len(in) and never blocks. No method panics, on an AGC returned by New or
+// on a zero AGC.
 package agc
