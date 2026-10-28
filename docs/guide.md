@@ -173,24 +173,25 @@ packets to the device.
 
 ### Which packages you need
 
-Find your application in the left column; the right column lists the
-packages it needs. `preprocess` gives noise suppression, speech
+Find your application in the first column. "Needs" lists the packages
+it cannot do without; "Add if you need" lists the optional ones, each
+with what it gives. `preprocess` gives noise suppression, speech
 detection (the [VAD](glossary.md#vad)) and, after `echo`, suppression of
 the echo that is left. `agc` gives speech a steady
-[level](glossary.md#level). Where a row says "if", the stage is
-optional; [When each stage is needed](#when-each-stage-is-needed) says
-when to use it.
+[level](glossary.md#level).
+[When each stage is needed](#when-each-stage-is-needed) says more.
 
-| Application | Packages |
-|---|---|
-| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, then `preprocess` if you need noise suppression, residual-echo suppression or a VAD, then `agc` if you need a steady level |
-| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess` if you need noise suppression or a VAD, then `agc` if you need a steady level |
-| One audio stream and no call, such as a recorder or a monitor | `preprocess` if the audio has noise or you need to know when someone is speaking, then `agc` if you need a steady level |
-| Rate conversion only | `resample` |
-| A hand-off of audio between goroutines | `buffer`, alone or with the others |
+| Application | Needs | Add if you need |
+|---|---|---|
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo` | `preprocess`: noise suppression, residual-echo suppression or a VAD; `agc`: a steady level |
+| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | None | `preprocess`: noise suppression or a VAD; `agc`: a steady level |
+| One audio stream and no call, such as a recorder or a monitor | None | `preprocess`: noise suppression, or to know when someone is speaking; `agc`: a steady level |
+| Rate conversion only | `resample` | |
+| A hand-off of audio between goroutines | `buffer` | Any of the others |
 
-Each of the first three also needs `resample` where two rates meet, for
-example an 8 kHz codec and a 48 kHz device.
+The stages of a row run in the order listed: `echo`, then `preprocess`,
+then `agc`. Each of the first three rows also needs `resample` where two
+rates meet, for example an 8 kHz codec and a 48 kHz device.
 
 ### When each stage is needed
 
