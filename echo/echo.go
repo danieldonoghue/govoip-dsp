@@ -92,20 +92,35 @@ func New(cfg Config) (*Canceller, error) {
 func validRate(rate int) bool { return rate >= MinSampleRate && rate <= MaxSampleRate }
 
 // FrameSize returns the frame size in samples (SPEEX_ECHO_GET_FRAME_SIZE).
-func (c *Canceller) FrameSize() int { return c.st.frameSize }
+func (c *Canceller) FrameSize() int {
+	if c.st == nil {
+		return 0
+	}
+	return c.st.frameSize
+}
 
 // SampleRate returns the sampling rate (SPEEX_ECHO_GET_SAMPLING_RATE).
-func (c *Canceller) SampleRate() int { return c.st.samplingRate }
+func (c *Canceller) SampleRate() int {
+	if c.st == nil {
+		return 0
+	}
+	return c.st.samplingRate
+}
 
 // FilterLength returns the modelled echo tail in samples: the configured
 // length rounded up to whole frames (SPEEX_ECHO_GET_IMPULSE_RESPONSE_SIZE).
-func (c *Canceller) FilterLength() int { return c.st.m * c.st.frameSize }
+func (c *Canceller) FilterLength() int {
+	if c.st == nil {
+		return 0
+	}
+	return c.st.m * c.st.frameSize
+}
 
 // SetSampleRate is SPEEX_ECHO_SET_SAMPLING_RATE. As in the reference it
 // may be called at any time, keeps the filter state, and is kept by Reset.
 // It returns ErrConfig, changing nothing, for a rate outside the limits.
 func (c *Canceller) SetSampleRate(rate int) error {
-	if !validRate(rate) {
+	if c.st == nil || !validRate(rate) {
 		return ErrConfig
 	}
 	c.st.setRate(rate)
@@ -119,6 +134,9 @@ func (c *Canceller) SetSampleRate(rate int) error {
 // returns ErrBufferSize and does nothing. out must not overlap mic or far;
 // overlap is not detected.
 func (c *Canceller) Cancel(mic, far, out []int16) error {
+	if c.st == nil {
+		return ErrConfig
+	}
 	fs := c.st.frameSize
 	if len(mic) != fs || len(far) != fs || len(out) != fs {
 		return ErrBufferSize
@@ -132,6 +150,9 @@ func (c *Canceller) Cancel(mic, far, out []int16) error {
 // buffered playback frame it copies mic to out. Slice rules are those of
 // Cancel.
 func (c *Canceller) Capture(mic, out []int16) error {
+	if c.st == nil {
+		return ErrConfig
+	}
 	fs := c.st.frameSize
 	if len(mic) != fs || len(out) != fs {
 		return ErrBufferSize
@@ -144,6 +165,9 @@ func (c *Canceller) Capture(mic, out []int16) error {
 // later Capture. It returns ErrBufferSize, doing nothing, unless far holds
 // exactly FrameSize samples. far is copied, not retained.
 func (c *Canceller) Playback(far []int16) error {
+	if c.st == nil {
+		return ErrConfig
+	}
 	if len(far) != c.st.frameSize {
 		return ErrBufferSize
 	}
@@ -153,16 +177,28 @@ func (c *Canceller) Playback(far []int16) error {
 
 // Reset is speex_echo_state_reset. The package doc lists the state the
 // reference keeps.
-func (c *Canceller) Reset() { c.st.reset() }
+func (c *Canceller) Reset() {
+	if c.st != nil {
+		c.st.reset()
+	}
+}
 
 // ResidualLen returns FrameSize()+1, the number of values Residual writes.
-func (c *Canceller) ResidualLen() int { return c.st.frameSize + 1 }
+func (c *Canceller) ResidualLen() int {
+	if c.st == nil {
+		return 0
+	}
+	return c.st.frameSize + 1
+}
 
 // Residual writes the residual-echo power spectrum of the most recent
 // Cancel or Capture call into dst[:ResidualLen()], exactly as
 // speex_echo_get_residual computes it. It returns ErrBufferSize if
 // len(dst) < ResidualLen(). It does not change any later output of c.
 func (c *Canceller) Residual(dst []int32) error {
+	if c.st == nil {
+		return ErrConfig
+	}
 	if len(dst) < c.st.frameSize+1 {
 		return ErrBufferSize
 	}
@@ -172,13 +208,16 @@ func (c *Canceller) Residual(dst []int32) error {
 
 // ImpulseResponseLen returns FilterLength(), the number of values
 // ImpulseResponse writes.
-func (c *Canceller) ImpulseResponseLen() int { return c.st.m * c.st.frameSize }
+func (c *Canceller) ImpulseResponseLen() int { return c.FilterLength() }
 
 // ImpulseResponse writes the current filter's impulse response into
 // dst[:ImpulseResponseLen()], as SPEEX_ECHO_GET_IMPULSE_RESPONSE does. It
 // returns ErrBufferSize if dst is shorter. It does not change any later
 // output of c.
 func (c *Canceller) ImpulseResponse(dst []int32) error {
+	if c.st == nil {
+		return ErrConfig
+	}
 	if len(dst) < c.st.m*c.st.frameSize {
 		return ErrBufferSize
 	}

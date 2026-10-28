@@ -77,7 +77,9 @@
 // Every frame method takes exactly FrameSize samples and returns
 // ErrBufferSize, doing nothing, for any other length. out must not overlap
 // mic or far; overlap is not detected. No method retains a caller slice.
-// The output is the same frame as the input: there is no added latency.
+// The output is the same frame as the input: there is no added latency. On
+// a zero Canceller (not made by New) the methods with an error result
+// return ErrConfig, the others return 0, and Reset does nothing.
 //
 // # Residual echo
 //

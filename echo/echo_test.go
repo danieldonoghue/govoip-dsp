@@ -334,3 +334,8 @@ func TestDivisorInvariantsUnderExtremes(t *testing.T) {
 		}
 	}
 }
+
+// Every exported method of a zero value is safe (ADR wp7-zero-value-safety).
+func TestZeroValueMethods(t *testing.T) {
+	testutil.CheckZeroValue[Canceller](t, ErrConfig)
+}
