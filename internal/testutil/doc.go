@@ -1,6 +1,7 @@
 // Package testutil holds shared test support: deterministic signal
 // generators, signal metrics, an allocation assertion, the SplitMix64
-// generator shared with the C reference harness, and the fixture loader.
+// generator shared with the C reference harness, the fixture loader, and a
+// check of every method of a zero value (no panic, ErrConfig, no writes).
 //
 // Every generator is bit-identical on every platform. Generators use integer
 // arithmetic, or IEEE basic operations with explicit float64 conversions so
