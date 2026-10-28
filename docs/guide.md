@@ -66,6 +66,10 @@ ideas are enough to use it; the [glossary](glossary.md) has the detail.
 
 ## The packages
 
+Five public packages each do one job on the audio. A call uses only the
+ones it needs; [Which packages you need](#which-packages-you-need) says
+which.
+
 | Package | Does | Frame rule | Rates | Parity | SpeexDSP counterpart |
 |---|---|---|---|---|---|
 | `resample` | Converts between sample rates | Any chunk | Any ratio within the size limits; 1 to 256 channels | Bit-exact | [`speex_resampler.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h) |
@@ -162,20 +166,25 @@ receives.
 
 ## The lifecycle of a processor
 
-Every stateful type (`resample.Resampler`, `echo.Canceller`,
-`preprocess.Preprocessor`, `agc.AGC`, `buffer.Ring`, `buffer.SPSC`) has
-the same life.
+A processor is a value that keeps state from one frame to the next:
+`echo` learns the room's echo, `resample` keeps recent samples, and
+`buffer` holds samples that are not read yet. So make one processor per
+audio stream, keep it for the whole call, and reuse it for a new stream
+only through `Reset`. Every stateful type (`resample.Resampler`,
+`echo.Canceller`, `preprocess.Preprocessor`, `agc.AGC`, `buffer.Ring`,
+`buffer.SPSC`) has the same life.
 
 ```mermaid
 stateDiagram-v2
   [*] --> Ready: New(cfg) returns no error
   [*] --> Rejected: New(cfg) returns an error
   Rejected --> Ready: New with a fixed Config
-  Ready --> Ready: per-frame call
-  Ready --> Ready: Reset, for a new stream
-  Ready --> Ready: setter, between frames
+  Ready --> Ready: per-frame calls, setters, Reset
   Ready --> [*]: last reference dropped
 ```
+
+The loop on `Ready` is the processor in use; steps 2 to 4 explain its
+three kinds of call.
 
 1. **New.** Build the `Config`, call `New`, and check the error. New
    validates every field, allocates everything the processor will use,
@@ -209,7 +218,11 @@ the getters of those settings return what was stored.
 
 ## The send path, frame by frame
 
-For each 20 ms frame, the send path calls four methods in a fixed order.
+The send path cleans the microphone signal for the encoder, one frame
+at a time. This section follows the full pipeline, with `echo`; without
+it, skip steps 1 and 2 and call `Run` in step 3. For each 20 ms frame,
+the send path calls four methods in a fixed order, because each call
+uses what the one before it produced.
 
 ```mermaid
 sequenceDiagram
@@ -271,7 +284,10 @@ same steps in C; the AGC has no C counterpart.
 
 ## The receive path
 
-The receive path resamples decoded frames to the device rate. A
+The receive path plays the far end's voice on the device. The decoder
+often runs at another rate than the device, for example 8 kHz into a
+48 kHz device, so the receive path resamples decoded frames to the
+device rate. A
 `resample.Resampler` accepts any chunk size and keeps its filter history
 between calls, so it needs no framing. Size its output with `OutLen`
 on the new `Resampler`:
@@ -359,7 +375,10 @@ Rules for frames through an SPSC:
 
 ## Buffer ownership and views
 
-The caller owns every slice it passes. No method keeps a caller's slice
+Slices carry the audio into and out of every method. These rules say
+who may change a slice and for how long, so that no code reads samples
+that another call has already replaced. The caller owns every slice it
+passes. No method keeps a caller's slice
 after it returns: input is read during the call, output is written
 during the call. Input and output must not overlap, except where a
 method says so: `preprocess` rewrites its frame in place, and
@@ -403,6 +422,11 @@ same buffer.
 
 ## Errors
 
+This table lists every error the packages return and what to do about
+it. Methods return errors instead of panicking. Most errors come from a
+mistake in the calling code, such as a slice of the wrong size, and do
+not occur once the code is right.
+
 | Package | Error | When | What to do |
 |---|---|---|---|
 | all | `ErrConfig`, wrapped | `New` with an invalid `Config` | Fix the `Config`; the message names the field |
@@ -419,6 +443,9 @@ full or empty buffer shows in the counts they return.
 
 ## Limitations
 
+These are the things the library does not do, so a design can allow for
+them from the start.
+
 - `echo` and `preprocess` are mono.
 - `echo` works well at 8 and 16 kHz only; resample higher rates down.
 - `echo` does not estimate the echo delay or correct clock drift: the
@@ -434,8 +461,11 @@ recipes.
 
 ## SpeexDSP documentation and sources
 
-The ported packages follow SpeexDSP 1.2.1. Its own documentation explains
-the same functions from the C side:
+Three packages, `resample`, `echo` and `preprocess`, are ports of
+SpeexDSP, a C library for the same jobs. Its documentation helps where
+these docs are short, or when you move C code to Go. The ported packages
+follow SpeexDSP 1.2.1, and its own documentation explains the same
+functions from the C side:
 
 - The Speex manual, ["Programming with Speex"](https://www.speex.org/docs/manual/speex-manual/node7.html):
   the [preprocessor](https://www.speex.org/docs/manual/speex-manual/node7.html#SECTION00730000000000000000),
@@ -463,6 +493,9 @@ speex.org is for Speex 1.2 beta 2, so the headers above are the
 reference for this version.
 
 ### C functions and their Go equivalents
+
+For a reader who knows the SpeexDSP C API, these tables give the Go
+name of each C function and request.
 
 `resample`:
 
