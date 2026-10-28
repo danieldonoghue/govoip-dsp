@@ -23,7 +23,9 @@ Read the guide in this order to get a first call working:
 
 1. Read [Audio basics](#audio-basics) if samples, rates and frames are
    new to you.
-2. Read [The pipeline](#the-pipeline) to see which package does what.
+2. Find your application in
+   [Which packages you need](#which-packages-you-need), then read
+   [The pipeline](#the-pipeline) to see what each of those packages does.
 3. Read [The send path, frame by frame](#the-send-path-frame-by-frame)
    and run `Example_sendChain` in the root package
    (`go test github.com/danieldonoghue/govoip-dsp -run Example_sendChain -v`).
@@ -78,9 +80,37 @@ package's output is another's input, the caller passes it on.
 
 ## The pipeline
 
+The pipeline is the chain of stages that the audio of a call passes
+through, in order. Which stages a call needs depends mostly on one
+question: can its microphone hear its loudspeaker?
+
 A call has two directions. The send path cleans what the microphone
 picks up before it is encoded and sent. The receive path brings decoded
 audio to the device.
+
+### Which packages you need
+
+| Application | Packages |
+|---|---|
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, `preprocess`, `agc` |
+| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess`, `agc` |
+| Receive only, such as a recorder or a monitor | `preprocess`, `agc` |
+| Rate conversion only | `resample` |
+| A hand-off of audio between goroutines | `buffer`, alone or with the others |
+
+Each of the first three also needs `resample` where two rates meet, for
+example an 8 kHz codec and a 48 kHz device.
+
+Echo happens when the microphone picks up what the loudspeaker plays.
+The far end's voice comes out of the loudspeaker, goes into the
+microphone and back to the far end, so the far end hears itself a
+moment later. `echo` removes it. With a headset there is no such path,
+so a call needs no `echo` stage.
+
+### The full pipeline of a call with a loudspeaker
+
+This is every stage, for a call where the microphone hears the
+loudspeaker:
 
 ```mermaid
 flowchart LR
@@ -106,6 +136,29 @@ flowchart LR
 at 48 kHz, resample both the microphone and the far-end reference to
 16 kHz, each with its own `resample.Resampler` of the same
 configuration, so they stay sample-aligned.
+
+### The pipeline without echo cancellation
+
+A call with a headset, where the microphone does not hear the
+loudspeaker, drops `echo` and the far-end reference:
+
+```mermaid
+flowchart LR
+  mic[Microphone] --> pre[preprocess] --> gc[agc] --> enc[Encoder]
+  dec[Decoder] --> rsr[resample to the device rate] --> spk[Loudspeaker]
+```
+
+1. `preprocess` takes each microphone frame with `Run` instead of
+   `RunEcho`, since there is no residual echo to pass in.
+2. `agc` follows it as in the full pipeline, with the VAD decision of
+   `Run`.
+3. The receive path is the same, and nothing links it to the send path.
+
+`preprocess` works at the common device rates too, so the send path needs
+`resample` only where the encoder's rate differs from the microphone's.
+The `preprocess` package doc's Use section shows this send path in code.
+A receive-only application applies the same two stages to the audio it
+receives.
 
 ## The lifecycle of a processor
 
