@@ -157,9 +157,12 @@ package's output is another's input, the caller passes it on.
 
 ## The pipeline
 
-The pipeline is the chain of stages that the audio of a call passes
-through, in order. Which stages a call needs depends mostly on one
-question: can its microphone hear its loudspeaker?
+The pipeline is the chain of stages that audio passes through, in
+order. Which stages it has depends on the use case: whether the
+microphone hears the loudspeaker, whether the audio is noisy or you need
+to know when someone speaks, whether its level varies, whether two
+sample rates meet, and whether audio passes between goroutines.
+[Which packages you need](#which-packages-you-need) lists common cases.
 
 A call has two directions
 ([send path and receive path](glossary.md#send-path-and-receive-path)).

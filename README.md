@@ -20,8 +20,10 @@ There is no tagged release yet, and the API may change until v1.0.
 
 ## How they fit together
 
-A call needs only some of the packages, and which ones depends on
-whether its microphone can hear its loudspeaker.
+An application uses only the packages its use case needs; the developer
+guide lists the [packages for each use case](docs/guide.md#which-packages-you-need).
+For a call, whether it needs `echo` depends on whether its microphone can
+hear its loudspeaker:
 
 - **Speakerphone, hands-free, conference room.** The microphone picks
   up what the loudspeaker plays, so the far end would hear itself. The
@@ -41,9 +43,8 @@ drops the suppression of the echo that is left.
 
 The receive path converts decoded audio to the device rate with
 `resample`. `buffer.SPSC` carries audio between goroutines without
-blocking either side. The developer guide lists the
-[packages for each use case](docs/guide.md#which-packages-you-need) and
-draws the [pipeline](docs/guide.md#the-pipeline).
+blocking either side. The developer guide draws the
+[pipeline](docs/guide.md#the-pipeline).
 
 ## Getting started
 

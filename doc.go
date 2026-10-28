@@ -41,13 +41,14 @@
 //
 // # How they fit together
 //
-// A call needs only some of the packages, and which ones depends on whether
-// its microphone can hear its loudspeaker. On a speakerphone or in a
-// conference room it can: the microphone picks up what the loudspeaker
-// plays, so the far end would hear itself, and package echo removes it.
-// With a headset, or a handset at the ear, there is no echo, and the send
-// path is preprocess.Preprocessor.Run followed by agc.AGC.Process. The
-// [developer guide] has a table of use cases and the packages each needs.
+// An application uses only the packages its use case needs; the
+// [developer guide] has a table of use cases and the packages each needs. For a
+// call, whether it needs package echo depends on whether its microphone can
+// hear its loudspeaker. On a speakerphone or in a conference room it can: the
+// microphone picks up what the loudspeaker plays, so the far end would hear
+// itself, and package echo removes it. With a headset, or a handset at the ear,
+// there is no echo, and the send path is preprocess.Preprocessor.Run followed
+// by agc.AGC.Process.
 //
 // preprocess and agc are optional. Leave out agc when the level is already
 // right, for example a source of known, fixed gain. agc still works without
