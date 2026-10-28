@@ -81,8 +81,8 @@ and [RTP](#rtp) packets commonly carry 20 ms.
 
 ### Chunk
 
-The samples passed in one call to a method that takes any length
-(`resample`, `buffer`, `agc`). A stream is cut into chunks; for these
+The samples passed in one method call, for a method that takes any
+length (`resample`, `buffer`, `agc`). A stream is cut into chunks; for these
 packages the cut does not change the output, under conditions each
 package doc states: `agc` needs the same `speech` flag for every
 sample, `resample` needs all input eventually consumed, and `buffer`
@@ -94,6 +94,12 @@ The property that any way of cutting a stream into chunks gives the same
 output. `resample`, `buffer` and `agc` have it and test it. `echo` and
 `preprocess` take whole processing frames only.
 
+### Level
+
+How large a signal is over a span of samples, usually its
+[RMS](#rms) in [dBFS](#dbfs). A louder signal has a higher level. The
+`agc` target and gate levels are RMS levels; the limit level is a peak.
+
 ### dB
 
 Decibels: a ratio on a log scale, `10·log10` of a power ratio or
@@ -103,8 +109,13 @@ Decibels: a ratio on a log scale, `10·log10` of a power ratio or
 ### dBFS
 
 Decibels relative to full scale on the [16-bit scale](#16-bit-scale):
-`20·log10(level/32768)`. 0 dBFS is amplitude 32768; -6 dBFS is about half
-of it. The `agc` levels are whole dBFS.
+`20·log10(level/32768)`. 0 dBFS is amplitude 32768, the largest level the
+digital format holds; a louder signal clips. -6 dBFS is about half of
+it, and all-zero [silence](#silence) is minus infinity. Other scales have
+other zero points: a mixing desk meters in dBu or VU, where 0 is a
+nominal level with headroom above it, and sound in air is in dB SPL. The
+`agc` levels are whole dBFS. A `float32` input to `resample` above full
+scale saturates to the `int16` range.
 
 ### RMS
 
@@ -116,19 +127,45 @@ are RMS levels.
 
 Samples that are all zero. "Queue silence" means pass a frame of zeros.
 
+### Clipping
+
+Output that would pass the largest sample of the
+[16-bit scale](#16-bit-scale) and is cut flat at it, which sounds
+distorted. The AGC's [limiter](#limiter) keeps its output from clipping.
+
 ## The call
+
+### Call
+
+One two-way exchange of audio between a near end and a far end. It
+carries one [stream](#stream) in each direction.
+
+### Stream
+
+One signal going one way, as a sequence of samples: the microphone
+signal, the far-end signal, the decoded audio. Each stream needs its own
+[processor](#processor).
 
 ### Send path and receive path
 
 The two directions of a call. The send path takes the microphone signal
-through `echo` (where the microphone hears the loudspeaker),
-`preprocess` and `agc` to the encoder; the receive path takes decoded
-audio through `resample` to the loudspeaker.
+through the stages the call needs, in order, to the encoder: `echo`
+(where the microphone hears the loudspeaker), then `preprocess` and
+`agc`, each optional. The receive path takes decoded audio through
+`resample` to the loudspeaker.
 
 ### Pipeline
 
 The chain of stages audio passes through, in order, such as the send
 path. The developer guide draws it.
+
+### Processor
+
+A value made by `New` that works on the audio frame by frame or chunk by
+chunk: `resample.Resampler`, `echo.Canceller`,
+`preprocess.Preprocessor` and `agc.AGC`. It keeps state between calls
+and is [single owner](#single-owner). The `buffer` types store samples
+and are not processors.
 
 ### RTP
 
@@ -137,9 +174,9 @@ encoded audio of a call over the network, usually one packet per frame.
 
 ### Encoder and decoder
 
-The codec stages around this library: the encoder compresses the
-cleaned send-path audio into packets, the decoder turns received packets
-back into samples. Codecs are not part of govoip-dsp.
+The two halves of a codec, which sit around this library: the encoder
+compresses the cleaned send-path audio into packets, the decoder turns
+received packets back into samples. Codecs are not part of govoip-dsp.
 
 ### Jitter buffer
 
@@ -361,6 +398,12 @@ microphone signal before the canceller models the echo. The rate sets its
 cut-off.
 
 ## Noise suppression and voice activity
+
+### Noise
+
+Any sound in the microphone signal that is not speech or echo, such as a
+fan or line hiss. Also called background noise. See
+[noise suppression](#noise-suppression).
 
 ### Dereverberation
 
@@ -586,6 +629,13 @@ First in, first out: samples come out in the order they went in.
 A fixed-size FIFO whose storage wraps around: writing past the end
 continues at the start. `buffer.Ring` and `buffer.SPSC` are ring buffers
 of samples.
+
+### Slot and index
+
+A slot is the place for one sample in a [ring buffer](#ring-buffer)'s
+storage. An index is the position of a slot: `buffer.SPSC` keeps a write
+index, where the next sample is written, and a read index, where the
+next is read.
 
 ### Overflow policy
 
