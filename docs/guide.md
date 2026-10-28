@@ -19,15 +19,48 @@ package's `example_test.go` (the root's is
 
 ## Start here
 
-1. Read [The pipeline](#the-pipeline) to see which package does what.
-2. Read [The send path, frame by frame](#the-send-path-frame-by-frame)
+Read the guide in this order to get a first call working:
+
+1. Read [Audio basics](#audio-basics) if samples, rates and frames are
+   new to you.
+2. Read [The pipeline](#the-pipeline) to see which package does what.
+3. Read [The send path, frame by frame](#the-send-path-frame-by-frame)
    and run `Example_sendChain` in the root package
    (`go test github.com/danieldonoghue/govoip-dsp -run Example_sendChain -v`).
-3. Choose a recipe in [usage.md](usage.md) for where your audio comes
+4. Choose a recipe in [usage.md](usage.md) for where your audio comes
    from.
-4. Read [Handing audio between goroutines](#handing-audio-between-goroutines)
+5. Read [Handing audio between goroutines](#handing-audio-between-goroutines)
    before you connect a network or device goroutine.
-5. Check the limits in [Limitations](#limitations).
+6. Check the limits in [Limitations](#limitations).
+
+## Audio basics
+
+The library works on sound as numbers, one frame at a time. These five
+ideas are enough to use it; the [glossary](glossary.md) has the detail.
+
+- **Sample.** One number that gives the level of the sound at one
+  instant. The packages take `int16` samples, -32768 to 32767
+  ([sample](glossary.md#sample)).
+- **Sample rate.** The number of samples in one second, in Hz. Calls use
+  8000 Hz (narrowband) or 16000 Hz (wideband); devices often use
+  48000 Hz. A stage that combines two streams needs both at the same
+  rate, and `resample` converts between rates
+  ([sample rate](glossary.md#sample-rate)).
+- **Frame.** A fixed number of samples that a method processes in one
+  call. A frame of `ms` milliseconds at a rate of `rate` Hz is
+  `rate * ms / 1000` samples: 160 samples for 20 ms at 8 kHz
+  ([frame](glossary.md#frame)).
+- **Why 10 or 20 ms.** Codecs and [RTP](glossary.md#rtp) packets
+  commonly carry 20 ms of audio, and the SpeexDSP echo and preprocessor
+  headers ask for frames of 10 to 20 ms. A frame is processed only once
+  all of it has arrived, and `preprocess` holds back one more frame, so a
+  longer frame adds delay to the call.
+- **State.** The processors remember earlier frames: `echo` learns how
+  the room echoes the loudspeaker, `preprocess` keeps an estimate of the
+  background noise, `resample` keeps recent samples for its filter, and
+  `agc` keeps its current gain. So each audio stream needs its own
+  processor, kept for the whole call
+  ([The lifecycle of a processor](#the-lifecycle-of-a-processor)).
 
 ## The packages
 
