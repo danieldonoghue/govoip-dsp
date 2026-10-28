@@ -27,15 +27,17 @@ whether its microphone can hear its loudspeaker.
   up what the loudspeaker plays, so the far end would hear itself. The
   send path cleans the microphone signal one frame at a time: `echo`
   removes the echo, `preprocess` suppresses noise and the echo that is
-  left and decides whether the frame is speech, and `agc` sets the
-  level, raising it only on speech.
+  left and decides whether the frame is speech (voice activity
+  detection, VAD), and `agc` sets the level, raising it only on speech.
 - **Headset, or a handset at the ear.** There is no echo, so the send
   path is `preprocess` then `agc`.
 
 `preprocess` and `agc` are optional. Leave out `agc` when the level is
 already right, for example a source of known, fixed gain; `agc` still
-works without `preprocess`, with its `speech` argument true. Leave out
-`preprocess` when the audio is already clean and needs no VAD.
+works without `preprocess`, with its `speech` argument true, but then it
+raises noise above its gate level like speech. Leave out `preprocess`
+when the audio is already clean and needs no VAD; after `echo`, that also
+drops the suppression of the echo that is left.
 
 The receive path converts decoded audio to the device rate with
 `resample`. `buffer.SPSC` carries audio between goroutines without

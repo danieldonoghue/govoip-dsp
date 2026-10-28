@@ -53,7 +53,7 @@
 // right, for example a source of known, fixed gain. agc still works without
 // preprocess: pass speech true, and noise above GateLevel is then raised like
 // speech. Leave out preprocess when the audio is already clean and needs no
-// VAD.
+// VAD; after echo, that also drops the suppression of the echo that is left.
 //
 // With echo cancellation, the send path cleans the microphone signal of one
 // call before it is encoded and sent, one frame at a time:
