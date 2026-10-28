@@ -317,8 +317,9 @@ call, never share one between calls, give each stream that is resampled
 its own `resample.Resampler`, and reuse a processor for a new stream only
 through `Reset`. The four processors (`resample.Resampler`,
 `echo.Canceller`, `preprocess.Preprocessor`, `agc.AGC`) have the same
-life. The two buffers of `buffer` (`Ring`, `SPSC`) store samples and are not processors, but they
-are made once, kept for the stream and reset in the same way.
+life. The two buffers of `buffer` (`Ring`, `SPSC`) store samples and are
+not processors, but they are made once, kept for the stream and reset in
+the same way.
 
 ```mermaid
 stateDiagram-v2
