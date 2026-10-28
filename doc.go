@@ -74,8 +74,8 @@
 //   - Make each processor once, with New and a Config, before the call
 //     starts. New allocates and returns an error wrapping the package's
 //     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
-//     filter above its own cap or the reference's limits); test it with
-//     errors.Is.
+//     filter above its own size cap, including more than 256 channels, or
+//     above the reference's limits); test it with errors.Is.
 //   - Per-frame and per-chunk methods (the audio path) do not allocate,
 //     block or panic. They return only unwrapped sentinel errors, such as
 //     ErrBufferSize for a slice of the wrong length; with buffers sized
@@ -83,8 +83,9 @@
 //     occur, so treat them as programming errors (Example_errors). The
 //     exception is resample's ErrAllocFailed while a rejected rate or
 //     quality change is in force (see the resample package doc). A
-//     resample output sized with OutLen on a new Resampler fits every call
-//     until a setter changes the filter; after a setter, read OutLen again.
+//     resample output sized with OutLen(n) on a new Resampler fits every
+//     call of up to n frames until a setter changes the filter; after a
+//     setter, read OutLen again.
 //   - Every processor is for one stream and one goroutine at a time; it is
 //     not safe for concurrent use. Only buffer.SPSC is shared, by exactly
 //     two goroutines.

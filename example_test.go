@@ -200,8 +200,8 @@ func Example_receiveChain() {
 // through a buffer.SPSC, which never blocks either side. After a stall of
 // the processing goroutine the SPSC holds a backlog of stale audio; the
 // consumer drops it and keeps only the newest frame. A stall longer than
-// the SPSC holds loses the newest frames instead, because the SPSC rejects
-// what does not fit. Where each received frame pairs with a far-end frame,
+// the SPSC holds loses the newest frames instead, because the producer
+// skips each frame that does not fit whole. Where each received frame pairs with a far-end frame,
 // drop as many far-end frames too.
 func Example_handoff() {
 	const frame = 160 // 20 ms at 8 kHz
