@@ -44,9 +44,9 @@
 // 2*FrameSize requires; SupportedFrameSize checks a size before New. Typical
 // use is 10 ms or 20 ms frames at 8, 16, 32 or 48 kHz. The upstream header
 // recommends frames of 10 to 20 ms, and the same frame size as the echo
-// canceller for residual-echo suppression. Processing uses a 2*FrameSize
-// window with 50% overlap, so the output is delayed by FrameSize samples
-// (one frame).
+// canceller for residual-echo suppression. Each frame is analysed in a
+// window of 2*FrameSize samples, the frame and the one before it, so the
+// output is delayed by FrameSize samples (one frame).
 //
 // # Settings
 //

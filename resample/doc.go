@@ -32,14 +32,14 @@
 //	nIn, nOut, err := r.Process(in, out)
 //	// out[:nOut] is the output; nIn == len(in), because out is OutLen long
 //
-// Reset restarts the stream with the same settings. Quality
-// (Config.Quality, 0 to 10) trades cost and latency against aliasing. The
-// Speex manual calls 3 (QualityVoIP) acceptable for most desktop uses and
-// recommends 10 mostly for professional audio; the tested recipes of
-// docs/usage.md use QualityVoIP. Resample each
-// stream that must stay sample-aligned with its own Resampler of the same
-// configuration, for example the microphone and the loudspeaker signals
-// before an echo canceller.
+// Reset restarts the stream with the same settings. A higher quality
+// (Config.Quality, 0 to 10) gives less noise and distortion at more cost
+// and latency. The Speex manual calls 3 (QualityVoIP) acceptable for most
+// desktop uses and recommends 10 mostly for professional audio; the tested
+// recipes of docs/usage.md use QualityVoIP. Resample each stream that must
+// stay sample-aligned with its own Resampler of the same configuration,
+// for example the microphone and the loudspeaker signals before an echo
+// canceller.
 //
 // # Rates, ratios and frames
 //

@@ -209,6 +209,12 @@ The time from a far-end sample being passed to the canceller to its echo
 first arriving in the microphone signal. It includes the device and
 network buffering, not only the sound's travel time.
 
+### Reverberation time
+
+How long sound takes to die away in a room, usually measured as the time
+to fall by 60 dB. The Speex manual sizes the echo filter at about a
+third of it.
+
 ### Echo tail
 
 The time over which the echo of one far-end sample keeps arriving, from
@@ -276,6 +282,12 @@ The queue of far-end frames of the canceller's buffered mode
 (`Playback` and `Capture`), as in `speex_echo_playback` and
 `speex_echo_capture`. It holds up to three frames.
 
+### Leak estimate
+
+The echo canceller's running estimate, by linear regression of its
+output on its echo estimate, of how much echo is left in its output. It
+scales the residual-echo spectrum.
+
 ### DC notch
 
 A filter that removes the constant (zero-frequency) part of the
@@ -289,6 +301,19 @@ cut-off.
 Lowering stationary background noise, such as fan or line hiss, while
 keeping speech. `preprocess` does it per frequency band; SpeexDSP and
 `preprocess` call it denoise.
+
+### Analysis window
+
+The span of samples that `preprocess` transforms per frame: the current
+frame and the one before it, `2*FrameSize` samples, weighted so that
+consecutive windows add up smoothly. It is why `preprocess` delays its
+output by one frame.
+
+### Filterbank
+
+The grouping of the FFT bins of `preprocess` into 24 bands spaced like
+human hearing. The noise estimate and the speech probability are
+computed per band; `filterbank.c` in SpeexDSP.
 
 ### Stationary noise
 
@@ -377,6 +402,18 @@ delays by one processing frame, `agc` by 2 ms, `resample` by half its
 filter (`InputLatency`, `OutputLatency`), `echo` by nothing, and a buffer
 by the samples stored in it.
 
+### Sinc table
+
+The table of filter coefficients that `resample` builds at `New` and at
+each rate or quality change: a windowed sinc (the ideal low-pass
+filter's impulse response) sampled at the filter's phases.
+
+### Magic samples
+
+In `resample`, input samples left over after a rate or quality change
+shortens the filter. The next process calls output them first; `OutLen`
+counts them.
+
 ### Filter delay
 
 In `resample`, the delay of its low-pass filter, `InputLatency` input
@@ -385,8 +422,8 @@ samples. The first output samples of a stream are the filter warming up;
 
 ### Quality level
 
-The `resample` setting from 0 to 10 that trades cost and latency for
-less aliasing. The tested recipes of [usage.md](usage.md) use
+The `resample` setting from 0 to 10: a higher quality gives less noise
+and distortion at more cost and latency. The tested recipes of [usage.md](usage.md) use
 `QualityVoIP` (3).
 
 ### Ratio
@@ -423,7 +460,9 @@ oldest unread samples. `buffer.SPSC` always rejects.
 
 A slice that a method returns which points into the buffer's own
 storage, such as `ReadSlices` or `WriteSlices` of `buffer`. Each view
-stays valid until a documented call, and expires there.
+stays valid until a documented call, and expires there. A view comes as
+two segments, because the stored region may wrap around the end of the
+storage; the second segment is empty unless it does.
 
 ### Zero-copy
 
@@ -447,6 +486,17 @@ stores it.
 A property of a method used by two goroutines: it finishes in a bounded
 number of its own steps whatever the other goroutine does. It never
 waits, locks or retries. Every `buffer.SPSC` method is wait-free.
+
+### Snapshot
+
+A value one goroutine reads about state that another goroutine changes,
+such as `buffer.SPSC.Len` called by the producer. It was true when read
+and may be stale by the time it is used.
+
+### Quiescent
+
+Not running any method. `buffer.SPSC.Reset` needs both sides quiescent,
+for example after their goroutines have been joined.
 
 ### Backlog
 
@@ -472,9 +522,10 @@ instance per stream.
 
 ### Aliasing
 
-Two slices that share memory. A method's doc says whether its input and
-output may be the same slice; `agc.AGC.Process` allows it, the other
-process methods do not.
+Two slices that share memory, also called overlap. A method's doc says
+whether its input and output may overlap; `agc.AGC.Process` allows them
+to be the same slice, the other process methods do not. `preprocess`
+works in place on its one frame slice.
 
 ### Retention
 
