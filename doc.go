@@ -46,18 +46,21 @@
 //	microphone -> echo.Canceller.Cancel -> preprocess.Preprocessor.RunEcho
 //	           -> agc.AGC.Process -> encoder
 //
-// echo needs the loudspeaker frame (the far end) that each microphone
-// frame's echo comes from. After Cancel, echo.Canceller.Residual gives the
-// residual-echo spectrum that RunEcho takes for the same frame; RunEcho
-// returns the VAD decision that agc.AGC.Process takes. The packages do not
-// import each other: the caller passes these values on. Example_sendChain
+// For each microphone frame, echo needs the loudspeaker frame (the far end)
+// played while that microphone frame was captured; the filter covers echo
+// delays of 0 to about its FilterLength. After Cancel, echo.Canceller.Residual
+// gives the residual-echo spectrum that RunEcho takes for the same frame;
+// RunEcho returns the VAD decision that agc.AGC.Process takes. The packages do
+// not import each other: the caller passes these values on. Example_sendChain
 // shows the whole path.
 //
 // The receive path brings decoded audio to the device rate with
 // resample.Resampler.Process, its output sized with OutLen
-// (Example_receiveChain). Where the network or the device runs at a rate
-// other than 8 or 16 kHz, resample both the microphone and the
-// loudspeaker streams to 16 kHz before the send path.
+// (Example_receiveChain). Where the microphone and loudspeaker streams
+// run at a rate other than 8 or 16 kHz, usually the device rate, resample
+// both to 16 kHz before the send path, each with its own Resampler. Where
+// the encoder runs at another rate than the send path, resample the send
+// path's output to the encoder rate.
 //
 // Between goroutines, for example a network reader and the processing
 // goroutine, use buffer.SPSC; it never blocks either side, and after a
@@ -70,15 +73,18 @@
 //
 //   - Make each processor once, with New and a Config, before the call
 //     starts. New allocates and returns an error wrapping the package's
-//     ErrConfig for an invalid Config (resample also ErrAllocFailed, above
-//     its resource cap); test it with errors.Is.
+//     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
+//     filter above its own cap or the reference's limits); test it with
+//     errors.Is.
 //   - Per-frame and per-chunk methods (the audio path) do not allocate,
 //     block or panic. They return only unwrapped sentinel errors, such as
 //     ErrBufferSize for a slice of the wrong length; with buffers sized
 //     once from the processor (FrameSize, ResidualLen, OutLen) these do not
 //     occur, so treat them as programming errors (Example_errors). The
 //     exception is resample's ErrAllocFailed while a rejected rate or
-//     quality change is in force (see the resample package doc).
+//     quality change is in force (see the resample package doc). A
+//     resample output sized with OutLen on a new Resampler fits every call
+//     until a setter changes the filter; after a setter, read OutLen again.
 //   - Every processor is for one stream and one goroutine at a time; it is
 //     not safe for concurrent use. Only buffer.SPSC is shared, by exactly
 //     two goroutines.

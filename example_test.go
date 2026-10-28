@@ -105,7 +105,8 @@ func (s *sendChain) step(mic, far, out []int16) (speech bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	// 4. Bring the level to the target; the gain rises only on speech.
+	// 4. Bring the level towards the target. The AGC raises its gain only
+	//    on frames passed with speech true and above its gate level.
 	return speech, s.gc.Process(s.clean, out, speech)
 }
 
@@ -160,8 +161,10 @@ func Example_sendChain() {
 	// near end in, sent out, 5 s to 6 s: -32 -27 dBFS
 }
 
-// The receive chain: decoded 8 kHz frames up to a 48 kHz device. OutLen
-// sizes the output once; with it, every call consumes the whole frame.
+// The receive chain: decoded 8 kHz frames up to a 48 kHz device. OutLen,
+// read on a new Resampler, sizes the output once: until a setter changes
+// the filter, every call of one frame then consumes the whole frame. After
+// a setter, read OutLen again (it does not allocate).
 func Example_receiveChain() {
 	const netRate, devRate, frameMs = 8000, 48000, 20
 	r, err := resample.New(resample.Config{
@@ -180,7 +183,7 @@ func Example_receiveChain() {
 			log.Fatal(err)
 		}
 		if read != len(decoded) {
-			log.Fatal("input left over") // cannot happen with OutLen
+			log.Fatal("input left over") // cannot happen: no setter was called
 		}
 		written += n // hand device[:n] to the sound card
 	}
@@ -196,12 +199,16 @@ func Example_receiveChain() {
 // A network goroutine hands received frames to the processing goroutine
 // through a buffer.SPSC, which never blocks either side. After a stall of
 // the processing goroutine the SPSC holds a backlog of stale audio; the
-// consumer drops it and keeps only the newest frame. Where each received
-// frame pairs with a far-end frame, drop as many far-end frames too.
+// consumer drops it and keeps only the newest frame. A stall longer than
+// the SPSC holds loses the newest frames instead, because the SPSC rejects
+// what does not fit. Where each received frame pairs with a far-end frame,
+// drop as many far-end frames too.
 func Example_handoff() {
 	const frame = 160 // 20 ms at 8 kHz
-	// 200 ms: the longest stall that loses nothing.
-	rx, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: 10 * frame})
+	// 2000 samples, 250 ms: twelve whole frames and half a frame. The
+	// producer stores only whole frames, so the half frame stays unused,
+	// and a stall of up to 240 ms loses nothing.
+	rx, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: 2000})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -222,6 +229,8 @@ func Example_handoff() {
 				}
 				if rx.Free() >= frame { // a whole frame or nothing
 					rx.Write(packet)
+				} else {
+					fmt.Println("no room: frame", k, "skipped")
 				}
 				k++
 			}
@@ -238,7 +247,7 @@ func Example_handoff() {
 		}
 		for rx.Len() >= frame {
 			rx.Read(in)
-			fmt.Println("processing frame", in[0])
+			fmt.Println("processing frame", in[0], "whole:", in[0] == in[frame-1])
 		}
 	}
 
@@ -248,12 +257,19 @@ func Example_handoff() {
 	send <- 6 // the processor stalls for 120 ms while six frames arrive
 	<-sent
 	process()
+	send <- 14 // a stall of 280 ms: more than the SPSC holds
+	<-sent
+	process()
 	close(send)
 	<-sent
 	// Output:
-	// processing frame 0
+	// processing frame 0 whole: true
 	// dropped 5 stale frames
-	// processing frame 6
+	// processing frame 6 whole: true
+	// no room: frame 19 skipped
+	// no room: frame 20 skipped
+	// dropped 11 stale frames
+	// processing frame 18 whole: true
 }
 
 // Every constructor checks its Config and returns an error that wraps the
