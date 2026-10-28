@@ -86,8 +86,8 @@
 //
 // # Rules shared by every package
 //
-//   - Make each processor once, with New and a Config, before the call
-//     starts. New allocates and returns an error wrapping the package's
+//   - Make each processor and buffer once, with New and a Config, before the
+//     call starts. New allocates and returns an error wrapping the package's
 //     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
 //     filter beyond its size limits, which its package doc lists); test it
 //     with errors.Is.
@@ -102,9 +102,9 @@
 //     on a new Resampler covers every call of up to n frames while
 //     SkipZeros and the setters are not used; after SkipZeros or any
 //     setter, call OutLen before each call (it does not allocate).
-//   - Every processor is for one stream and one goroutine at a time; it is
-//     not safe for concurrent use. Only buffer.SPSC is shared, by exactly
-//     two goroutines.
+//   - Every processor, and Ring, is for one stream and one goroutine at a
+//     time; it is not safe for concurrent use. Only buffer.SPSC is shared,
+//     by exactly two goroutines.
 //   - Samples are int16 on the 16-bit scale, -32768 to 32767.
 //   - No method retains a caller's slice. Input and output must not
 //     overlap, except where a method says so (preprocess rewrites its

@@ -26,7 +26,8 @@ Read the guide in this order to get a first call working:
    new to you.
 2. Find your application in
    [Which packages you need](#which-packages-you-need), then read
-   [The pipeline](#the-pipeline) to see what each of those packages does.
+   [The pipeline](#the-pipeline) to see when each is needed and in what
+   order.
 3. Read [The send path, frame by frame](#the-send-path-frame-by-frame)
    and run `Example_sendChain` in the root package
    (`go test github.com/danieldonoghue/govoip-dsp -run Example_sendChain -v`).
@@ -56,13 +57,16 @@ Sound as numbers:
 - **Level, gain and clipping.** The [level](glossary.md#level) of a
   signal is how large its samples are over a span, measured as
   [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs), decibels relative
-  to the full scale of the digital format: 0 dBFS is the largest level
-  an `int16` sample can hold, and quieter signals are negative. Other
-  scales have other zero points. A
-  [gain](glossary.md#gain), in [dB](glossary.md#db), is the factor a
-  stage multiplies a signal by: +6 dB roughly doubles it. A signal
-  pushed past the largest sample is cut flat, which is
-  [clipping](glossary.md#clipping) and sounds distorted.
+  to the full scale of the digital format: 0 dBFS is full scale,
+  amplitude 32768, one step above the largest `int16` sample, and
+  quieter signals are negative. Other scales have other zero points.
+  A [gain](glossary.md#gain) is the factor a stage multiplies a signal
+  by. It is given in [dB](glossary.md#db), a logarithmic scale
+  (`20·log10` of the factor): +6 dB roughly doubles the amplitude,
+  +20 dB multiplies it by ten, and -6 dB about halves it. Gains in dB
+  add where the factors multiply. A signal pushed past the largest
+  sample is cut flat, which is [clipping](glossary.md#clipping) and
+  sounds distorted.
 - **Channel.** One signal of a multichannel stream such as stereo.
   `echo`, `preprocess` and `agc` are mono, one channel; `resample` takes
   [interleaved](glossary.md#interleaved) channels: the first sample of
@@ -109,8 +113,8 @@ Processors and state:
 - **Processor.** A [processor](glossary.md#processor) is a value made
   by `New` that works on the audio frame by frame or chunk by chunk:
   `resample.Resampler`, `echo.Canceller`, `preprocess.Preprocessor` and
-  `agc.AGC`. The `buffer` types only store samples, so they are not
-  processors.
+  `agc.AGC`. A stage is one step of the pipeline, done by a processor.
+  The `buffer` types only store samples, so they are not processors.
 - **State.** A processor remembers earlier audio: `echo` learns how the
   room echoes the loudspeaker, `preprocess` keeps an estimate of the
   background noise, `resample` keeps the recent input samples that its
@@ -265,9 +269,9 @@ flowchart LR
 
 1. `preprocess` takes each microphone frame with `Run` instead of
    `RunEcho`, since there is no residual echo to pass in.
-2. `agc` follows it as in [every stage of a call](#every-stage-of-a-call), with the VAD decision of
-   `Run`. Call `SetVAD(true)` on the preprocessor first: with the VAD
-   off, `Run` reports every frame as speech.
+2. `agc` follows it as in [every stage of a call](#every-stage-of-a-call),
+   with the VAD decision of `Run`. Call `SetVAD(true)` on the preprocessor
+   first: with the VAD off, `Run` reports every frame as speech.
 3. The receive path is the same, and nothing links it to the send path.
 
 `preprocess` works at the common device rates too, so the send path needs
@@ -337,10 +341,10 @@ what was stored.
 ## The send path, frame by frame
 
 The send path cleans the microphone signal for the encoder, one frame
-at a time. This section follows the full pipeline, with `echo`. Without
-it, skip steps 1 and 2: `clean` is then the microphone frame itself,
-which `Run(clean)` in step 3 rewrites in place, so a caller that needs
-the unprocessed frame copies it first.
+at a time. This section follows a call where the microphone hears the
+loudspeaker, with `echo`. Without it, skip steps 1 and 2: `clean` is
+then the microphone frame itself, which `Run(clean)` in step 3 rewrites
+in place, so a caller that needs the unprocessed frame copies it first.
 
 First make the processors, once, before the first frame. They share one
 sample rate and one frame size. This code is adapted from `newSendChain`

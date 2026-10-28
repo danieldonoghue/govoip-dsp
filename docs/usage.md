@@ -33,8 +33,9 @@ the [glossary](glossary.md) defines the terms this page uses.
   ([ADR `wp6-rates-and-shifts`](decisions/wp6-rates-and-shifts.md)). At any
   other network rate, resample both streams to 16 kHz first, as
   `newCall` does in "Sources that deliver the pairing".
-- **One call, one goroutine.** Every processor is single-owner: make one
-  set per call and use it from one goroutine. Only `buffer.SPSC` is shared,
+- **One call, one goroutine.** Every processor, and `buffer.Ring`, is
+  single-owner: make one set per call and use it from one goroutine. Only
+  `buffer.SPSC` is shared,
   between exactly two goroutines.
 - **One audio stream and no call.** An application such as a recorder or
   a monitor has no loudspeaker whose echo could return. Neither recipe is
