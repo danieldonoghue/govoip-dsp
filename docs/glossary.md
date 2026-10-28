@@ -386,7 +386,8 @@ samples. The first output samples of a stream are the filter warming up;
 ### Quality level
 
 The `resample` setting from 0 to 10 that trades cost and latency for
-less aliasing: `QualityVoIP` (3) is enough for speech.
+less aliasing. The tested recipes of [usage.md](usage.md) use
+`QualityVoIP` (3).
 
 ### Ratio
 

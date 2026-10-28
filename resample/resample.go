@@ -50,9 +50,10 @@ var (
 	ErrBufferSize = errors.New("resample: interleaved length not a multiple of the channel count")
 )
 
-// Config configures a Resampler.
+// Config configures a Resampler. Channels has no default and is fixed for
+// the Resampler's life; the ratio and quality can change with the setters.
 type Config struct {
-	// Channels is the number of channels, at least 1.
+	// Channels is the number of channels, 1 to 256 (the resource cap).
 	Channels int
 	// InRate and OutRate are the sampling rates in Hz. Unless RatioNum and
 	// RatioDen are set, they also give the ratio and must be at least 1.

@@ -10,13 +10,36 @@
 // of libm; they equal the harness tables entry for entry in every tested
 // configuration.
 //
+// Terms such as sample rate, channel, interleaved, stride, quality level,
+// ratio and latency are defined in the [glossary]. In this package a frame
+// is one sample of every channel (the glossary's resampler frame): a mono
+// frame is one sample, an interleaved stereo frame two. The developer
+// guide shows the [receive path]. The SpeexDSP documentation of the same
+// functions is the Speex manual's [resampler section] and the header
+// [speex_resampler.h].
+//
 // # Use
 //
+// Make one Resampler per stream with New, size the output with OutLen,
+// and pass each chunk to Process:
+//
 //	r, err := resample.New(resample.Config{Channels: 1, InRate: 48000, OutRate: 16000, Quality: resample.QualityVoIP})
-//	...
+//	if err != nil {
+//		return err // wraps ErrConfig, or is ErrAllocFailed
+//	}
 //	in := make([]int16, 480)               // 10 ms at 48 kHz
 //	out := make([]int16, r.OutLen(len(in))) // large enough for one call
 //	nIn, nOut, err := r.Process(in, out)
+//	// out[:nOut] is the output; nIn == len(in), because out is OutLen long
+//
+// Reset restarts the stream with the same settings. Quality
+// (Config.Quality, 0 to 10) trades cost and latency against aliasing. The
+// Speex manual calls 3 (QualityVoIP) acceptable for most desktop uses and
+// recommends 10 mostly for professional audio; the tested recipes of
+// docs/usage.md use QualityVoIP. Resample each
+// stream that must stay sample-aligned with its own Resampler of the same
+// configuration, for example the microphone and the loudspeaker signals
+// before an echo canceller.
 //
 // # Rates, ratios and frames
 //
@@ -109,6 +132,26 @@
 // the same delay in output samples. Per-quality figures are in
 // docs/algorithms.md.
 //
+// # Errors
+//
+// New returns an error wrapping ErrConfig for an invalid Config, or
+// ErrAllocFailed where the filter exceeds the size limits; test them with
+// errors.Is. The setters return the sentinels unwrapped: ErrConfig for an
+// invalid argument, ErrAllocFailed and ErrOverflow as described above. The
+// process methods return ErrBufferSize for an interleaved length that is
+// not a multiple of Channels(), ErrChannel for a channel index out of
+// range, ErrStride for a stride below 1, ErrAllocFailed while a rejected
+// filter change is in force, and ErrConfig on a zero Resampler; they
+// return 0 frames then. With buffers made as in "Use", none of these
+// occurs on the audio path, so treat them as programming errors.
+//
+// # Limitations
+//
+// The ratio is fixed between setter calls: clock drift between two
+// devices is not corrected (a drift controller is planned). There is no
+// NULL-input form: to flush the filter at the end of a stream, pass
+// InputLatency() zeros, which push the last input samples out.
+//
 // # Concurrency and allocation
 //
 // A Resampler is not safe for concurrent use. Use one per stream.
@@ -117,4 +160,9 @@
 // filter needs a larger table or memory than any earlier one. No other
 // method allocates. The process methods are bounded: their work is
 // proportional to the offered lengths times the filter length.
+//
+// [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
+// [receive path]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#the-receive-path
+// [resampler section]: https://www.speex.org/docs/manual/speex-manual/node7.html#SECTION00760000000000000000
+// [speex_resampler.h]: https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h
 package resample
