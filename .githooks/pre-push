@@ -10,7 +10,8 @@ while read -r local_ref local_sha _; do
 	*[!0]*) ;;
 	*) continue ;; # deleting a remote ref
 	esac
-	if [ "$local_sha" != "$head" ]; then
+	# An annotated tag is its own object; compare the commit it points at.
+	if [ "$(git rev-parse "$local_sha^{commit}")" != "$head" ]; then
 		echo "pre-push: $local_ref is not the checked-out commit; check it out first" >&2
 		exit 1
 	fi
