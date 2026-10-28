@@ -32,10 +32,10 @@
 //		}
 //	}
 //
-// In a send chain the AGC runs last, after package preprocess, and speech
-// is the VAD decision that preprocess.Preprocessor.Run or RunEcho returned
-// for the same frame (with preprocess.Preprocessor.SetVAD(true)). Without
-// a VAD, pass true: every frame above GateLevel then counts as speech.
+// In a send chain the AGC runs last, after package preprocess, and speech is
+// the VAD decision that preprocess.Preprocessor.Run or RunEcho returned for the
+// same processing frame (with preprocess.Preprocessor.SetVAD(true)). Without a
+// VAD, pass true: every frame above GateLevel then counts as speech.
 //
 // # Configuration
 //
@@ -112,15 +112,15 @@
 //
 // # Noise protection
 //
-// Noise protection is the level gate and the speech flag, and nothing
-// else. Frames below GateLevel never raise the gain or change the level
-// estimate. Noise above GateLevel passed with speech true is treated as
-// speech and driven to TargetLevel, with a gain of up to MaxGain. The VAD of
-// the SpeexDSP 1.2.1 fixed-point preprocessor reported speech on almost
-// every frame of stationary white and pink noise measured at 16 kHz above
-// about -65 dBFS (docs/testing.md, "Noise through the send chain"), so
-// passing its decision does not prevent this; only a gate above the noise
-// does. In pauses the gain cannot rise, but it may finish falling.
+// Noise protection is the level gate and the speech flag, and nothing else.
+// Frames below GateLevel never raise the gain or change the level estimate.
+// Noise above GateLevel passed with speech true is treated as speech and driven
+// to TargetLevel, with a gain of up to MaxGain. The VAD of the SpeexDSP 1.2.1
+// fixed-point preprocessor reported speech on almost every processing frame of
+// stationary white and pink noise measured at 16 kHz above about -65 dBFS
+// (docs/testing.md, "Noise through the send chain"), so passing its decision
+// does not prevent this; only a gate above the noise does. In pauses the gain
+// cannot rise, but it may finish falling.
 //
 // Use the AGC after preprocess with denoising on, which lowers stationary
 // noise before the AGC sees it, and set GateLevel above the residual noise.
