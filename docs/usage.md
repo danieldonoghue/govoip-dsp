@@ -36,10 +36,11 @@ the [glossary](glossary.md) defines the terms this page uses.
 - **One call, one goroutine.** Every processor is single-owner: make one
   set per call and use it from one goroutine. Only `buffer.SPSC` is shared,
   between exactly two goroutines.
-- **Receive only.** An application that only receives, such as a recorder
-  or a monitor, sends nothing whose echo could return. Neither recipe is
-  needed there: `preprocess.Preprocessor.Run` and `agc.AGC.Process` alone
-  clean the audio.
+- **One audio stream and no call.** An application such as a recorder or
+  a monitor has no loudspeaker whose echo could return. Neither recipe is
+  needed there: use `preprocess.Preprocessor.Run` if the audio has noise
+  or you need a VAD, and `agc.AGC.Process` if you need a steady level.
+  Each is optional ([When each stage is needed](guide.md#when-each-stage-is-needed)).
 
 ## Recipe A: sending paced by the received frames
 
@@ -71,7 +72,8 @@ Does not fit:
   deliver the pairing".
 - Playback and capture that arrive on separate callbacks with their own
   timing: use recipe B.
-- A recorder or monitor that only receives: see "Receive only" above.
+- A recorder or monitor with one audio stream and no call: see "One audio
+  stream and no call" above.
 
 ### Caveats
 
@@ -569,7 +571,8 @@ Does not fit:
   caused it (32 ms failed, 40 ms passed without jitter, 20 ms frames), or,
   with up to 30 ms of jitter between the callbacks, within 50 ms (see
   "Caveats").
-- A recorder or monitor that only receives: see "Receive only" above.
+- A recorder or monitor with one audio stream and no call: see "One audio
+  stream and no call" above.
 
 ### Caveats
 
