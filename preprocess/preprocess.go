@@ -19,17 +19,25 @@ import (
 )
 
 // Sentinel errors. Run, RunEcho, EstimateUpdate, PSD and NoisePSD return
-// only these, so they do not allocate.
+// only these, unwrapped, so they do not allocate. New wraps ErrConfig.
 var (
-	ErrConfig     = errors.New("preprocess: invalid configuration")
+	// ErrConfig reports an unsupported Config from New, or a zero
+	// Preprocessor.
+	ErrConfig = errors.New("preprocess: invalid configuration")
+	// ErrBufferSize reports a frame that is not FrameSize samples, or a
+	// residual or spectrum slice that is too short.
 	ErrBufferSize = errors.New("preprocess: buffer length does not match the frame size")
 )
 
 // Supported ranges (see the package doc).
 const (
+	// MinSampleRate and MaxSampleRate bound Config.SampleRate in Hz: the
+	// range in which the reference's filterbank init is defined.
 	MinSampleRate = 4
 	MaxSampleRate = 65535
-	MaxFrameSize  = fft.MaxSize / 2
+	// MaxFrameSize is the largest Config.FrameSize: the FFT of 2*FrameSize
+	// samples is at most 4096.
+	MaxFrameSize = fft.MaxSize / 2
 )
 
 const nbBands = 24 // NB_BANDS
@@ -79,16 +87,19 @@ const (
 	noiseOne  = 128     // QCONST32(1.f,NOISE_SHIFT)
 )
 
-// Config configures a Preprocessor. Both fields are required.
+// Config configures a Preprocessor. Both fields are required, have no
+// default, and are fixed for the Preprocessor's life.
 type Config struct {
 	// SampleRate is the sampling rate in Hz, MinSampleRate to MaxSampleRate.
+	// It sets the frequency bands of the noise estimate.
 	SampleRate int
 	// FrameSize is samples per frame, as SupportedFrameSize accepts: 10 and 20
 	// ms at 8, 16, 32 and 48 kHz (80, 160, 320, 480, 640, 960) qualify.
 	FrameSize int
 }
 
-// Preprocessor is SpeexPreprocessState for the FIXED_POINT build.
+// Preprocessor is SpeexPreprocessState for the FIXED_POINT build: noise
+// suppression and VAD for one mono stream. Make it with New.
 type Preprocessor struct {
 	frameSize, sampleRate int
 	bank                  *filterbank
