@@ -20,8 +20,8 @@ import (
 
 // Limits checked by New and SetSampleRate.
 const (
-	// MaxFrameSize, 2048, is the largest frame size: internal/fft supports
-	// transforms of at most 4096 samples, and the window is two frames.
+	// MaxFrameSize, 2048, is the largest frame size: the FFT works on two
+	// frames and supports at most 4096 samples.
 	MaxFrameSize = fft.MaxSize / 2
 	// MaxFilterLength bounds the filter length in samples, and so the
 	// memory a Canceller uses (about 16 bytes per sample of filter).
@@ -50,10 +50,10 @@ var (
 // default. FrameSize and FilterLength are fixed for the Canceller's life.
 type Config struct {
 	// FrameSize is the number of samples per frame, 1 to MaxFrameSize,
-	// such that internal/fft supports 2*FrameSize (for example 80, 160,
-	// 320 or 480: 10 ms at 8, 16, 32 or 48 kHz).
+	// with no prime factor above 17 (for example 80, 160, 320 or 480: 10
+	// ms at 8, 16, 32 or 48 kHz).
 	FrameSize int
-	// FilterLength is the echo tail the filter models, in samples: 1 to
+	// FilterLength is the span of echo the filter models, in samples: 1 to
 	// MaxFilterLength and at most 32767 frames, rounded up to whole frames.
 	FilterLength int
 	// SampleRate is the sampling rate in Hz, MinSampleRate to
@@ -113,8 +113,8 @@ func (c *Canceller) SampleRate() int {
 	return c.st.samplingRate
 }
 
-// FilterLength returns the modelled echo tail in samples: the configured
-// length rounded up to whole frames (SPEEX_ECHO_GET_IMPULSE_RESPONSE_SIZE).
+// FilterLength returns the span of echo the filter models, in samples,
+// rounded up to whole frames (SPEEX_ECHO_GET_IMPULSE_RESPONSE_SIZE).
 func (c *Canceller) FilterLength() int {
 	if c.st == nil {
 		return 0
@@ -197,10 +197,10 @@ func (c *Canceller) ResidualLen() int {
 	return c.st.frameSize + 1
 }
 
-// Residual writes the residual-echo power spectrum of the frame Cancel or
-// Capture last cancelled (zeros after New) into dst[:ResidualLen()], as
-// speex_echo_get_residual computes it. It returns ErrBufferSize if
-// len(dst) < ResidualLen(). It does not change any later output of c.
+// Residual writes into dst[:ResidualLen()] the residual-echo power spectrum
+// of the frame Cancel or Capture last cancelled, as speex_echo_get_residual
+// computes it (zeros until the filter has adapted). It returns ErrBufferSize
+// if len(dst) < ResidualLen(). It does not change any later output of c.
 func (c *Canceller) Residual(dst []int32) error {
 	if c.st == nil {
 		return ErrConfig

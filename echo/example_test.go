@@ -51,8 +51,9 @@ func erle(mic, out []int16) int {
 
 // The echo canceller removes the far end's echo from the microphone
 // signal, frame by frame. Here the echo arrives 30 ms after the far end
-// and the filter covers 100 ms. The filter starts empty, so the first
-// 200 ms keep most of the echo; once it has converged, little is left.
+// and the filter covers 100 ms. The filter starts empty, so in the first
+// 200 ms it removes only about half of the echo energy (3 dB); once it has
+// converged, little is left.
 func Example() {
 	const rate, frameMs, filterMs = 8000, 20, 100
 	c, err := echo.New(echo.Config{
@@ -168,8 +169,9 @@ func ExampleCanceller_Cancel() {
 // Buffered mode for audio APIs that deliver playback and capture on
 // separate callbacks: Playback queues each played frame, Capture cancels
 // each captured frame against the queue. With Playback first in each
-// period the far end lags one frame, so this echo of 30 ms is modelled
-// from 20 ms on.
+// period, Capture cancels against the frame played one frame (20 ms)
+// earlier, so the filter covers echo delays of 20 to about 120 ms, and
+// this echo of 30 ms is inside that range.
 func ExampleCanceller_Capture() {
 	const rate = 8000
 	c, err := echo.New(echo.Config{FrameSize: 160, FilterLength: 800, SampleRate: rate})

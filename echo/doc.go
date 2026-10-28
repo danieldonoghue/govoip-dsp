@@ -139,9 +139,11 @@
 // with nothing queued cancels nothing), the input that
 // preprocess.Preprocessor.RunEcho takes (docs/contracts.md section 12).
 // Calling it does not change any later output, and two calls in a row give
-// the same values. After New and before the first cancelled frame it
-// writes zeros. After Reset it still reflects the echo estimate from
-// before the Reset (see "Reset").
+// the same values. After New it writes zeros until the filter has adapted
+// (mdf.c:1173-1185): with a far end like the package examples', about
+// 0.4 s with a 100 ms filter and 0.8 s with a 200 ms filter, longer with a
+// longer filter, and never while the far end is silent. After Reset it
+// still reflects the echo estimate from before the Reset (see "Reset").
 //
 // # Reset
 //
@@ -183,7 +185,8 @@
 // A Canceller is not safe for concurrent use. Use one per stream. New
 // allocates; no other method allocates. Each frame costs a fixed amount of
 // work for the configuration: nine FFTs of 2*FrameSize points (seven with
-// a one-frame filter) plus work proportional to 2*FilterLength().
+// a one-frame filter) plus work proportional to 2*FilterLength(), and one
+// more FFT for each Residual call.
 //
 // [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
 // [per-frame call order]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#the-send-path-frame-by-frame
