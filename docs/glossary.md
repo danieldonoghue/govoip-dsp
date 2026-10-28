@@ -2,8 +2,10 @@
 
 This page defines the terms that the package docs and the pages in `docs/`
 use. Each term has one meaning everywhere, except "frame", which has the
-three senses given under [Frame](#frame), and "block", which has the two
-senses given under [Block](#block).
+three senses given under [Frame](#frame), "block", which has the two
+senses given under [Block](#block), and "call", which names a
+[call](#call) of a VoIP application or, as "method call", one invocation
+of a method.
 
 The terms are grouped by topic. Terms link to the terms they use.
 
@@ -31,7 +33,8 @@ frequency).
 One signal of the audio: the samples from one microphone, or for one
 loudspeaker. Mono audio has one channel; stereo has two, left and right;
 surround layouts such as 5.1 and 7.1 have more. `echo`, `preprocess` and
-`agc` are mono: one channel. `resample` takes 1 to 256 channels.
+`agc` are mono: one channel. `resample` takes 1 to 256 channels,
+interleaved or, with `ProcessChannel`, one channel by [stride](#stride).
 
 ### Interleaved
 
@@ -49,7 +52,7 @@ In an interleaved stereo slice the stride is 2.
 "Frame" has three senses. Each package doc says which one it uses.
 
 1. **Processing frame.** The fixed number of samples that `echo` and
-   `preprocess` process in one call, `Config.FrameSize`. The send chain
+   `preprocess` process in one method call, `Config.FrameSize`. The send chain
    uses the same processing frame in every stage.
 2. **Resampler frame.** In `resample`, one sample of every channel: an
    interleaved stereo slice of 960 samples is 480 frames. For mono, a frame
@@ -111,18 +114,21 @@ Decibels: a ratio on a log scale, `10·log10` of a power ratio or
 
 Decibels relative to full scale on the [16-bit scale](#16-bit-scale):
 `20·log10(level/32768)`. 0 dBFS is amplitude 32768, one step above the
-largest `int16` sample; a louder signal clips. -6 dBFS is about half of
-it, and all-zero [silence](#silence) is minus infinity. Other scales have
-other zero points: a mixing desk meters in dBu or VU, where 0 is a
-nominal level with headroom above it, and sound in air is in dB SPL. The
+largest `int16` sample; a sample beyond full scale clips. -6 dBFS is
+about half of it, and all-zero [silence](#silence) is minus infinity.
+Full scale is a peak and the levels here are [RMS](#rms), so a full-scale
+sine wave is about -3 dBFS by this definition; AES17 calls that level
+0 dBFS. Other scales have other zero points: a mixing desk meters in dBu,
+where 0 dBu is 0.775 V RMS, or in VU, where 0 VU is a nominal operating
+level with headroom above it, and sound in air is in dB SPL. The
 `agc` levels are whole dBFS. A `float32` input to `resample` above full
 scale saturates to the `int16` range.
 
 ### RMS
 
 Root mean square: the square root of the mean of the squared samples. It
-measures the level of a signal over a span of samples. The `agc` levels
-are RMS levels.
+measures the level of a signal over a span of samples. The `agc` target
+and gate levels are RMS levels.
 
 ### Silence
 
@@ -130,9 +136,9 @@ Samples that are all zero. "Queue silence" means pass a frame of zeros.
 
 ### Clipping
 
-Output that would pass the largest sample of the
-[16-bit scale](#16-bit-scale) and is cut flat at it, which sounds
-distorted. The AGC's [limiter](#limiter) keeps its output from clipping.
+Output that would pass either end of the
+[16-bit scale](#16-bit-scale), -32768 or 32767, and is cut flat at it,
+which sounds distorted. The AGC's [limiter](#limiter) keeps its output from clipping.
 
 ## The call
 
@@ -143,9 +149,8 @@ carries one [stream](#stream) in each direction.
 
 ### Stream
 
-One signal going one way, as a sequence of samples: the microphone
-signal, the far-end signal, the decoded audio. Each stream needs its own
-[processor](#processor).
+Audio going one way, as samples of one or more [channels](#channel): the
+microphone signal, the far-end signal, the decoded audio.
 
 ### Send path and receive path
 
@@ -157,12 +162,17 @@ through the stages the call needs, in order, to the encoder: `echo`
 
 ### Pipeline
 
-The chain of stages audio passes through, in order, such as the send
+The chain of [stages](#stage) audio passes through, in order, such as the send
 path. The developer guide draws it.
+
+### Stage
+
+One step of the [pipeline](#pipeline), such as removing echo or
+converting the rate. A [processor](#processor) does the work of a stage.
 
 ### Processor
 
-A value that does one job on the audio, one frame or chunk per call:
+A value that does one job on the audio, one frame or chunk per method call:
 `resample.Resampler`, `echo.Canceller`, `preprocess.Preprocessor` or
 `agc.AGC`. Each is created by its package's `New` function, keeps state
 between calls and is [single owner](#single-owner). The `buffer` types
@@ -636,9 +646,9 @@ of samples.
 ### Slot and index
 
 A slot is the place for one sample in a [ring buffer](#ring-buffer)'s
-storage. An index is the position of a slot: `buffer.SPSC` keeps a write
-index, where the next sample is written, and a read index, where the
-next is read.
+storage. An index names a slot: the slot number is the index modulo the
+capacity. `buffer.SPSC` keeps a write index, where the next sample is
+written, and a read index, where the next is read.
 
 ### Overflow policy
 
@@ -702,8 +712,9 @@ run, read and write methods. On it nothing allocates, blocks or panics
 ### Single owner
 
 A type used by one goroutine at a time, with no locking inside. Every
-stateful type here is single-owner except `buffer.SPSC`. Use one
-instance per stream.
+stateful type here is single-owner except `buffer.SPSC`. Make one set of
+processors per call and never share one between calls; `echo` takes the
+two streams of one call, microphone and far end, together.
 
 ### Aliasing
 

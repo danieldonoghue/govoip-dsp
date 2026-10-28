@@ -43,6 +43,11 @@ The library works on sound as numbers, one frame at a time. These ideas,
 in four groups, are enough to use it; the [glossary](glossary.md) has the
 detail.
 
+The packages that process audio are `resample`, which converts the sample
+rate; `echo`, which removes echo; `preprocess`, which suppresses noise and
+detects speech; and `agc`, which keeps the level steady. `buffer` only
+stores samples. [The packages](#the-packages) lists them.
+
 Sound as numbers:
 
 - **Sample.** One number that gives the level of the sound at one
@@ -59,24 +64,26 @@ Sound as numbers:
   [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs), decibels relative
   to the full scale of the digital format: 0 dBFS is full scale,
   amplitude 32768, one step above the largest `int16` sample, and
-  quieter signals are negative. Other scales have other zero points.
+  quieter signals are negative. Levels are RMS, so by this definition a
+  full-scale sine wave is about -3 dBFS. Other scales have other zero
+  points.
   A [gain](glossary.md#gain) is the factor a stage multiplies a signal
   by. It is given in [dB](glossary.md#db), a logarithmic scale
   (`20·log10` of the factor): +6 dB roughly doubles the amplitude,
   +20 dB multiplies it by ten, and -6 dB about halves it. Gains in dB
-  add where the factors multiply. A signal pushed past the largest
-  sample is cut flat, which is [clipping](glossary.md#clipping) and
-  sounds distorted.
+  add where the factors multiply. A signal pushed past either end of the
+  scale, -32768 or 32767, is cut flat, which is
+  [clipping](glossary.md#clipping) and sounds distorted.
 - **Channel.** One signal of the audio: the samples from one microphone,
   or for one loudspeaker. Mono audio has one channel; stereo has two, left
   and right; surround layouts such as 5.1 and 7.1 have more. `echo`,
-  `preprocess` and `agc` take mono; `resample` takes 1 to 256
-  [interleaved](glossary.md#interleaved) channels: the first sample of
-  every channel, then the second of every channel
-  ([channel](glossary.md#channel)).
+  `preprocess` and `agc` take mono; `resample` takes 1 to 256 channels,
+  [interleaved](glossary.md#interleaved) (the first sample of every
+  channel, then the second of every channel) or one channel by stride
+  with `ProcessChannel` ([channel](glossary.md#channel)).
 - **Speech, noise and VAD.** Speech is the voice. Background
-  [noise](glossary.md#noise) is any other sound in the microphone
-  signal, such as a fan or line hiss. A [VAD](glossary.md#vad) (voice
+  [noise](glossary.md#noise) is any sound in the microphone signal that
+  is neither speech nor echo, such as a fan or line hiss. A [VAD](glossary.md#vad) (voice
   activity detection) decides for each frame whether it is speech.
 
 Time and frames:
@@ -87,9 +94,9 @@ Time and frames:
   of `rate` Hz is `rate * ms / 1000` samples: 160 samples for 20 ms at
   8 kHz ([frame](glossary.md#frame)).
 - **Why 10 or 20 ms.** Codecs and [RTP](glossary.md#rtp) packets
-  commonly carry 20 ms of audio, and the headers of SpeexDSP, the C
-  library for the same jobs that three of these packages port, ask for
-  frames of 10 to 20 ms. A frame is processed only once all of it has
+  commonly carry 20 ms of audio. SpeexDSP, the C library that `resample`,
+  `echo` and `preprocess` port, asks for frames of 10 to 20 ms for `echo`
+  and `preprocess`. A frame is processed only once all of it has
   arrived, and `preprocess` holds back one more frame, so a longer
   frame adds delay to the call.
 - **Latency.** The delay a stage adds between its input and its output
@@ -98,12 +105,13 @@ Time and frames:
 A call and its streams:
 
 - **Call and stream.** A [call](glossary.md#call) carries audio in both
-  directions. A [stream](glossary.md#stream) is one signal going one
+  directions. A [stream](glossary.md#stream) is audio going one
   way, such as the microphone signal. The [near end](glossary.md#near-end)
   is the local side, the [far end](glossary.md#far-end) the remote side.
 - **Echo.** [Echo](glossary.md#echo) is far-end sound that the
   loudspeaker plays and the microphone picks up again, so the far end
-  hears itself. [When each stage is needed](#when-each-stage-is-needed)
+  hears itself. Removing it needs a copy of what the loudspeaker played,
+  the far-end reference. [When each stage is needed](#when-each-stage-is-needed)
   says when it happens.
 - **Encoder and decoder.** A [codec](glossary.md#encoder-and-decoder)
   has two halves outside this library: the encoder compresses audio
@@ -113,7 +121,7 @@ A call and its streams:
 Processors and state:
 
 - **Processor.** A [processor](glossary.md#processor) does one job on
-  the audio: you pass it samples, one frame or chunk per call, and it
+  the audio: you pass it samples, one frame or chunk per method call, and it
   gives the changed samples back. There are four kinds: a resampler
   (`resample.Resampler`), an echo canceller (`echo.Canceller`), a noise
   suppressor (`preprocess.Preprocessor`) and a gain control (`agc.AGC`).
@@ -124,13 +132,14 @@ Processors and state:
 - **State.** A processor remembers earlier audio: `echo` learns how the
   room echoes the loudspeaker, `preprocess` keeps an estimate of the
   background noise, `resample` keeps the recent input samples that its
-  conversion still needs, and `agc` keeps its current gain. So each
-  audio stream needs its own processor, kept for the whole call
-  ([The lifecycle of a processor](#the-lifecycle-of-a-processor)).
+  conversion still needs, and `agc` keeps its current gain. So a call
+  keeps its processors for its whole life, and no processor is shared
+  between calls ([The lifecycle of a processor](#the-lifecycle-of-a-processor)).
 
 ## The packages
 
-Five public packages each do one job on the audio. A call uses only the
+Five public packages each do one job on the audio: four process it and
+`buffer` stores it. A call uses only the
 ones it needs; [Which packages you need](#which-packages-you-need) says
 which.
 
@@ -146,8 +155,8 @@ of any length.
 | Package | Does | Frame rule | Rates | Parity | SpeexDSP counterpart |
 |---|---|---|---|---|---|
 | `resample` | Converts between sample rates | Any [chunk](glossary.md#chunk) | Any ratio within the size limits; 1 to 256 channels | Bit-exact | [`speex_resampler.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_resampler.h) |
-| `echo` | Removes the [far end](glossary.md#far-end)'s echo from the microphone signal | `FrameSize` samples per call | 8 and 16 kHz; it accepts up to 48 kHz but cancels poorly there ([Limitations](#limitations)) | Bit-exact | [`speex_echo.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_echo.h) |
-| `preprocess` | Noise suppression, voice activity detection ([VAD](glossary.md#vad)), suppression of [residual echo](glossary.md#residual-echo) | `FrameSize` samples per call | 4 Hz to 65535 Hz | Bit-exact | [`speex_preprocess.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_preprocess.h) |
+| `echo` | Removes the [far end](glossary.md#far-end)'s echo from the microphone signal | The frame size set in `Config`, per method call | 8 and 16 kHz; it accepts up to 48 kHz but cancels poorly there ([Limitations](#limitations)) | Bit-exact | [`speex_echo.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_echo.h) |
+| `preprocess` | Noise suppression, voice activity detection ([VAD](glossary.md#vad)), suppression of [residual echo](glossary.md#residual-echo) | The frame size set in `Config`, per method call | 4 Hz to 65535 Hz | Bit-exact | [`speex_preprocess.h`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/include/speex/speex_preprocess.h) |
 | `agc` | Automatic gain control ([AGC](glossary.md#agc)) with a [limiter](glossary.md#limiter), which stops the output from clipping | Any chunk | 8000 to 48000 Hz | Own design | None in the fixed-point build |
 | `buffer` | `Ring` for one goroutine, `SPSC` ([single producer, single consumer](glossary.md#spsc)) between two | Any chunk | Any | Own design | [`buffer.c`](https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/libspeexdsp/buffer.c), design input only |
 
@@ -183,16 +192,19 @@ the echo that is left. `agc` gives speech a steady
 
 | Application | Needs | Add if you need |
 |---|---|---|
-| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo` | `preprocess`: noise suppression, residual-echo suppression or a VAD; `agc`: a steady level |
-| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | None | `preprocess`: noise suppression or a VAD; `agc`: a steady level |
-| One audio stream and no call, such as a recorder or a monitor | None | `preprocess`: noise suppression, or to know when someone is speaking; `agc`: a steady level |
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo` | `preprocess`: noise suppression, residual-echo suppression or a VAD (`SetVAD(true)`); `agc`: a steady level |
+| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | None | `preprocess`: noise suppression or a VAD (`SetVAD(true)`); `agc`: a steady level |
+| One audio stream and no call, such as a recorder or a monitor | None | `preprocess`: noise suppression, or to know when someone is speaking (`SetVAD(true)`); `agc`: a steady level |
 | Rate conversion only | `resample` | |
 | A hand-off of audio between goroutines | `buffer` | Any of the others |
 
 The stages of a row run in the order listed: `echo`, then `preprocess`,
 then `agc`. Each of the first three rows also needs `resample` if two
 parts of the path use different sample rates, for example a 48 kHz
-device and an 8 kHz codec.
+device and an 8 kHz codec. The first row needs it too when the audio
+that reaches `echo` is not at 8 or 16 kHz, even if the device and the
+codec use the same rate, because `echo` works well at those two rates
+only. `agc` after `preprocess` also needs `SetVAD(true)`.
 
 ### When each stage is needed
 
@@ -212,8 +224,8 @@ happens without it, in pipeline order.
   already clean and you don't need a VAD. Without it, the output of
   `echo` keeps its residual echo. `agc` still works alone, because you
   can pass `speech` true for every chunk; then any noise above
-  `GateLevel`, the [gate level](glossary.md#gate-level) below which a
-  chunk cannot raise the gain, is raised like speech.
+  `GateLevel`, the [gate level](glossary.md#gate-level), is raised like
+  speech.
 - `agc` brings the level of speech towards a target, raising quiet
   talkers and lowering loud ones, and its [limiter](glossary.md#limiter)
   keeps the output from [clipping](glossary.md#clipping). Leave it out
@@ -222,11 +234,13 @@ happens without it, in pipeline order.
   listener's device) sets the level. Without it, no stage of this
   library sets the level: the output of `preprocess` is as loud as its
   input, less what it suppresses.
-- Only `agc` uses the VAD decision, so without `agc` no other stage of
-  this library needs it and `preprocess.Preprocessor.SetVAD(true)` is
-  optional. With the VAD off, `Run` reports every frame as speech, so an
-  `agc` after it raises the gain on noise too.
+- Only `agc` uses the VAD decision inside this library, so
+  `preprocess.Preprocessor.SetVAD(true)` is optional unless `agc` follows
+  or you read the decision yourself. With the VAD off, `Run` reports
+  every frame as speech, so an `agc` after it raises the gain on noise
+  above `GateLevel` too.
 - To use `preprocess` only for its VAD, call
+  `preprocess.Preprocessor.SetVAD(true)` and
   `preprocess.Preprocessor.SetDenoise(false)`. The output is then close
   to the input delayed by one frame, not the same samples. This also
   turns off the residual-echo suppression.
@@ -248,8 +262,9 @@ flowchart LR
    the loudspeaker played.
 2. `echo` removes that echo. It needs the
    [far-end](glossary.md#far-end) reference: a copy of the samples the
-   loudspeaker played, at the same rate and aligned with the microphone
-   (the dotted line in the diagram).
+   loudspeaker played, at the same rate as the microphone signal and
+   paired with it frame for frame (the dotted line in the diagram). If
+   the microphone is resampled, resample the reference the same way.
 3. `preprocess` suppresses noise and the
    [residual echo](glossary.md#residual-echo) that `echo` left, and
    decides per frame whether it is speech (the VAD).
@@ -288,15 +303,17 @@ flowchart LR
 `preprocess` works at the common device rates too, so the send path needs
 `resample` only where the encoder's rate differs from the microphone's.
 The `preprocess` package doc's Use section shows this send path in code.
-A recorder or a monitor uses `preprocess`, and `agc` if it needs a steady
-level, on its one stream; call `SetVAD(true)` when it uses `agc`.
+A recorder or a monitor can use `preprocess`, `agc` or both on its one
+stream; call `SetVAD(true)` when it uses `agc` or reads the VAD itself.
 
 ## The lifecycle of a processor
 
 A [processor](glossary.md#processor) keeps state from one frame to the
 next: `echo` learns the room's echo and `resample` keeps recent input
-samples. So make one processor per audio stream, keep it for the whole
-call, and reuse it for a new stream only through `Reset`. The four
+samples. So make a call's processors once and keep them for the whole
+call, never share one between calls, give each stream that is resampled
+its own `resample.Resampler`, and reuse a processor for a new stream only
+through `Reset`. The four
 processors (`resample.Resampler`, `echo.Canceller`,
 `preprocess.Preprocessor`, `agc.AGC`) have the same life. The two buffers
 of `buffer` (`Ring`, `SPSC`) store samples and are not processors, but they
@@ -316,7 +333,7 @@ stateDiagram-v2
 
 `Ready` is a processor that `New` made and that you can use; `Rejected` is
 a `New` that returned an error and no processor. The note on `Ready` is
-the processor in use; steps 2 to 4 explain its three kinds of call. "No
+the processor in use; steps 2 to 4 explain its three kinds of method call. "No
 reference left" means that no variable in your program holds the
 processor, so the garbage collector can free it (step 5).
 
@@ -390,6 +407,13 @@ gc, err := agc.New(agc.DefaultConfig(rate)) // the defaults for the rate
 if err != nil {
 	return err
 }
+
+// Buffers, made once. The caller fills mic and far for each frame.
+mic := make([]int16, frame)                 // one microphone frame
+far := make([]int16, frame)                 // the loudspeaker frame played meanwhile
+clean := make([]int16, frame)               // Cancel writes it; RunEcho cleans it in place
+residual := make([]int32, ec.ResidualLen()) // the residual-echo spectrum
+out := make([]int16, frame)                 // the frame to encode and send
 ```
 
 For each 20 ms frame, the full send path calls four methods in a fixed
@@ -410,7 +434,8 @@ sequenceDiagram
 
 1. `Cancel(mic, far, clean)` removes the echo of `far` from `mic` and
    writes `clean`. `far` is the loudspeaker frame played while `mic` was
-   captured.
+   captured; an echo that arrives later than that frame is covered by the
+   filter length.
 2. `Residual(residual)` reads the spectrum of the echo that `Cancel` left
    in this frame. Read it before the next `Cancel`, which replaces it.
 3. `RunEcho(clean, residual)` suppresses noise and that echo in `clean`,
@@ -418,6 +443,25 @@ sequenceDiagram
    `Run(clean)` instead.
 4. `Process(clean, out, speech)` applies the AGC gain. It raises the gain
    only when `speech` is true.
+
+In code, with the processors and buffers above, one frame is (from the
+`step` method of `sendChain` in `Example_sendChain`'s file):
+
+```go
+if err := ec.Cancel(mic, far, clean); err != nil {
+	return err
+}
+if err := ec.Residual(residual); err != nil {
+	return err
+}
+speech, err := pre.RunEcho(clean, residual)
+if err != nil {
+	return err
+}
+if err := gc.Process(clean, out, speech); err != nil {
+	return err
+}
+```
 
 Rules for this path:
 
@@ -456,13 +500,14 @@ Rules for this path:
   `RunEcho` reports every frame as speech.
 - **Gate above the noise.** The VAD reports speech on stationary noise,
   so set `agc.Config.GateLevel`, the [gate level](glossary.md#gate-level)
-  below which a frame cannot raise the gain, above the noise of the
+  under which the AGC does not raise the gain, above the noise of the
   line; see the `agc` package doc. To find that level, record the
   preprocessor's output during a stretch where nobody talks and compute
   its [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs),
   `20·log10(rms/32768)`, a negative number; set the gate a few dB above
   it, for example -55 for noise at -60. The `dBFS` helper in
-  [example_test.go](../example_test.go) computes it for a `[]int16`.
+  [example_test.go](../example_test.go) computes it, rounded to whole dB,
+  for a non-silent `[]int16`.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.
@@ -504,16 +549,18 @@ root package runs this path.
 ## Handing audio between goroutines
 
 Audio often arrives on one goroutine (a network reader, a device
-callback) and is processed on another. Every processor is single-owner,
-so only a `buffer.SPSC` crosses between goroutines. It has exactly one
-producer goroutine, which writes, and one consumer goroutine, which
-reads.
+callback) and is processed on another. Every processor is
+[single-owner](glossary.md#single-owner), so only a `buffer.SPSC` crosses
+between goroutines. It has exactly one
+[producer](glossary.md#producer-and-consumer) goroutine, which writes,
+and one consumer goroutine, which reads.
 
 An SPSC is a [ring buffer](glossary.md#ring-buffer): fixed storage
 of [slots](glossary.md#slot-and-index), one per sample, used as a circle,
 so that after the last slot it continues at the first. An index is the
-position of a slot: the write index is where the next sample is written,
-and the read index is where the next one is read.
+name of a slot (the slot number is the index modulo the capacity): the
+write index is where the next sample is written, and the read index is
+where the next one is read.
 
 ```mermaid
 flowchart LR
@@ -524,6 +571,9 @@ flowchart LR
   prod -- copies into free slots --> buf[(storage)]
   buf -- copies out of readable slots --> cons
 ```
+
+In the diagram, solid arrows are stores and copies, and dotted arrows
+are loads.
 
 1. Each side owns one index and is the only goroutine that stores it:
    the producer the write index, the consumer the read index.

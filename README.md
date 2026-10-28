@@ -30,9 +30,11 @@ hear its loudspeaker:
   send path cleans the microphone signal one frame at a time: `echo`
   removes the echo, `preprocess` suppresses noise and the echo that is
   left and decides whether the frame is speech (voice activity
-  detection, VAD), and `agc` sets the level, raising it only on speech.
+  detection, VAD), and `agc` sets the level, raising it only on frames
+  that the VAD calls speech and that are above its gate level.
 - **Headset, or a handset at the ear.** There is no echo, so the send
-  path is `preprocess` then `agc`.
+  path can be `preprocess` then `agc`, with `SetVAD(true)` on the
+  preprocessor so that `agc` receives the speech decision.
 
 `preprocess` and `agc` are optional. Leave out `agc` when the level is
 already right, for example a source of known, fixed gain; `agc` still

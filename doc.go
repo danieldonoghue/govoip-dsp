@@ -47,8 +47,9 @@
 // hear its loudspeaker. On a speakerphone or in a conference room it can: the
 // microphone picks up what the loudspeaker plays, so the far end would hear
 // itself, and package echo removes it. With a headset, or a handset at the ear,
-// there is no echo, and the send path is preprocess.Preprocessor.Run followed
-// by agc.AGC.Process.
+// there is no echo, and the send path can be preprocess.Preprocessor.Run
+// followed by agc.AGC.Process, with SetVAD(true) so that agc receives the
+// speech decision.
 //
 // preprocess and agc are optional. Leave out agc when the level is already
 // right, for example a source of known, fixed gain. agc still works without
@@ -88,11 +89,11 @@
 //
 // # Rules shared by every package
 //
-//   - Make each processor and buffer once, with New and a Config, before the
-//     call starts. New allocates and returns an error wrapping the package's
-//     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
-//     filter beyond its size limits, which its package doc lists); test it
-//     with errors.Is.
+//   - Make each processor and buffer once, with New and a Config (NewSPSC and
+//     an SPSCConfig for buffer.SPSC), before the call starts. New allocates
+//     and returns an error wrapping the package's ErrConfig for an invalid
+//     Config (resample also ErrAllocFailed, for a filter beyond its size
+//     limits, which its package doc lists); test it with errors.Is.
 //   - Per-frame and per-chunk methods (the audio path) do not allocate,
 //     block or panic. They return only unwrapped sentinel errors, such as
 //     ErrBufferSize for a slice of the wrong length; with buffers sized
