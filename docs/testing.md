@@ -1492,17 +1492,35 @@ covers the package docs and examples of `resample`, `buffer`, `echo`,
 | D2 examples | Met | The same script matched an example to every exported function, type and method, and found every exported constant and variable used in an example |
 | D3 checked output | Met | Every example has an ordered, non-empty `// Output:`; `go test -run Example ./...` passes |
 | D4 end-to-end examples | Met | `Example_sendChain`, `Example_receiveChain` and `Example_handoff` in the root package, plus `Example_errors`; with the far end replaced by silence, the send chain prints 8 dB of echo removed instead of 52 dB (caught) |
-| D5 package docs | Met | Each package doc has sections for use (lifecycle), rates and frames, chunking, buffers, aliasing and retention, `Reset`, the zero value, concurrency and allocation, errors, parity and limitations |
+| D5 package docs | Met | Item by item in the table below |
 | D6 text-only go doc | Met | `go doc -all` of the six packages read as text; link definitions print at the end, as go doc prints them |
 | D7 links to GitHub | Met | A script resolved every `github.com/danieldonoghue/govoip-dsp/blob/master/` URL to a file and heading of the repository |
 | D8 upstream links | Met | Fetch results below |
 | D9 glossary | Met | Every term of the list in D9 and every term the newcomer review found undefined is in `docs/glossary.md` |
 | D10 Mermaid | Open | The five diagrams of `docs/guide.md` parse with Mermaid 11.4.1; the visual render in a Markdown preview is still to be done |
 | D11 usage guide | Met | One linking paragraph added; `TestUsageCodeIsTested` passes |
-| D12 accuracy | Met | Two independent reviews of the diff against the code, and a further review round; every finding fixed or answered |
+| D12 accuracy | Met | Two independent reviews of the diff against the code, then two further review rounds; every finding fixed or answered at the final head |
 | D13 newcomer review | Met | Points and resolution below |
 | D14 writing rules | Met | Width, code-span and link-text scripts; `make check` |
-| D15 README | Met, links pending | The pkg.go.dev links return 404 until the module is indexed |
+| D15 README | Open | Every part is checked except the five pkg.go.dev links, which return 404: the pkg.go.dev pages are generated after the merge |
+
+D5, the sections of each package doc that cover each item ("intro" is
+the opening paragraphs, "Parity" the paragraph that starts with it):
+
+| Item | `agc` | `buffer` | `echo` | `preprocess` | `resample` |
+|---|---|---|---|---|---|
+| Purpose | intro | intro | intro | intro | intro |
+| Lifecycle | Use | Use | Use | Use | Use |
+| Rates and frame sizes | Rates, chunking and latency | Samples, rates and chunking | Configuration | Rates and frame sizes | Rates, ratios and frames |
+| Chunking | Rates, chunking and latency | Samples, rates and chunking | Frames, buffers and aliasing | Buffers, aliasing and state | Chunking and output exhaustion |
+| Buffers, aliasing, retention | Buffers, aliasing and retention | Views | Frames, buffers and aliasing | Buffers, aliasing and state | Buffers, aliasing and retention |
+| Reset | Reset | Reset | Reset | Buffers, aliasing and state | Settings and Reset |
+| Zero value | Zero value | Zero value | Zero value | Zero value | Zero value |
+| Concurrency | Concurrency and allocation | Concurrency | Concurrency and allocation | Concurrency and allocation | Concurrency and allocation |
+| Allocation | Concurrency and allocation | Allocation and latency | Concurrency and allocation | Concurrency and allocation | Concurrency and allocation |
+| Errors | Errors | Errors | Errors | Errors | Errors |
+| Compatibility | Parity | Parity | Parity | Parity | Parity |
+| Limitations | Limitations, Noise protection | Limitations | Limitations | Limitations | Limitations |
 
 The diagrams for D10 are, in `docs/guide.md`: the pipeline (flowchart),
 the lifecycle of a processor (state diagram), the send path frame by
@@ -1527,9 +1545,9 @@ Fetched on 2026-10-28.
 A reviewer who had not written the docs built the send chain (`echo`,
 `preprocess` with the residual, `agc` with the VAD decision, 20 ms at
 8 kHz, frames handed over through `buffer.SPSC`) from `go doc` and the
-pages in `docs/` alone. It ran, removing 30.7 dB of echo in the
-canceller and 46.4 dB through the chain. The points raised and their
-resolution:
+pages in `docs/` alone. Its program ran; the figures it printed come
+from its own program, which is not in the repository, and were not
+re-run. The points raised and their resolution:
 
 | Point | Resolution |
 |---|---|
