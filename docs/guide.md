@@ -112,11 +112,15 @@ A call and its streams:
 
 Processors and state:
 
-- **Processor.** A [processor](glossary.md#processor) is a value made
-  by `New` that works on the audio frame by frame or chunk by chunk:
-  `resample.Resampler`, `echo.Canceller`, `preprocess.Preprocessor` and
-  `agc.AGC`. A stage is one step of the pipeline, done by a processor.
-  The `buffer` types only store samples, so they are not processors.
+- **Processor.** A [processor](glossary.md#processor) does one job on
+  the audio: you pass it samples, one frame or chunk per call, and it
+  gives the changed samples back. There are four kinds: a resampler
+  (`resample.Resampler`), an echo canceller (`echo.Canceller`), a noise
+  suppressor (`preprocess.Preprocessor`) and a gain control (`agc.AGC`).
+  You create each one with its package's `New` function, for example
+  `echo.New`. A stage is one step on the way from the microphone to the
+  encoder, or from the decoder to the loudspeaker, and a processor does
+  it. The `buffer` types only store samples, so they are not processors.
 - **State.** A processor remembers earlier audio: `echo` learns how the
   room echoes the loudspeaker, `preprocess` keeps an estimate of the
   background noise, `resample` keeps the recent input samples that its

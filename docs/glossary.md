@@ -162,11 +162,11 @@ path. The developer guide draws it.
 
 ### Processor
 
-A value made by `New` that works on the audio frame by frame or chunk by
-chunk: `resample.Resampler`, `echo.Canceller`,
-`preprocess.Preprocessor` and `agc.AGC`. It keeps state between calls
-and is [single owner](#single-owner). The `buffer` types store samples
-and are not processors.
+A value that does one job on the audio, one frame or chunk per call:
+`resample.Resampler`, `echo.Canceller`, `preprocess.Preprocessor` or
+`agc.AGC`. Each is created by its package's `New` function, keeps state
+between calls and is [single owner](#single-owner). The `buffer` types
+store samples and are not processors.
 
 ### RTP
 
