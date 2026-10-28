@@ -105,9 +105,10 @@
 //     on a new Resampler covers every call of up to n frames while
 //     SkipZeros and the setters are not used; after SkipZeros or any
 //     setter, call OutLen before each call (it does not allocate).
-//   - Every processor, and Ring, is for one call (a Resampler: one stream)
-//     and one goroutine at a time; it is not safe for concurrent use. Only
-//     buffer.SPSC is shared, by exactly two goroutines.
+//   - Every processor, and Ring, serves one stream of one VoIP call (an
+//     echo.Canceller: the call's two streams) and one goroutine at a time; it
+//     is not safe for concurrent use. Only buffer.SPSC is shared, by exactly
+//     two goroutines.
 //   - Samples are int16 on the 16-bit scale, -32768 to 32767.
 //   - No method retains a caller's slice. Input and output must not
 //     overlap, except where a method says so (preprocess rewrites its

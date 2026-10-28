@@ -64,9 +64,9 @@ Sound as numbers:
   [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs), decibels relative
   to the full scale of the digital format: 0 dBFS is full scale,
   amplitude 32768, one step above the largest `int16` sample, and
-  quieter signals are negative. Levels such as the `agc` target are RMS,
-  so on them a full-scale sine wave is about -3 dBFS. Other scales have
-  other zero points.
+  quieter signals are negative. The `agc` target and gate levels are RMS
+  (its limit level is a peak), so on them a full-scale sine wave is about
+  -3 dBFS. Other scales have other zero points.
   A [gain](glossary.md#gain) is the factor a stage multiplies a signal
   by. It is given in [dB](glossary.md#db), a logarithmic scale
   (`20·log10` of the factor): +6 dB roughly doubles the amplitude,
@@ -188,7 +188,8 @@ detection (the [VAD](glossary.md#vad)) and, after `echo`, suppression of
 the echo that is left. `agc` gives speech a steady
 [level](glossary.md#level). Its `Process(in, out, speech)` takes a
 `speech` flag, normally the VAD decision, and raises the gain only when
-the flag is true and the frame is above `GateLevel`, the
+the flag is true and the level of each 10 ms
+[AGC frame](glossary.md#frame) is at or above `GateLevel`, the
 [gate level](glossary.md#gate-level).
 [When each stage is needed](#when-each-stage-is-needed) says more.
 
@@ -315,10 +316,10 @@ stream; call `SetVAD(true)` when it uses `agc` or reads the VAD itself.
 
 A [processor](glossary.md#processor) keeps state from one frame to the
 next: `echo` learns the room's echo and `resample` keeps recent input
-samples. So make a call's processors once and keep them for the whole
-call, never share one between calls, give each stream that is resampled
-its own `resample.Resampler`, and reuse a processor for a new call (a
-`resample.Resampler`: a new stream) only through `Reset`. The four
+samples. So make each stream's processors once and keep them for the
+whole call, never share one between streams or calls (an
+`echo.Canceller` takes the two streams of one call together), and reuse
+a processor for a new stream only through `Reset`. The four
 processors (`resample.Resampler`, `echo.Canceller`,
 `preprocess.Preprocessor`, `agc.AGC`) have the same life. The two
 buffers of `buffer` (`Ring`, `SPSC`) store samples and are not
@@ -388,7 +389,8 @@ in place, so a caller that needs the unprocessed frame copies it first.
 
 The Go snippets in this guide are function bodies that return `error`.
 They use `fmt` and the `agc`, `echo`, `preprocess` and `resample`
-packages of `github.com/danieldonoghue/govoip-dsp`.
+packages of `github.com/danieldonoghue/govoip-dsp`; `decoded` and
+`play` stand for the caller's decoded frame and device.
 
 First make the processors, once, before the first frame. They share one
 sample rate and one frame size. This code is adapted from `newSendChain`
@@ -517,17 +519,20 @@ Rules for this path:
   with the VAD off, `RunEcho` reports every frame as speech.
 - **Gate above the noise.** The VAD reports speech on stationary noise,
   so set `agc.Config.GateLevel`, the [gate level](glossary.md#gate-level)
-  under which the AGC does not raise the gain, above the noise of the
-  line; see the `agc` package doc. The default is -50 dBFS and the range
-  -80 dBFS up to below the target level. The default is a start for a
-  quiet line; raise the gate when the line noise is above it. To find
-  the noise level, record the
-  preprocessor's output during a stretch where nobody talks and compute
-  its [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs),
-  `20·log10(rms/32768)`, a negative number; set the gate a few dB above
-  it, for example -55 for noise at -60. The `dBFS` helper in
-  [example_test.go](../example_test.go) computes it, rounded to whole dB,
-  for a non-silent `[]int16`.
+  under which the AGC does not raise the gain, clearly above the noise
+  of the line; see the `agc` package doc. The default is -50 dBFS and
+  the range -80 dBFS up to below the target level. The gate is tested on
+  each 10 ms [AGC frame](glossary.md#frame), so noise whose average is
+  below the gate can still be raised: with the default, noise averaging
+  2 to 6 dB below it was raised by 16.5 to 23 dB
+  ([whole-chain measurements](testing.md#whole-chain-measurements-integration-wp7)).
+  To find the noise level, record the preprocessor's output during a
+  stretch where nobody talks and compute its [RMS](glossary.md#rms) in
+  [dBFS](glossary.md#dbfs), `20·log10(rms/32768)`, a negative number.
+  Set the gate well above it, then check on that recording that the AGC
+  gain stays at 0 dB. The `dBFS` helper in
+  [example_test.go](../example_test.go) computes the level, rounded to
+  whole dB, for a non-silent `[]int16`.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.
