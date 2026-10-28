@@ -108,13 +108,14 @@ packets to the device.
 ### Which packages you need
 
 Find your application in the left column; the right column lists the
-packages it needs.
+packages it needs. `agc` is optional in every row;
+[Optional stages](#optional-stages) says when to leave it out.
 
 | Application | Packages |
 |---|---|
-| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, `preprocess`, `agc` |
-| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess`, `agc` |
-| One audio stream and no call, such as a recorder or a monitor | `preprocess`, `agc` |
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo`, `preprocess`, and `agc` if wanted |
+| A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | `preprocess`, and `agc` if wanted |
+| One audio stream and no call, such as a recorder or a monitor | `preprocess`, and `agc` if wanted |
 | Rate conversion only | `resample` |
 | A hand-off of audio between goroutines | `buffer`, alone or with the others |
 
@@ -127,6 +128,27 @@ goes into the microphone and back to the far end, so the far end hears
 itself a moment later. `echo` removes it. With a headset there is no
 acoustic path from the loudspeaker to the microphone, so a call needs
 no `echo` stage.
+
+### Optional stages
+
+`echo` is needed whenever the microphone hears the loudspeaker. The other
+two send-path stages do a job you may not need.
+
+- `agc` brings the level of speech towards a target, raising quiet talkers
+  and lowering loud ones, and its limiter keeps the output from clipping.
+  Leave it out when the level is already right: the source has a known,
+  fixed gain, or something later (the encoder, a server or the listener's
+  device) sets the level. Without it, no stage sets the level: the
+  output of `preprocess` is as loud as its input, less the noise removed.
+- `preprocess` suppresses noise, finds speech (the VAD) and, after
+  `echo`, suppresses the residual echo. Leave it out when the audio is
+  already clean and you need no VAD. Without it, the output of `echo`
+  keeps its residual echo. `agc` still works alone, because it takes any
+  chunk: pass `speech` true for every chunk, and then any noise above
+  `GateLevel` is raised like speech.
+- Without `agc`, the VAD decision is not needed by anything else, and
+  `SetVAD(true)` is optional; `preprocess.Preprocessor.SetDenoise(false)`
+  leaves only the VAD.
 
 ### The full pipeline of a call with a loudspeaker
 
@@ -233,11 +255,11 @@ three kinds of call.
    collector frees the memory.
 
 A [zero value](glossary.md#zero-value), such as `var c echo.Canceller`,
-is not a processor: it was
-not made by `New`. No method panics on it, but the methods with an error
-result return `ErrConfig`, and the others return zero values and change
-nothing, except that the `preprocess` setters store their setting and
-the getters of those settings return what was stored.
+is not a processor: it was not made by `New`. No method panics on it,
+but the methods with an error result return `ErrConfig`, and the others
+return zero values and change nothing, except that the `preprocess`
+setters store their setting and the getters of those settings return
+what was stored.
 
 ## The send path, frame by frame
 

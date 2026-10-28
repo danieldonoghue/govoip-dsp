@@ -32,6 +32,11 @@ whether its microphone can hear its loudspeaker.
 - **Headset, or a handset at the ear.** There is no echo, so the send
   path is `preprocess` then `agc`.
 
+`preprocess` and `agc` are optional. Leave out `agc` when the level is
+already right, for example a source of known, fixed gain; `agc` still
+works without `preprocess`, with its `speech` argument true. Leave out
+`preprocess` when the audio is already clean and needs no VAD.
+
 The receive path converts decoded audio to the device rate with
 `resample`. `buffer.SPSC` carries audio between goroutines without
 blocking either side. The developer guide lists the
