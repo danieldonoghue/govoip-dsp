@@ -74,18 +74,19 @@
 //   - Make each processor once, with New and a Config, before the call
 //     starts. New allocates and returns an error wrapping the package's
 //     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
-//     filter above its own size cap, including more than 256 channels, or
-//     above the reference's limits); test it with errors.Is.
+//     filter beyond its size limits, which its package doc lists); test it
+//     with errors.Is.
 //   - Per-frame and per-chunk methods (the audio path) do not allocate,
 //     block or panic. They return only unwrapped sentinel errors, such as
 //     ErrBufferSize for a slice of the wrong length; with buffers sized
-//     once from the processor (FrameSize, ResidualLen, OutLen) these do not
-//     occur, so treat them as programming errors (Example_errors). The
-//     exception is resample's ErrAllocFailed while a rejected rate or
-//     quality change is in force (see the resample package doc). A
-//     resample output sized with OutLen(n) on a new Resampler fits every
-//     call of up to n frames until a setter changes the filter; after a
-//     setter, read OutLen again.
+//     once from the processor (FrameSize, ResidualLen) these do not occur,
+//     so treat them as programming errors (Example_errors). The exception
+//     is resample's ErrAllocFailed while a rejected rate or quality change
+//     is in force (see the resample package doc). A resample output too
+//     short gives no error but leaves input unread. A size from OutLen(n)
+//     on a new Resampler covers every call of up to n frames while
+//     SkipZeros and the setters are not used; after SkipZeros or any
+//     setter, call OutLen before each call (it does not allocate).
 //   - Every processor is for one stream and one goroutine at a time; it is
 //     not safe for concurrent use. Only buffer.SPSC is shared, by exactly
 //     two goroutines.
@@ -98,8 +99,8 @@
 //   - A zero value (a processor not made by New) never panics, but is not
 //     usable: its methods with an error result return ErrConfig, and the
 //     others return zero values and change nothing, except that the
-//     preprocess setters store their setting and the getters return what
-//     was stored.
+//     preprocess setters store their setting and the getters of those
+//     settings return what was stored.
 //
 // # Limitations
 //

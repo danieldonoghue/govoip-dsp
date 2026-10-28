@@ -161,10 +161,11 @@ func Example_sendChain() {
 	// near end in, sent out, 5 s to 6 s: -32 -27 dBFS
 }
 
-// The receive chain: decoded 8 kHz frames up to a 48 kHz device. OutLen,
-// read on a new Resampler, sizes the output once: until a setter changes
-// the filter, every call of one frame then consumes the whole frame. After
-// a setter, read OutLen again (it does not allocate).
+// The receive chain: decoded 8 kHz frames up to a 48 kHz device. A size
+// from OutLen(n) on a new Resampler covers every call of up to n frames
+// while SkipZeros and the setters are not used, so here it is made once.
+// After SkipZeros or any setter, call OutLen before each call (it does not
+// allocate).
 func Example_receiveChain() {
 	const netRate, devRate, frameMs = 8000, 48000, 20
 	r, err := resample.New(resample.Config{
@@ -183,7 +184,7 @@ func Example_receiveChain() {
 			log.Fatal(err)
 		}
 		if read != len(decoded) {
-			log.Fatal("input left over") // cannot happen: no setter was called
+			log.Fatal("input left over") // cannot happen: no SkipZeros or setter
 		}
 		written += n // hand device[:n] to the sound card
 	}
@@ -201,8 +202,8 @@ func Example_receiveChain() {
 // the processing goroutine the SPSC holds a backlog of stale audio; the
 // consumer drops it and keeps only the newest frame. A stall longer than
 // the SPSC holds loses the newest frames instead, because the producer
-// skips each frame that does not fit whole. Where each received frame pairs with a far-end frame,
-// drop as many far-end frames too.
+// skips each frame that does not fit whole. Where each received frame
+// pairs with a far-end frame, drop as many far-end frames too.
 func Example_handoff() {
 	const frame = 160 // 20 ms at 8 kHz
 	// 2000 samples, 250 ms: twelve whole frames and half a frame. The
