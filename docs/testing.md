@@ -1499,10 +1499,10 @@ covers the package docs and examples of `resample`, `buffer`, `echo`,
 | D9 glossary | Met | Every term of the list in D9 and every term the newcomer review found undefined is in `docs/glossary.md` |
 | D10 Mermaid | Met | The six diagrams of `docs/guide.md` parse with Mermaid 11.4.1, were rendered in the VS Code Markdown preview and in headless Chrome with Mermaid 11.4.1, and no labels overlap |
 | D11 usage guide | Met | One linking paragraph added; `TestUsageCodeIsTested` passes |
-| D12 accuracy | Met | Two independent reviews of the diff against the code, then five further review rounds; every finding fixed or answered at the final head |
+| D12 accuracy | Met | Two independent reviews of the diff against the code, then further claim-by-claim review rounds until one found nothing wrong or misleading; every finding fixed or answered at the final head |
 | D13 newcomer review | Met | Points and resolution below |
 | D14 writing rules | Met | Width, code-span and link-text scripts; `make check` |
-| D15 README | Open | Every part is checked except the five pkg.go.dev links, which return 404: the pkg.go.dev pages are generated after the merge |
+| D15 README | Met | Every part is checked; the five pkg.go.dev links return 200 and show the documentation of the merged commit |
 
 D5, the sections of each package doc that cover each item ("intro" is
 the opening paragraphs, "Parity" the paragraph that starts with it):
@@ -1539,7 +1539,7 @@ Fetched on 2026-10-28.
 | Speex API reference on speex.org | Exists for Speex 1.2-beta2 only; not cited. No SpeexDSP 1.2.1 API reference exists (`speexdsp-api-reference`: 404) |
 | gitlab.xiph.org blob pages at commit `1b28a0f6`: `speex_echo.h`, `speex_preprocess.h`, `speex_resampler.h`, `mdf.c`, `preprocess.c` (lines 563 to 612), `resample.c`, `filterbank.c`, `buffer.c` | 200, titled with the file; the content, which the page loads in the browser, read through the `/-/raw/` URL of the same commit and path (200) |
 | gitlab.xiph.org tree at commit `1b28a0f6` | 200 |
-| pkg.go.dev pages of the five packages | 404: the module is not indexed yet |
+| pkg.go.dev pages of the five packages | 200, indexed at the merged commit |
 
 ### Newcomer review
 

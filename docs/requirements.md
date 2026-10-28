@@ -517,6 +517,7 @@ Never report a platform as tested because it cross-compiled.
 | `Makefile`, `go.mod` | Build entry points: check, test, race, bench, fixtures |
 | `resample/`, `buffer/`, `preprocess/`, `echo/`, `agc/` | Public packages (`jitter/` when started) |
 | `integration/` | Tests of the whole chain; no library code |
+| `doc.go`, `example_test.go` (root) | Package `govoipdsp`: overview and end-to-end examples; no library code |
 | `internal/fixed/` | Fixed-point operations (shared, append-only) |
 | `internal/fft/` | Fixed-point FFT |
 | `internal/testutil/` | Signal generators, metrics, fixture loader, allocation helpers |
