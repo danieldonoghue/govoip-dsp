@@ -99,29 +99,38 @@ func ExampleSPSC() {
 // its own goroutine, as in the SPSC example.
 func Example() {
 	const frame = 160 // 20 ms at 8 kHz
-	// Room for ten frames, 200 ms: a stall of the consumer up to that long
-	// loses nothing.
-	s, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: 10 * frame})
+	// Room for two and a half frames, 50 ms. Size a real SPSC for the
+	// longest stall of the consumer that must lose nothing.
+	s, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: 400})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	packet := make([]int16, frame)
-	for i := range packet {
-		packet[i] = int16(i)
-	}
 	// Producer: store a whole frame or none, so frame boundaries stay put.
-	if s.Free() >= len(packet) {
-		s.Write(packet)
+	// The third frame does not fit whole and is skipped.
+	for k := range 3 {
+		for i := range packet {
+			packet[i] = int16(100*k + i)
+		}
+		if s.Free() >= len(packet) {
+			s.Write(packet)
+		} else {
+			fmt.Println("no room for frame", k)
+		}
 	}
 	// Consumer: process only whole frames.
 	in := make([]int16, frame)
 	for s.Len() >= frame {
 		s.Read(in)
-		fmt.Println("frame of", len(in), "samples, last", in[frame-1])
+		fmt.Println("frame of", len(in), "samples, first", in[0], "last", in[frame-1])
 	}
+	fmt.Println("left:", s.Len())
 	// Output:
-	// frame of 160 samples, last 159
+	// no room for frame 2
+	// frame of 160 samples, first 0 last 159
+	// frame of 160 samples, first 100 last 259
+	// left: 0
 }
 
 // New checks the capacity and the overflow policy, and returns an error

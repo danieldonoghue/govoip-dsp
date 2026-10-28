@@ -6,7 +6,7 @@ import (
 )
 
 // MaxCapacity is the largest capacity in samples. It keeps the SPSC index
-// arithmetic, which reaches three times the capacity, inside a 32-bit int.
+// arithmetic, which reaches nearly 4·Capacity, inside a 32-bit int.
 const MaxCapacity = 512 * 1024 * 1024
 
 // ErrConfig reports an invalid Config or SPSCConfig. New and NewSPSC wrap
