@@ -307,12 +307,15 @@ stateDiagram-v2
   [*] --> Ready: New(cfg) returns no error
   [*] --> Rejected: New(cfg) returns an error
   Rejected --> Ready: New with a corrected Config
-  Ready --> Ready: per-frame calls, setters, Reset
   Ready --> [*]: no reference left
+  note right of Ready
+    In use: per-frame calls,
+    setters and Reset
+  end note
 ```
 
 `Ready` is a processor that `New` made and that you can use; `Rejected` is
-a `New` that returned an error and no processor. The loop on `Ready` is
+a `New` that returned an error and no processor. The note on `Ready` is
 the processor in use; steps 2 to 4 explain its three kinds of call. "No
 reference left" means that no variable in your program holds the
 processor, so the garbage collector can free it (step 5).
@@ -587,9 +590,12 @@ The diagram shows the view from `ReadSlices` of a `buffer.Ring`:
 stateDiagram-v2
   [*] --> NoView
   NoView --> Live: ReadSlices
-  Live --> Live: Write under Reject, or Commit
   Live --> NoView: Read, Consume or Reset
   Live --> NoView: Write under Overwrite
+  note right of Live
+    Stays live through
+    Write under Reject, or Commit
+  end note
 ```
 
 These are its steps:
