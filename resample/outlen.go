@@ -19,6 +19,9 @@ import "math"
 // OutLen is an extension; SpeexDSP has no equivalent. It does not allocate
 // or change state.
 func (r *Resampler) OutLen(inFrames int) int {
+	if !r.initialised {
+		return 0
+	}
 	if inFrames < 0 {
 		inFrames = 0
 	}

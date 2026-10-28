@@ -193,7 +193,7 @@ func (r *Resampler) SetRate(inRate, outRate int) error {
 // allocate. Unlike C, an ErrOverflow leaves the resampler unchanged. For
 // ErrAllocFailed, see ErrAllocFailed.
 func (r *Resampler) SetRateFrac(num, den, inRate, outRate int) error {
-	if num < 1 || den < 1 || !checkU32(num) || !checkU32(den) || !checkU32(inRate) || !checkU32(outRate) {
+	if !r.initialised || num < 1 || den < 1 || !checkU32(num) || !checkU32(den) || !checkU32(inRate) || !checkU32(outRate) {
 		return ErrConfig
 	}
 	n, d, in, out := uint32(num), uint32(den), uint32(inRate), uint32(outRate)
@@ -224,7 +224,7 @@ func (r *Resampler) Ratio() (num, den int) { return int(r.numRate), int(r.denRat
 // SetQuality sets the quality, 0 to 10 (speex_resampler_set_quality). The
 // filter is rebuilt, keeping the history; this may allocate.
 func (r *Resampler) SetQuality(quality int) error {
-	if quality < QualityMin || quality > QualityMax {
+	if !r.initialised || quality < QualityMin || quality > QualityMax {
 		return ErrConfig
 	}
 	if r.quality == quality {
@@ -250,6 +250,9 @@ func (r *Resampler) InputLatency() int { return int(r.filtLen / 2) }
 // OutputLatency returns the latency in output samples, rounded
 // (speex_resampler_get_output_latency).
 func (r *Resampler) OutputLatency() int {
+	if !r.initialised {
+		return 0
+	}
 	return int(int32(((r.filtLen/2)*r.denRate + (r.numRate >> 1)) / r.numRate))
 }
 

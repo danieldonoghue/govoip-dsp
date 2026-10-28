@@ -981,3 +981,8 @@ func TestCapBoundary(t *testing.T) {
 		t.Errorf("need of maxEntries+256: %v, want ErrAllocFailed", err)
 	}
 }
+
+// Every exported method of a zero value is safe (ADR wp7-zero-value-safety).
+func TestZeroValueMethods(t *testing.T) {
+	testutil.CheckZeroValue[Resampler](t, ErrConfig)
+}

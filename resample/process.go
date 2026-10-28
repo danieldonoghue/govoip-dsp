@@ -255,6 +255,9 @@ func from[T int16 | float32](s []T, i int) []T {
 // multiples of Channels(). A result shorter than offered means out was full
 // or, for in, that the rest must be offered again.
 func (r *Resampler) Process(in, out []int16) (inFrames, outFrames int, err error) {
+	if !r.initialised {
+		return 0, 0, ErrConfig
+	}
 	nch := int(r.nbChannels)
 	if len(in)%nch != 0 || len(out)%nch != 0 {
 		return 0, 0, ErrBufferSize
@@ -273,6 +276,9 @@ func (r *Resampler) Process(in, out []int16) (inFrames, outFrames int, err error
 // truncates toward zero; NaN becomes 0. Output values are exact copies of
 // the int16 results.
 func (r *Resampler) ProcessFloat(in, out []float32) (inFrames, outFrames int, err error) {
+	if !r.initialised {
+		return 0, 0, ErrConfig
+	}
 	nch := int(r.nbChannels)
 	if len(in)%nch != 0 || len(out)%nch != 0 {
 		return 0, 0, ErrBufferSize
@@ -291,6 +297,9 @@ func (r *Resampler) ProcessFloat(in, out []float32) (inFrames, outFrames int, er
 // out[k*outStride]; the number of frames offered is the number of such
 // indices in range. Other elements of out are not written.
 func (r *Resampler) ProcessChannel(ch int, in []int16, inStride int, out []int16, outStride int) (inFrames, outFrames int, err error) {
+	if !r.initialised {
+		return 0, 0, ErrConfig
+	}
 	if ch < 0 || ch >= int(r.nbChannels) {
 		return 0, 0, ErrChannel
 	}
@@ -305,6 +314,9 @@ func (r *Resampler) ProcessChannel(ch int, in []int16, inStride int, out []int16
 // ProcessChannelFloat is ProcessChannel for float32 samples, with the
 // conversions of ProcessFloat (speex_resampler_process_float).
 func (r *Resampler) ProcessChannelFloat(ch int, in []float32, inStride int, out []float32, outStride int) (inFrames, outFrames int, err error) {
+	if !r.initialised {
+		return 0, 0, ErrConfig
+	}
 	if ch < 0 || ch >= int(r.nbChannels) {
 		return 0, 0, ErrChannel
 	}
