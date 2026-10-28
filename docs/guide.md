@@ -43,13 +43,14 @@ ideas are enough to use it; the [glossary](glossary.md) has the detail.
 - **Sample.** One number that gives the level of the sound at one
   instant. The packages take `int16` samples, -32768 to 32767
   ([sample](glossary.md#sample)).
-- **Sample rate.** The number of samples in one second, in Hz. Calls use
-  8000 Hz (narrowband) or 16000 Hz (wideband); devices often use
-  48000 Hz. A stage that combines two streams needs both at the same
-  rate, and `resample` converts between rates
-  ([sample rate](glossary.md#sample-rate)).
-- **Frame.** A fixed number of samples that a method processes in one
-  call. A frame of `ms` milliseconds at a rate of `rate` Hz is
+- **Sample rate.** The number of samples in one second, in Hz.
+  Telephone calls commonly use 8000 Hz (narrowband) or 16000 Hz
+  (wideband); devices and some codecs use 48000 Hz. A stage that
+  combines two streams needs both at the same rate, and `resample`
+  converts between rates ([sample rate](glossary.md#sample-rate)).
+- **Frame.** A fixed number of samples that `echo` and `preprocess`
+  process in one call; `resample`, `agc` and `buffer` take any length.
+  A frame of `ms` milliseconds at a rate of `rate` Hz is
   `rate * ms / 1000` samples: 160 samples for 20 ms at 8 kHz
   ([frame](glossary.md#frame)).
 - **Why 10 or 20 ms.** Codecs and [RTP](glossary.md#rtp) packets
@@ -93,6 +94,9 @@ picks up before it is encoded and sent. The receive path brings decoded
 audio to the device.
 
 ### Which packages you need
+
+Find your application in the left column; the right column lists the
+packages it needs.
 
 | Application | Packages |
 |---|---|
@@ -287,10 +291,9 @@ same steps in C; the AGC has no C counterpart.
 The receive path plays the far end's voice on the device. The decoder
 often runs at another rate than the device, for example 8 kHz into a
 48 kHz device, so the receive path resamples decoded frames to the
-device rate. A
-`resample.Resampler` accepts any chunk size and keeps its filter history
-between calls, so it needs no framing. Size its output with `OutLen`
-on the new `Resampler`:
+device rate. A `resample.Resampler` accepts any chunk size and keeps its
+filter history between calls, so it needs no framing. Size its output
+with `OutLen` on the new `Resampler`:
 
 ```go
 r, err := resample.New(resample.Config{Channels: 1, InRate: 8000, OutRate: 48000, Quality: resample.QualityVoIP})
@@ -378,11 +381,11 @@ Rules for frames through an SPSC:
 Slices carry the audio into and out of every method. These rules say
 who may change a slice and for how long, so that no code reads samples
 that another call has already replaced. The caller owns every slice it
-passes. No method keeps a caller's slice
-after it returns: input is read during the call, output is written
-during the call. Input and output must not overlap, except where a
-method says so: `preprocess` rewrites its frame in place, and
-`agc.AGC.Process` accepts the same slice as `in` and `out`.
+passes. No method keeps a caller's slice after it returns: input is read
+during the call, output is written during the call. Input and output
+must not overlap, except where a method says so: `preprocess` rewrites
+its frame in place, and `agc.AGC.Process` accepts the same slice as `in`
+and `out`.
 
 The buffers also return views: slices into their own storage, from
 `ReadSlices` and `WriteSlices`, for reading or writing without a copy.

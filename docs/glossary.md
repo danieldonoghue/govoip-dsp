@@ -121,8 +121,9 @@ Samples that are all zero. "Queue silence" means pass a frame of zeros.
 ### Send path and receive path
 
 The two directions of a call. The send path takes the microphone signal
-through `echo`, `preprocess` and `agc` to the encoder; the receive path
-takes decoded audio through `resample` to the loudspeaker.
+through `echo` (where the microphone hears the loudspeaker),
+`preprocess` and `agc` to the encoder; the receive path takes decoded
+audio through `resample` to the loudspeaker.
 
 ### Pipeline
 
