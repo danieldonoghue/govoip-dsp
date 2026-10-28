@@ -87,13 +87,13 @@ func ExampleDefaultConfig() {
 	// {SampleRate:16000 TargetLevel:-24 LimitLevel:-1 GateLevel:-50 MaxGain:24 MinGain:-12 RiseRate:12 FallRate:40 LevelTime:3s}
 }
 
-// A Config for a line with more noise. Stationary noise at -45 dBFS,
-// marked as speech as the SpeexDSP VAD marks it, is raised with the
-// default gate of -50 dBFS. A gate of -40 dBFS, above the noise, keeps
-// the gain at 0 dB.
+// A Config for a line with more noise. A steady 500 Hz tone at -45 dBFS
+// stands in for stationary noise, marked as speech as the SpeexDSP VAD
+// marks such noise. The default gate of -50 dBFS lets the AGC raise it; a
+// gate of -40 dBFS, above it, keeps the gain at 0 dB.
 func ExampleConfig() {
 	const rate = 8000
-	noise := square(4*rate, 184, rate) // 184 is about -45 dBFS
+	noise := square(4*rate, 184, rate) // about -45 dBFS
 	for _, gate := range []int{-50, -40} {
 		cfg := agc.DefaultConfig(rate)
 		cfg.GateLevel = gate

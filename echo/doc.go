@@ -6,17 +6,18 @@
 // speex_echo_capture, speex_echo_playback, speex_echo_state_reset,
 // speex_echo_get_residual and the speex_echo_ctl requests (FIXED_POINT),
 // as checked against the reference harness at 8, 16, 32 and 48 kHz with 10
-// and 20 ms frames and 64, 128 and 256 ms filters (testdata/speexdsp/echo,
-// docs/acceptance/echo.md). One deviation, which no fixture reaches: where
-// a FLOAT_MUL32 shift count leaves [-31, 31], the two reference compilers
-// disagree, and the port saturates (docs/algorithms.md).
+// and 20 ms frames and 64, 128 and 256 ms filters (the repository's
+// testdata/speexdsp/echo, docs/acceptance/echo.md). One deviation, which
+// no fixture reaches: where a FLOAT_MUL32 shift count leaves [-31, 31],
+// the two reference compilers disagree, and the port saturates
+// (docs/algorithms.md).
 //
 // Terms such as near end, far end, echo delay, echo tail, filter length,
 // residual echo and ERLE are defined in the [glossary]. A frame here is a
 // processing frame: FrameSize samples, passed whole to every frame
 // method. The developer guide shows the [per-frame call order] of the
-// send path, and
-// docs/usage.md has two tested wiring recipes for a call. The SpeexDSP
+// send path, and docs/usage.md has two tested wiring recipes for a call.
+// The SpeexDSP
 // documentation of the same functions is the Speex manual's
 // [echo cancellation section] and its [troubleshooting] advice, and the
 // header [speex_echo.h].
@@ -53,9 +54,11 @@
 // the Speex manual suggests about a third of the room's reverberation
 // time, for example 100 ms in a small room, and warns that a filter that
 // is too long is a common reason no echo is cancelled, because it adapts
-// more slowly. The filter needs time to converge: after New, Reset or a
-// change of the echo path, expect little cancellation for a few seconds
-// (docs/usage.md gives measured times).
+// more slowly. The filter needs time to converge. In the synthetic
+// scenarios of docs/algorithms.md ("Measured behaviour") the echo stage
+// reached 10 dB of ERLE within 0.5 s of New at 8 and 16 kHz, and within
+// 1 s of a sudden path change; in the call recipes of docs/usage.md a
+// step of the echo delay from 100 to 140 ms took 2.5 to 3.5 s.
 //
 // # Configuration
 //
@@ -112,8 +115,7 @@
 //   - Up to three frames are queued; a Playback with three queued frames
 //     is discarded.
 //   - A Playback into an empty queue is queued twice.
-//   - A Capture with no queued frame copies mic to out unprocessed and
-//     empties the queue.
+//   - A Capture with no queued frame copies mic to out unprocessed.
 //
 // The reference prints a warning in each of these cases; this package does
 // not report them.
@@ -130,7 +132,8 @@
 // # Residual echo
 //
 // Residual writes the residual-echo power spectrum (FrameSize()+1 values)
-// of the most recent Cancel or Capture, the input that
+// of the most recent frame that Cancel or Capture cancelled (a Capture
+// with nothing queued cancels nothing), the input that
 // preprocess.Preprocessor.RunEcho takes (docs/contracts.md section 12).
 // Calling it does not change any later output, and two calls in a row give
 // the same values.

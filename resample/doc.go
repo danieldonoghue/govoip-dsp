@@ -141,11 +141,12 @@
 // described above. The process methods return ErrBufferSize for an
 // interleaved length that is not a multiple of Channels(), ErrChannel for
 // a channel index out of range, ErrStride for a stride below 1, and
-// ErrConfig on a zero Resampler; they process nothing and return 0 frames then. With buffers
-// made as in "Use", these do not occur, so treat them as programming
-// errors. While a filter change that the reference's limits rejected is
-// in force, the process methods also return ErrAllocFailed: they output
-// zeros and count the frames as usual, until a later change succeeds.
+// ErrConfig on a zero Resampler; they process nothing and return 0 frames
+// then. With buffers made as in "Use", these do not occur, so treat them
+// as programming errors. While a filter change that the reference's
+// limits rejected is in force, the process methods also return
+// ErrAllocFailed: they output zeros and count the frames as usual, until
+// a later change succeeds.
 //
 // # Limitations
 //

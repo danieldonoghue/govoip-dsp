@@ -146,8 +146,8 @@ func Example_sendChain() {
 		}
 	}
 	// From 2 s to 4 s, after the filter has converged, only echo reaches
-	// the microphone: the chain removes it, and here the VAD marks none of
-	// those frames as speech, so the AGC gain does not rise on them.
+	// the microphone and the chain removes it. What is left is below the
+	// AGC's gate level, so the gain does not rise there in any case.
 	fmt.Println("echo removed, 2 s to 4 s:", dB(mic[2*rate:4*rate], out[2*rate:4*rate]), "dB")
 	fmt.Println("speech frames, 2 s to 4 s:", speech[true], "of", speech[true]+speech[false])
 	// From 4 s the near end talks over the echo (double talk). It is sent,
@@ -196,7 +196,8 @@ func Example_receiveChain() {
 // A network goroutine hands received frames to the processing goroutine
 // through a buffer.SPSC, which never blocks either side. After a stall of
 // the processing goroutine the SPSC holds a backlog of stale audio; the
-// consumer drops it and keeps only the newest frame.
+// consumer drops it and keeps only the newest frame. Where each received
+// frame pairs with a far-end frame, drop as many far-end frames too.
 func Example_handoff() {
 	const frame = 160 // 20 ms at 8 kHz
 	// 200 ms: the longest stall that loses nothing.

@@ -7,9 +7,10 @@
 //
 // The library builds with CGO_ENABLED=0 and needs no C compiler or native
 // library. Its resampler, echo canceller and preprocessor are bit-exact
-// ports of SpeexDSP 1.2.1, fixed-point build: for the same input they give
-// the same output samples as the C library. The AGC and the buffers are
-// own designs.
+// ports of SpeexDSP 1.2.1, fixed-point build: for the same input and a
+// tested configuration they give the same output samples as the C
+// library, except at the deviations each package doc lists. The AGC and
+// the buffers are own designs.
 //
 // The [developer guide] explains the pieces with diagrams, the [glossary]
 // defines every term these docs use, and the [usage guide] gives tested
@@ -21,10 +22,11 @@
 //
 //   - resample: sample-rate conversion, for example from a 48 kHz device
 //     to 16 kHz for the echo canceller, or from a decoder's 8 kHz to the
-//     device. Any rates, any channel count, any chunk size.
+//     device. Any rates, 1 to 256 channels, any chunk size.
 //   - echo: acoustic echo cancellation. It removes the far end's voice,
 //     played by the loudspeaker and picked up again by the microphone,
-//     from the microphone signal. 8 and 16 kHz, mono.
+//     from the microphone signal. Mono; it works well at 8 and 16 kHz
+//     only, although New accepts 8000 to 48000 Hz.
 //   - preprocess: noise suppression, VAD and suppression of the echo that
 //     echo left. Fixed frame sizes, mono.
 //   - agc: automatic gain control. It brings speech to a steady level and
@@ -53,19 +55,22 @@
 // The receive path brings decoded audio to the device rate with
 // resample.Resampler.Process, its output sized with OutLen
 // (Example_receiveChain). Where the network or the device runs at a rate
-// that echo does not support, resample both the microphone and the
+// other than 8 or 16 kHz, resample both the microphone and the
 // loudspeaker streams to 16 kHz before the send path.
 //
 // Between goroutines, for example a network reader and the processing
 // goroutine, use buffer.SPSC; it never blocks either side, and after a
-// stall the consumer can drop the backlog (Example_handoff).
+// stall the consumer can drop the backlog (Example_handoff). Where each
+// received frame pairs with a far-end frame, drop the same number of
+// far-end frames too, so the pairs stay aligned, as drain does in
+// docs/usage.md.
 //
 // # Rules shared by every package
 //
 //   - Make each processor once, with New and a Config, before the call
 //     starts. New allocates and returns an error wrapping the package's
-//     ErrConfig for an invalid Config (resample also ErrAllocFailed, for a
-//     filter too large); test it with errors.Is.
+//     ErrConfig for an invalid Config (resample also ErrAllocFailed, above
+//     its resource cap); test it with errors.Is.
 //   - Per-frame and per-chunk methods (the audio path) do not allocate,
 //     block or panic. They return only unwrapped sentinel errors, such as
 //     ErrBufferSize for a slice of the wrong length; with buffers sized

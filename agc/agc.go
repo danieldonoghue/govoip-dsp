@@ -106,7 +106,7 @@ type AGC struct {
 	level   int32       // level estimate L = e4^(1/4), Q12
 	e4      fixed.Float // mean of the 4th power of frame RMS
 	seen    int         // active frames seen, up to warm
-	louder  int         // consecutive active frames above +10 dB
+	louder  int         // consecutive active frames above +13 dB
 	quieter int         // consecutive active frames below -6 dB
 	runMin  int32       // smallest RMS of the current loud run
 	runMax  int32       // largest RMS of the current quiet run

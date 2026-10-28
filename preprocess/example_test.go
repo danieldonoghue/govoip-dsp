@@ -215,8 +215,8 @@ func ExampleConfig() {
 }
 
 // A Preprocessor holds one stream's state. Its output is delayed by one
-// frame: the first frame out is silence, and the input comes out a frame
-// later. With denoise off, the analysis and synthesis still round, so a
+// frame: the first frame out is near silence, and the input comes out a
+// frame later. With denoise off, the analysis and synthesis still round, so a
 // sample may differ from the input by one.
 func ExamplePreprocessor() {
 	p := newExample()
@@ -235,10 +235,14 @@ func ExamplePreprocessor() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("first frame out, first samples:", first[:3])
+	peak := 0
+	for _, v := range first {
+		peak = max(peak, int(v), -int(v))
+	}
+	fmt.Println("first frame out, largest magnitude:", peak)
 	fmt.Println("second frame out, middle sample:", second[80])
 	// Output:
-	// first frame out, first samples: [0 0 0]
+	// first frame out, largest magnitude: 1
 	// second frame out, middle sample: 999
 }
 

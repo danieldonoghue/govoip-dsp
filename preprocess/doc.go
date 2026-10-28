@@ -4,8 +4,9 @@
 //
 // Parity: bit-exact with SpeexDSP 1.2.1 speex_preprocess_run,
 // speex_preprocess_estimate_update and the ported speex_preprocess_ctl
-// requests (FIXED_POINT) for every supported configuration, as checked
-// against the reference harness (testdata/speexdsp/preprocess).
+// requests (FIXED_POINT) for the configurations of
+// docs/acceptance/preprocess.md, as checked against the reference harness
+// (the repository's testdata/speexdsp/preprocess).
 //
 // Terms such as frame, frame size, VAD, speech probability, power spectrum
 // and residual echo are defined in the [glossary]; a frame here is a
@@ -133,8 +134,9 @@
 // # Concurrency and allocation
 //
 // A Preprocessor is not safe for concurrent use. Use one per stream. New
-// allocates; no other method allocates. Work per frame is proportional to
-// FrameSize times the FFT cost of 2*FrameSize samples.
+// allocates; no other method allocates. Each frame costs two FFTs of
+// 2*FrameSize samples (one forward, one inverse) plus work proportional
+// to FrameSize.
 //
 // [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
 // [per-frame call order]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#the-send-path-frame-by-frame

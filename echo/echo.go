@@ -197,8 +197,8 @@ func (c *Canceller) ResidualLen() int {
 	return c.st.frameSize + 1
 }
 
-// Residual writes the residual-echo power spectrum of the most recent
-// Cancel or Capture call into dst[:ResidualLen()], exactly as
+// Residual writes the residual-echo power spectrum of the frame Cancel or
+// Capture last cancelled into dst[:ResidualLen()], exactly as
 // speex_echo_get_residual computes it. It returns ErrBufferSize if
 // len(dst) < ResidualLen(). It does not change any later output of c.
 func (c *Canceller) Residual(dst []int32) error {

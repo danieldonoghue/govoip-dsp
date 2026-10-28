@@ -109,9 +109,11 @@
 // else. Frames below GateLevel never raise the gain or change the level
 // estimate. Noise above GateLevel passed with speech true is treated as
 // speech and driven to TargetLevel, with a gain of up to MaxGain. The VAD of
-// the SpeexDSP 1.2.1 fixed-point preprocessor reports speech on every frame
-// of stationary white and pink noise, so passing its decision does not
-// prevent this; only a gate above the noise does. In pauses the gain cannot
+// the SpeexDSP 1.2.1 fixed-point preprocessor reported speech on almost
+// every frame of stationary white and pink noise measured at 16 kHz above
+// about -65 dBFS (docs/testing.md, "Noise through the send chain"), so
+// passing its decision does not prevent this; only a gate above the noise
+// does. In pauses the gain cannot
 // rise, but it may finish falling.
 //
 // Use the AGC after preprocess with denoising on, which lowers stationary
