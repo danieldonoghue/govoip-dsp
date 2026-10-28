@@ -5,7 +5,7 @@ import "sync/atomic"
 // SPSCConfig configures an SPSC. Writes always reject the excess: overwriting
 // would need the producer to move the consumer's index (requirements §16).
 type SPSCConfig struct {
-	Capacity int // samples, 1 to MaxCapacity
+	Capacity int // samples, 1 to MaxCapacity; required, fixed for the SPSC's life
 }
 
 // cacheLine covers the cache lines of amd64 and arm64 (Apple uses 128 bytes).
@@ -24,7 +24,8 @@ type SPSC struct {
 	_    [cacheLine - 4]byte
 }
 
-// NewSPSC validates cfg and allocates the storage, 2·Capacity bytes.
+// NewSPSC validates cfg and allocates the storage, 2·Capacity bytes. It
+// returns an error wrapping ErrConfig for an invalid cfg.
 func NewSPSC(cfg SPSCConfig) (*SPSC, error) {
 	if err := checkCapacity(cfg.Capacity); err != nil {
 		return nil, err

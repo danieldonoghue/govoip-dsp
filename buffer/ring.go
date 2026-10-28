@@ -9,7 +9,8 @@ import (
 // arithmetic, which reaches three times the capacity, inside a 32-bit int.
 const MaxCapacity = 512 * 1024 * 1024
 
-// ErrConfig reports an invalid configuration.
+// ErrConfig reports an invalid Config or SPSCConfig. New and NewSPSC wrap
+// it; no other function returns an error.
 var ErrConfig = errors.New("buffer: invalid configuration")
 
 // Overflow selects what Ring.Write does with samples that do not fit. The zero
@@ -23,10 +24,11 @@ const (
 	Overwrite
 )
 
-// Config configures a Ring.
+// Config configures a Ring. Both fields are required and fixed for the
+// Ring's life.
 type Config struct {
-	Capacity int      // samples, 1 to MaxCapacity
-	Overflow Overflow // Reject or Overwrite
+	Capacity int      // samples, 1 to MaxCapacity; the storage is 2·Capacity bytes
+	Overflow Overflow // Reject or Overwrite; the zero value is invalid
 }
 
 // Ring is a fixed-capacity FIFO of int16 samples for a single owner. It is not
@@ -39,7 +41,8 @@ type Ring struct {
 	overwrite bool
 }
 
-// New validates cfg and allocates the storage, 2·Capacity bytes.
+// New validates cfg and allocates the storage, 2·Capacity bytes. It returns
+// an error wrapping ErrConfig for an invalid cfg.
 func New(cfg Config) (*Ring, error) {
 	if err := checkCapacity(cfg.Capacity); err != nil {
 		return nil, err

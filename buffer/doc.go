@@ -3,8 +3,31 @@
 // single-producer, single-consumer buffer for the hand-off between the audio
 // path and a device or network goroutine.
 //
-// Parity: own design; contains no SpeexDSP code. SpeexDSP's buffer.c was
+// Parity: own design; contains no SpeexDSP code. SpeexDSP's [buffer.c] was
 // design input only, and docs/algorithms.md says where this package differs.
+//
+// Terms such as view, producer, consumer, wait-free and backlog are defined
+// in the [glossary]. The developer guide has diagrams of the
+// [SPSC hand-off] and of [view lifetimes].
+//
+// # Use
+//
+// Make a buffer once, before the stream starts: New for a Ring, NewSPSC for
+// an SPSC. Both return an error wrapping ErrConfig, and nothing else, for
+// a capacity outside 1 to MaxCapacity or, for a Ring, an Overflow other
+// than Reject or Overwrite. Then write and read any number of samples per
+// call. Reset empties a buffer for a new stream.
+//
+// Choose Ring when one goroutine both writes and reads, for example a queue
+// that collects resampler output until a whole frame is there. Choose SPSC
+// when one goroutine writes and another reads, for example a network
+// reader handing received frames to the audio goroutine. Size an SPSC for
+// the longest stall of its consumer that must lose nothing: a capacity of
+// rate/5 samples holds 200 ms.
+//
+// To keep frame boundaries when frames go through a buffer, write a whole
+// frame or nothing (check Free first) and read only when Len holds a whole
+// frame. A short Write stores a prefix and would shift every later frame.
 //
 // # Samples, rates and chunking
 //
@@ -102,4 +125,18 @@
 // New and NewSPSC allocate; no other method allocates. Every method's cost is
 // proportional to the number of samples it copies, at most min(len(p), Cap()).
 // The buffers add exactly the latency of the samples stored in them.
+//
+// # Errors
+//
+// Only New and NewSPSC return errors, wrapping ErrConfig; test with
+// errors.Is. No other method returns an error or panics, for any
+// argument: full and empty show in the counts. Write returns how many
+// samples it stored, Read how many it read, and Consume and Commit how
+// many they dropped or published. Compare the count with what was asked
+// for to detect a full or empty buffer.
+//
+// [buffer.c]: https://gitlab.xiph.org/xiph/speexdsp/-/blob/1b28a0f61bc31162979e1f26f3981fc3637095c8/libspeexdsp/buffer.c
+// [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
+// [SPSC hand-off]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#handing-audio-between-goroutines
+// [view lifetimes]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md#buffer-ownership-and-views
 package buffer
