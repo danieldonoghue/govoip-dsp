@@ -10,45 +10,52 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/fixed"
 )
 
-// Sentinel errors. Process returns only ErrBufferSize, unwrapped.
+// Sentinel errors. Process returns them unwrapped; New wraps ErrConfig.
 var (
-	ErrConfig     = errors.New("agc: invalid configuration")
+	// ErrConfig reports an invalid Config from New, or a zero AGC.
+	ErrConfig = errors.New("agc: invalid configuration")
+	// ErrBufferSize reports a Process call whose out is shorter than in.
 	ErrBufferSize = errors.New("agc: output buffer shorter than input")
 )
 
-// Config configures an AGC. Every field must be set (see DefaultConfig).
-// Levels are whole dBFS (0 dBFS is amplitude 32768); gains are whole dB.
+// Config configures an AGC; the package doc details each field. Every field
+// must be set (see DefaultConfig); the zero Config is invalid.
 type Config struct {
-	// SampleRate is in Hz, 8000 to 48000.
+	// SampleRate is in Hz, 8000 to 48000. Blocks are SampleRate/1000
+	// samples.
 	SampleRate int
 
-	// TargetLevel, -40 to -3 dBFS, is the output RMS that a stationary input
-	// above the gate converges to, if its peaks then stay under LimitLevel.
+	// TargetLevel, -40 to -3 dBFS (default -24), is the output RMS that a
+	// steady input above the gate converges to while its peaks fit LimitLevel.
 	TargetLevel int
 
-	// LimitLevel, -20 to 0 dBFS and above TargetLevel, sets the ceiling
-	// min(32767, round(32768·10^(LimitLevel/20))) on output magnitudes.
+	// LimitLevel, -20 to 0 dBFS above TargetLevel (default -1), caps output
+	// magnitudes at min(32767, round(32768·10^(LimitLevel/20))).
 	LimitLevel int
 
-	// GateLevel is the frame RMS below which a frame does not change the
-	// gain. -80 dBFS to TargetLevel (exclusive).
+	// GateLevel, -80 dBFS to below TargetLevel (default -50), is the frame
+	// RMS below which a frame changes neither the gain nor the level estimate.
 	GateLevel int
 
-	// MaxGain and MinGain bound the AGC gain, 0 to 40 dB and -40 to 0 dB.
-	// The limiter may reduce the gain below MinGain.
+	// MaxGain, 0 to 40 dB (default 24), is the highest AGC gain.
 	MaxGain int
+	// MinGain, -40 to 0 dB (default -12), is the lowest AGC gain. The
+	// limiter may reduce the applied gain below it.
 	MinGain int
 
-	// RiseRate and FallRate limit how fast the gain moves: 1 to 100 dB/s up
-	// (on speech frames only) and 1 to 400 dB/s down.
+	// RiseRate, 1 to 100 dB/s (default 12), limits how fast the gain rises,
+	// which it does on active frames only.
 	RiseRate int
+	// FallRate, 1 to 400 dB/s (default 40), limits how fast the gain falls.
 	FallRate int
 
-	// LevelTime, 100 ms to 10 s, is the averaging time of the level estimate.
+	// LevelTime, 100 ms to 10 s (default 3 s), is the averaging time of the
+	// level estimate.
 	LevelTime time.Duration
 }
 
-// DefaultConfig returns the recommended configuration for sampleRate.
+// DefaultConfig returns the recommended configuration for sampleRate. It
+// does not check sampleRate; New does.
 func DefaultConfig(sampleRate int) Config {
 	return Config{
 		SampleRate:  sampleRate,
@@ -70,8 +77,8 @@ const (
 	cutRatio       = 20 // energy ratio over L² of a loud frame (+13 dB)
 )
 
-// AGC is an automatic gain control for one mono stream. Gains are Q15 int32
-// (unity is 32768); levels are Q12 amplitudes on the 16-bit scale.
+// AGC is an automatic gain control for one mono stream. Make it with New;
+// the zero value is not usable (see the package doc).
 type AGC struct {
 	cfg      Config
 	blockLen int32 // K: samples per block
@@ -111,7 +118,8 @@ type AGC struct {
 	step    int32       // gain increment per output sample
 }
 
-// New validates cfg and allocates everything the AGC will use.
+// New validates cfg and allocates everything the AGC will use. It returns
+// an error wrapping ErrConfig, naming the field, for an invalid cfg.
 func New(cfg Config) (*AGC, error) {
 	if err := validate(cfg); err != nil {
 		return nil, err
@@ -208,7 +216,7 @@ func (a *AGC) Reset() {
 }
 
 // Process writes the delayed, gain-controlled in to out[:len(in)], or returns
-// ErrBufferSize. speech is the VAD decision for all of in (true if none).
+// ErrBufferSize. speech is the VAD decision for all of in (true if no VAD).
 func (a *AGC) Process(in, out []int16, speech bool) error {
 	if a.delay == nil {
 		return ErrConfig
