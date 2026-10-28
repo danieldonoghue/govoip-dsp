@@ -6,7 +6,7 @@ activity detection, and automatic gain control.
 
 **Status: pre-release.** All five public packages are validated against their
 acceptance criteria ([work packages](docs/architecture.md#work-packages)).
-There is no tagged release yet, and the API may change until v1.0.
+Releases are tagged as v0.x; the API may change until v1.0.
 
 ## Features
 
