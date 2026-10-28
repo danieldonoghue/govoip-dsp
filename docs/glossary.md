@@ -109,8 +109,8 @@ Decibels: a ratio on a log scale, `10·log10` of a power ratio or
 ### dBFS
 
 Decibels relative to full scale on the [16-bit scale](#16-bit-scale):
-`20·log10(level/32768)`. 0 dBFS is amplitude 32768, the largest level the
-digital format holds; a louder signal clips. -6 dBFS is about half of
+`20·log10(level/32768)`. 0 dBFS is amplitude 32768, one step above the
+largest `int16` sample; a louder signal clips. -6 dBFS is about half of
 it, and all-zero [silence](#silence) is minus infinity. Other scales have
 other zero points: a mixing desk meters in dBu or VU, where 0 is a
 nominal level with headroom above it, and sound in air is in dB SPL. The
@@ -489,8 +489,10 @@ above `ProbStart`, and keeps speech going while it is above
 
 ### Gain
 
-The factor by which a stage multiplies its input, in dB: 0 dB leaves the
-level unchanged, +6 dB roughly doubles it.
+The factor by which a stage multiplies its input, given in [dB](#db), a
+logarithmic scale: 0 dB leaves the level unchanged, +6 dB roughly doubles
+the amplitude and -6 dB about halves it. Gains in dB add where the
+factors multiply.
 
 ### Attenuation
 
