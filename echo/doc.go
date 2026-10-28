@@ -140,11 +140,16 @@
 // preprocess.Preprocessor.RunEcho takes (docs/contracts.md section 12).
 // Calling it does not change any later output, and two calls in a row give
 // the same values. After New it writes zeros until the filter has adapted
-// (mdf.c:1173-1185): with a far end like the package examples', for about
-// 0.4 s with a 100 ms filter and 0.8 s with a 200 ms filter. With a longer
-// filter, or a far end that is silent, it can take many seconds or never
-// happen. After Reset it still reflects the echo estimate from before the
-// Reset (see "Reset").
+// (mdf.c:1173-1185), and RunEcho then gets a zero residual. When that
+// happens depends on the far end and on the frame and filter lengths, not
+// on the filter's duration alone. Measured over 60 s of the package
+// examples' far end at 8 kHz, echo delayed 30 ms: with 20 ms frames the
+// first non-zero residual came after 0.42 s (100 ms filter), 0.50 s (120
+// ms), 0.66 s (150 and 160 ms) and 0.82 s (200 ms), and never with 240,
+// 300 or 500 ms; with 10 ms frames after 0.41 s (100 ms), 0.49 s (120 ms)
+// and 0.61 s (150 ms), and never with 160 to 500 ms. With a silent far end
+// it never adapts. After Reset it still reflects the echo estimate from
+// before the Reset (see "Reset").
 //
 // # Reset
 //
