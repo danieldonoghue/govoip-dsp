@@ -137,5 +137,6 @@ D14. **Writing rules.** The rules of `CLAUDE.md`, "Writing" and
    reader either. D5, D8, D10 and D13 record their results in
    `docs/testing.md`, section "Developer documentation (WP8)": the
    criteria results, the link fetch results, and the newcomer review
-   points with their resolution. What each criterion checks is
-   unchanged.
+   points with their resolution. This supersedes entry 2's choice of the
+   review request, which a reader cannot open either. What each
+   criterion checks is unchanged.

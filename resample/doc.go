@@ -95,9 +95,13 @@
 //
 // in and out are caller-provided. They must not overlap; overlap is not
 // detected. No method retains a caller slice. Output elements outside the
-// strided positions written are not touched. On a zero Resampler (not made
-// by New) the methods with an error result return ErrConfig (and 0 frames),
-// the others return 0, and SkipZeros and Reset do nothing.
+// strided positions written are not touched.
+//
+// # Zero value
+//
+// A zero Resampler (not made by New) is not usable: the methods with an
+// error result return ErrConfig (and 0 frames), the others return 0, and
+// SkipZeros and Reset do nothing. No method panics.
 //
 // # Float32 samples
 //

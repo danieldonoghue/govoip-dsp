@@ -113,8 +113,7 @@
 // every frame of stationary white and pink noise measured at 16 kHz above
 // about -65 dBFS (docs/testing.md, "Noise through the send chain"), so
 // passing its decision does not prevent this; only a gate above the noise
-// does. In pauses the gain cannot
-// rise, but it may finish falling.
+// does. In pauses the gain cannot rise, but it may finish falling.
 //
 // Use the AGC after preprocess with denoising on, which lowers stationary
 // noise before the AGC sees it, and set GateLevel above the residual noise.
@@ -123,6 +122,12 @@
 // 4 to 6 dB. Through the whole chain with the default gate, white noise from
 // about -40 dBFS and pink noise from about -52 dBFS at the input are raised
 // by 16 to 23 dB (docs/testing.md, "Whole-chain measurements").
+//
+// # Limitations
+//
+// The AGC is mono. Its only noise protection is the gate and the speech
+// flag (see "Noise protection"). Levels and gains are whole dB, rates
+// whole dB/s. It adds Latency() samples (2 ms) for its limiter.
 //
 // # Rates, chunking and latency
 //

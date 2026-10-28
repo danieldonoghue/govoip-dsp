@@ -22,7 +22,8 @@
 //
 //   - resample: sample-rate conversion, for example from a 48 kHz device
 //     to 16 kHz for the echo canceller, or from a decoder's 8 kHz to the
-//     device. Any rates, 1 to 256 channels, any chunk size.
+//     device. Any rates within its size limits, 1 to 256 channels, any
+//     chunk size.
 //   - echo: acoustic echo cancellation. It removes the far end's voice,
 //     played by the loudspeaker and picked up again by the microphone,
 //     from the microphone signal. Mono; it works well at 8 and 16 kHz
@@ -89,7 +90,8 @@
 //     what its Reset keeps.
 //   - A zero value (a processor not made by New) never panics, but is not
 //     usable: its methods with an error result return ErrConfig, and the
-//     others return zero values.
+//     others return zero values and change nothing, except that the
+//     preprocess setters store their setting and its getters return it.
 //
 // # Limitations
 //

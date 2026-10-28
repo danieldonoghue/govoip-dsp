@@ -93,7 +93,7 @@ stateDiagram-v2
 1. **New.** Build the `Config`, call `New`, and check the error. New
    validates every field, allocates everything the processor will use,
    and returns an error wrapping the package's `ErrConfig` for an invalid
-   `Config` (`resample` also `ErrAllocFailed`, for a filter too large).
+   `Config` (`resample` also `ErrAllocFailed`, above its resource cap).
    Test it with `errors.Is`; the message names the field.
    Retrying with the same `Config` cannot help.
 2. **Per-frame calls.** Call the process method once per frame or chunk.
@@ -117,7 +117,8 @@ stateDiagram-v2
 A zero value, such as `var c echo.Canceller`, is not a processor: it was
 not made by `New`. No method panics on it, but the methods with an error
 result return `ErrConfig`, and the others return zero values and change
-nothing, except that the `preprocess` setters store their setting.
+nothing, except that the `preprocess` setters store their setting and
+its getters return the stored setting.
 
 ## The send path, frame by frame
 

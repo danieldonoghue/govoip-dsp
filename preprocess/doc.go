@@ -110,8 +110,10 @@
 // # Zero value
 //
 // A zero Preprocessor (not made by New) is not usable. Its frame methods,
-// PSD and NoisePSD return ErrConfig, the setters store their setting, the
-// other methods return zero values, and Reset does nothing. No method
+// PSD and NoisePSD return ErrConfig. The setters store their setting and
+// the getters of those settings return what was stored (so Denoise is
+// false, not the default true, until SetDenoise). FrameSize, SampleRate,
+// PSDLen and SpeechProb return 0, and Reset does nothing. No method
 // panics.
 //
 // # Arithmetic

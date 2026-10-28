@@ -17,8 +17,7 @@
 // processing frame: FrameSize samples, passed whole to every frame
 // method. The developer guide shows the [per-frame call order] of the
 // send path, and docs/usage.md has two tested wiring recipes for a call.
-// The SpeexDSP
-// documentation of the same functions is the Speex manual's
+// The SpeexDSP documentation of the same functions is the Speex manual's
 // [echo cancellation section] and its [troubleshooting] advice, and the
 // header [speex_echo.h].
 //
@@ -125,9 +124,13 @@
 // Every frame method takes exactly FrameSize samples and returns
 // ErrBufferSize, doing nothing, for any other length. out must not overlap
 // mic or far; overlap is not detected. No method retains a caller slice.
-// The output is the same frame as the input: there is no added latency. On
-// a zero Canceller (not made by New) the methods with an error result
-// return ErrConfig, the others return 0, and Reset does nothing.
+// The output is the same frame as the input: there is no added latency.
+//
+// # Zero value
+//
+// A zero Canceller (not made by New) is not usable: the methods with an
+// error result return ErrConfig, the others return 0, and Reset does
+// nothing. No method panics.
 //
 // # Residual echo
 //
@@ -136,7 +139,9 @@
 // with nothing queued cancels nothing), the input that
 // preprocess.Preprocessor.RunEcho takes (docs/contracts.md section 12).
 // Calling it does not change any later output, and two calls in a row give
-// the same values.
+// the same values. After New and before the first cancelled frame it
+// writes zeros. After Reset it still reflects the echo estimate from
+// before the Reset (see "Reset").
 //
 // # Reset
 //

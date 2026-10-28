@@ -110,6 +110,30 @@ are RMS levels.
 
 Samples that are all zero. "Queue silence" means pass a frame of zeros.
 
+## The call
+
+### Send path and receive path
+
+The two directions of a call. The send path takes the microphone signal
+through `echo`, `preprocess` and `agc` to the encoder; the receive path
+takes decoded audio through `resample` to the loudspeaker.
+
+### Pipeline
+
+The chain of stages audio passes through, in order, such as the send
+path. The developer guide draws it.
+
+### Encoder and decoder
+
+The codec stages around this library: the encoder compresses the
+cleaned send-path audio into packets, the decoder turns received packets
+back into samples. Codecs are not part of govoip-dsp.
+
+### Jitter buffer
+
+A buffer that turns packets arriving unevenly into a steady stream of
+frames. Not built yet; planned for this library.
+
 ## Fixed-point arithmetic
 
 ### Fixed point
@@ -166,13 +190,6 @@ tests compare them with fixtures that the C reference wrote
 The C program that runs the [reference](#reference) on test inputs, and
 the output files it writes, which are committed in `testdata/speexdsp/`.
 The bit-exact tests compare the Go output with these fixtures.
-
-### Wrapped error
-
-An error that carries another error inside it, made with
-`fmt.Errorf("%w: ...", err)`. `errors.Is(err, echo.ErrConfig)` finds the
-inner error; `err == echo.ErrConfig` does not. Constructors return
-wrapped errors, per-frame methods unwrapped sentinels.
 
 ### Behavioural
 
@@ -235,7 +252,8 @@ cancel it; the caller must pass the far end earlier.
 ### Bulk delay
 
 The pure-delay part of the echo path: the time during which the echo
-path passes nothing, before its first reflection. It is the
+path passes nothing, before the first sound, usually the direct sound
+from the loudspeaker, reaches the microphone signal. It is the
 [echo delay](#echo-delay) seen as a property of the path; a bulk delay
 larger than the filter length leaves nothing to cancel.
 
@@ -404,27 +422,16 @@ above `ProbStart`, and keeps speech going while it is above
 
 ## Gain control
 
-### Send path and receive path
+### Gain
 
-The two directions of a call. The send path takes the microphone signal
-through `echo`, `preprocess` and `agc` to the encoder; the receive path
-takes decoded audio through `resample` to the loudspeaker.
-
-### Pipeline
-
-The chain of stages audio passes through, in order, such as the send
-path. The developer guide draws it.
+The factor by which a stage multiplies its input, in dB: 0 dB leaves the
+level unchanged, +6 dB roughly doubles it.
 
 ### Attenuation
 
 The opposite of gain: how much a stage lowers a level, in dB.
 `preprocess` settings give the most attenuation of noise and residual
 echo as negative dB.
-
-### Gain
-
-The factor by which a stage multiplies its input, in dB: 0 dB leaves the
-level unchanged, +6 dB roughly doubles it.
 
 ### AGC
 
@@ -484,14 +491,18 @@ values weigh more than in a plain mean. The AGC's level estimate is one.
 The AGC's running measure of the speech level it sees, from which it
 derives the gain. The `agc` package doc gives its definition.
 
-## Timing
+## Resampling
 
-### Latency
+### Downsampling and upsampling
 
-The delay a stage adds between its input and its output. `preprocess`
-delays by one processing frame, `agc` by 2 ms, `resample` by half its
-filter (`InputLatency`, `OutputLatency`), `echo` by nothing, and a buffer
-by the samples stored in it.
+Resampling to a lower rate (downsampling, for example 48000 to
+16000 Hz) or to a higher one (upsampling). Downsampling needs a longer
+filter, in proportion to the factor.
+
+### Taps
+
+The coefficients of a filter, one per input sample it weighs. A filter
+of 64 taps combines 64 input samples into each output sample.
 
 ### Sinc table
 
@@ -504,17 +515,6 @@ filter's impulse response) sampled at the filter's phases.
 In `resample`, input samples left over after a rate or quality change
 shortens the filter. The next process calls process them first;
 `OutLen` counts them.
-
-### Downsampling and upsampling
-
-Resampling to a lower rate (downsampling, for example 48000 to
-16000 Hz) or to a higher one (upsampling). Downsampling needs a longer
-filter, in proportion to the factor.
-
-### Taps
-
-The coefficients of a filter, one per input sample it weighs. A filter
-of 64 taps combines 64 input samples into each output sample.
 
 ### Filter delay
 
@@ -533,16 +533,14 @@ and distortion at more cost and latency. The tested recipes of [usage.md](usage.
 The resampling ratio `num/den` of the input and output rates, reduced to
 lowest terms: 48000 to 16000 Hz is 3/1.
 
-### Encoder and decoder
+## Timing
 
-The codec stages around this library: the encoder compresses the
-cleaned send-path audio into packets, the decoder turns received packets
-back into samples. Codecs are not part of govoip-dsp.
+### Latency
 
-### Jitter buffer
-
-A buffer that turns packets arriving unevenly into a steady stream of
-frames. Not built yet; planned for this library.
+The delay a stage adds between its input and its output. `preprocess`
+delays by one processing frame, `agc` by 2 ms, `resample` by half its
+filter (`InputLatency`, `OutputLatency`), `echo` by nothing, and a buffer
+by the samples stored in it.
 
 ### Jitter
 
@@ -555,7 +553,7 @@ A slow difference between two clocks with the same nominal rate, for
 example two sound cards both nominally 48000 Hz. Nothing in the library
 corrects it yet.
 
-## Buffers and concurrency
+## Buffers, concurrency and errors
 
 ### FIFO
 
@@ -657,6 +655,13 @@ or `SPSC` is an empty buffer of capacity 0. It is not a usable instance.
 A predeclared error value, such as `echo.ErrBufferSize`, that a method
 returns as it is. Test it with `errors.Is`. Audio-path methods return
 only sentinel errors, so the error path does not allocate.
+
+### Wrapped error
+
+An error that carries another error inside it, made with
+`fmt.Errorf("%w: ...", err)`. `errors.Is(err, echo.ErrConfig)` finds the
+inner error; `err == echo.ErrConfig` does not. Constructors return
+wrapped errors, per-frame methods unwrapped sentinels.
 
 ### Reset
 

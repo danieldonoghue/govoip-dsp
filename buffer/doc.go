@@ -47,9 +47,13 @@
 // as many of the oldest unread samples as needed, and returns the number
 // stored; the caller can compute the number discarded from Len before and
 // after. SPSC always rejects. Read returns fewer samples than asked for when
-// fewer are stored, and never pads. A zero Ring or SPSC (not made by New or
-// NewSPSC) is an empty buffer of capacity 0: every method returns 0 or empty
-// views and changes nothing.
+// fewer are stored, and never pads.
+//
+// # Zero value
+//
+// A zero Ring or SPSC (not made by New or NewSPSC) is an empty buffer of
+// capacity 0: every method returns 0 or empty views and changes nothing.
+// No method panics.
 //
 // # Views
 //
@@ -85,6 +89,14 @@
 // Reset empties the buffer, keeps its storage and does not allocate. Afterwards
 // the buffer behaves as a fresh one with the same configuration. It expires
 // every view, because the positions restart at the beginning of the storage.
+//
+// # Limitations
+//
+// The buffers hold int16 samples only, with a capacity fixed at
+// construction. Neither blocks: a full SPSC rejects what does not fit and
+// an empty one returns 0, so the caller decides when to retry. An SPSC
+// serves exactly one producer and one consumer, and never overwrites
+// unread samples; drop a backlog with Consume.
 //
 // # Concurrency
 //
