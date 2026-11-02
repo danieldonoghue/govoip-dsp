@@ -88,6 +88,7 @@ func (ic *inputCache) hold(t *testing.T, c refCase, partial bool) func() signals
 // TestCappedInputsArePrefixes checks that capped generation, used by
 // partial runs, gives exactly the leading samples of the full inputs.
 func TestCappedInputsArePrefixes(t *testing.T) {
+	// Skipped under -short and -race (partialCheck); the normal go test runs it.
 	if partialCheck() {
 		t.Skip("compares against full inputs; runs in the normal go test")
 	}
@@ -350,7 +351,7 @@ func TestReferenceWithoutResidualCalls(t *testing.T) {
 	for _, c := range sortedCases() {
 		if c.longBlocks > 0 || c.rate > 16000 && !strings.HasPrefix(c.name, "capture") ||
 			raceEnabled && !fullInPartial(c) {
-			continue
+			continue // -race runs only the fullInPartial cases (docs/testing.md)
 		}
 		t.Run(c.name, func(t *testing.T) {
 			partial := partialCheck() && !fullInPartial(c)

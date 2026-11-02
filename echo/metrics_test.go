@@ -244,7 +244,7 @@ func TestScenarioMeasurements(t *testing.T) {
 			continue // under -race only farend: run time, no race coverage
 		}
 		if partialCheck() && !(c.rate == 16000 && c.frameMs == 10 && c.filterMs == 128) {
-			continue
+			continue // -short and -race measure one configuration per scenario
 		}
 		cs = append(cs, c)
 	}
