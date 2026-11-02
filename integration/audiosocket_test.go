@@ -302,6 +302,106 @@ func beeper(rate int) func(id uuid) (session, error) {
 	}
 }
 
+// recording wraps start: it also writes each call's cleaned audio to the
+// file <dir>/<UUID>.raw, raw 16-bit little-endian mono PCM at rate Hz.
+func recording(dir string, rate int, start func(id uuid) (session, error)) func(id uuid) (session, error) {
+	return func(id uuid) (session, error) {
+		name := filepath.Join(dir, id.String()+".raw")
+		f, err := os.Create(name)
+		if err != nil {
+			return session{}, err
+		}
+		// Up to 2 s of audio can wait for the disk; deliver drops what does not fit.
+		r, err := newRecorder(f, 2*rate)
+		if err != nil {
+			f.Close()
+			return session{}, err
+		}
+		s, err := start(id)
+		if err != nil {
+			r.close()
+			return session{}, err
+		}
+		deliver, end := s.deliver, s.end
+		s.deliver = func(x []int16) {
+			deliver(x)
+			r.deliver(x)
+		}
+		s.end = func() {
+			end()
+			dropped, err := r.close()
+			log.Printf("call %v: recorded to %s, %d frames dropped, error %v", id, name, dropped, err)
+		}
+		return s, nil
+	}
+}
+
+// recorder writes frames to a file on its own goroutine, so that deliver,
+// on the connection's goroutine, never waits for the disk.
+type recorder struct {
+	frames  *buffer.SPSC  // samples from deliver to the writing goroutine
+	dropped int           // frames that did not fit; used by deliver's goroutine only
+	done    chan struct{} // closed after the last deliver
+	written chan error    // the writing goroutine's result
+}
+
+// newRecorder starts the goroutine that writes the delivered samples to w;
+// capacity is the number of samples that can wait for it.
+func newRecorder(w io.WriteCloser, capacity int) (*recorder, error) {
+	frames, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: capacity})
+	if err != nil {
+		return nil, err
+	}
+	r := &recorder{frames: frames, done: make(chan struct{}), written: make(chan error, 1)}
+	go func() { r.written <- writePCM(w, frames, r.done) }()
+	return r, nil
+}
+
+// deliver copies the frame x for the writing goroutine, or drops it when
+// that goroutine has fallen behind. It never waits.
+func (r *recorder) deliver(x []int16) {
+	if !onPacket(r.frames, x) {
+		r.dropped++
+	}
+}
+
+// close waits until the writing goroutine has written every stored sample
+// and closed w. Call it once, after the last deliver.
+func (r *recorder) close() (dropped int, err error) {
+	close(r.done)
+	return r.dropped, <-r.written
+}
+
+// writePCM writes the samples in frames to w as 16-bit little-endian PCM
+// until done is closed and frames is empty, then closes w.
+func writePCM(w io.WriteCloser, frames *buffer.SPSC, done <-chan struct{}) error {
+	pcm := make([]int16, frames.Cap())
+	b := make([]byte, 2*len(pcm))
+	for {
+		last := false
+		select {
+		case <-done:
+			last = true // nothing more is delivered: write what is stored, then stop
+		default:
+		}
+		n := frames.Read(pcm)
+		if n == 0 {
+			if last {
+				return w.Close()
+			}
+			time.Sleep(20 * time.Millisecond)
+			continue
+		}
+		for i, s := range pcm[:n] {
+			binary.LittleEndian.PutUint16(b[2*i:], uint16(s))
+		}
+		if _, err := w.Write(b[:2*n]); err != nil {
+			w.Close()
+			return err
+		}
+	}
+}
+
 // asMessage returns one AudioSocket message.
 func asMessage(kind byte, payload []byte) []byte {
 	m := []byte{kind, 0, 0}
@@ -599,6 +699,169 @@ func TestNoAllocsAudioSocket(t *testing.T) {
 			}
 			testutil.AssertNoAllocs(t, 200, handle)
 		})
+	}
+	// recording's deliver, with its writing goroutine running meanwhile.
+	t.Run("recorder", func(t *testing.T) {
+		skipUnderRace(t)
+		r, err := newRecorder(nopCloser{io.Discard}, 2*8000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		x := callScenario(8000, 1).mic[:160]
+		for range 200 {
+			r.deliver(x)
+		}
+		testutil.AssertNoAllocs(t, 200, func() { r.deliver(x) })
+		if _, err := r.close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+// nopCloser is a WriteCloser whose Close does nothing.
+type nopCloser struct{ io.Writer }
+
+func (nopCloser) Close() error { return nil }
+
+// TestAudioSocketRecording serves one call through recording and checks
+// that the file holds exactly the cleaned frames that deliver got.
+func TestAudioSocketRecording(t *testing.T) {
+	for _, rate := range []int{8000, 16000} {
+		for _, sends := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%dk/sends=%v", rate/1000, sends), func(t *testing.T) {
+				audioSocketRecording(t, rate, sends)
+			})
+		}
+	}
+}
+
+func audioSocketRecording(t *testing.T, rate int, sends bool) {
+	var logged syncBuffer
+	log.SetOutput(&logged)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	kind := byte(kindSlin)
+	if rate == 16000 {
+		kind = kindSlin16
+	}
+	f := rate * 20 / 1000
+	const frames = 100 // 2 s
+	mic := callScenario(rate, 1).mic[:frames*f]
+	dir := t.TempDir()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	var got []int16 // the cleaned frames; written by the service goroutine until serveErr
+	start := recording(dir, rate, func(id uuid) (session, error) {
+		var pending *buffer.SPSC
+		if sends { // nothing is written into pending, so silence is sent back
+			var err error
+			if pending, err = buffer.NewSPSC(buffer.SPSCConfig{Capacity: f}); err != nil {
+				return session{}, err
+			}
+		}
+		return session{
+			pending: pending,
+			deliver: func(x []int16) { got = append(got, x...) },
+			end:     func() {},
+		}, nil
+	})
+	serveErr := make(chan error, 1)
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			serveErr <- err
+			return
+		}
+		serveErr <- serveAudioSocket(conn, rate, start)
+	}()
+
+	id := uuid{0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18, 0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x90}
+	c := dialAudioSocket(t, ln.Addr().String(), id)
+	for lo, k := 0, 0; lo < len(mic); k++ {
+		hi := lo + f/2 // messages of 10 and 30 ms, in turn
+		if k%2 == 1 {
+			hi = lo + 3*f/2
+		}
+		c.write(asAudio(kind, mic[lo:hi]))
+		lo = hi
+		time.Sleep(10 * time.Millisecond)
+	}
+	c.write([]byte{kindHangup, 0, 0})
+	replies := c.wait(t)
+	if err := <-serveErr; err != nil {
+		t.Fatal(err)
+	}
+	wantReplies := 0
+	if sends {
+		wantReplies = frames
+	}
+	if len(replies) != wantReplies {
+		t.Errorf("%d frames sent back, want %d", len(replies), wantReplies)
+	}
+	if len(got) != frames*f {
+		t.Fatalf("deliver got %d samples, want %d", len(got), frames*f)
+	}
+	if !slices.ContainsFunc(got, func(s int16) bool { return s != 0 }) {
+		t.Fatal("the cleaned audio is all zero; the comparison would not see a byte-order error")
+	}
+	b, err := os.ReadFile(filepath.Join(dir, id.String()+".raw"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := make([]byte, 2*len(got))
+	for i, s := range got {
+		want[2*i], want[2*i+1] = byte(s), byte(uint16(s)>>8) // little-endian
+	}
+	if !bytes.Equal(b, want) {
+		t.Errorf("the file has %d bytes that differ from the %d bytes of the cleaned frames", len(b), len(want))
+	}
+	if !strings.Contains(logged.String(), "0 frames dropped, error <nil>") {
+		t.Errorf("log %q, want 0 frames dropped and no error", logged.String())
+	}
+}
+
+// TestAudioSocketRecorderDrops blocks the writing goroutine and checks that deliver
+// drops what does not fit, without waiting, and that the rest is written
+// in order.
+func TestAudioSocketRecorderDrops(t *testing.T) {
+	const f, delivered = 160, 20
+	pr, pw := io.Pipe() // Write blocks until the test reads
+	r, err := newRecorder(pw, 4*f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame := make([]int16, f)
+	for k := range delivered {
+		frame[0] = int16(k + 1)
+		r.deliver(frame)
+	}
+	read := make(chan []byte, 1)
+	go func() {
+		b, _ := io.ReadAll(pr)
+		read <- b
+	}()
+	dropped, err := r.close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := <-read
+	// At most two buffers of frames are stored: one in the pipe write, one in frames.
+	if dropped < delivered-8 {
+		t.Errorf("%d frames dropped, want at least %d", dropped, delivered-8)
+	}
+	if len(b) != 2*f*(delivered-dropped) {
+		t.Fatalf("%d bytes written, want %d for %d frames", len(b), 2*f*(delivered-dropped), delivered-dropped)
+	}
+	last := 0
+	for k := range delivered - dropped {
+		n := int(binary.LittleEndian.Uint16(b[2*f*k:]))
+		if n <= last {
+			t.Fatalf("frame %d written is frame %d, after frame %d", k, n, last)
+		}
+		last = n
 	}
 }
 
