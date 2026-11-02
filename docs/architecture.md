@@ -71,8 +71,9 @@ Every component has a portable Go implementation, which is the correctness
 reference on every architecture. Optimised kernels are planned for WP9 in
 `internal/kernels`. They will be selected at run time with
 `golang.org/x/sys/cpu` and must be bit-exact with the portable code. The
-`purego` build tag, or `GOVOIP_DSP_PUREGO=1`, forces the portable path
-([contracts.md](contracts.md) section 11). Today every path is portable.
+`purego` build tag, or `GOVOIP_DSP_PUREGO=1`, will force the portable path
+once those kernels exist ([contracts.md](contracts.md) section 11). Today
+nothing reads either, because every path is portable.
 
 ## Threading model
 
@@ -88,7 +89,10 @@ audio path and a device or network goroutine without blocking either side
 The library is built in numbered work packages (WP). Commit messages,
 acceptance criteria and ADR names cite them, for example
 `docs/decisions/wp0-harness.md`. A suffix letter (WP1b) marks a follow-up
-to an earlier work package. S1 to S5 are stretch items, which start after WP9.
+to an earlier work package. S1 to S5 are the stretch items of
+[requirements §2](requirements.md#2-scope-and-priorities). WP9 replaces S3
+(performance work). The others start after WP9 is merged and the WP7
+integration results have been reviewed.
 
 | WP | Scope | Paths | Depends on | Parity | Status |
 |---|---|---|---|---|---|
@@ -105,7 +109,7 @@ to an earlier work package. S1 to S5 are stretch items, which start after WP9.
 | WP5b | Preprocess frame-size check, `SupportedFrameSize` | `preprocess` | WP5 | bit-exact | Validated |
 | WP6 | Echo canceller (MDF) | `echo` | WP3 | bit-exact | Validated |
 | WP6b | Parallel reference subtests | `echo`, `preprocess` tests | WP5, WP6 | bit-exact | Validated |
-| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | bit-exact (echo and preprocess pairing) | Implemented (two criteria fail at 48 kHz) |
+| WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | bit-exact (echo and preprocess pairing) | Implemented (two criteria fail at 48 kHz; both recipes fail criterion U6, a 32 ms echo with jitter) |
 | WP7b | Zero-value safety: no method panics on a zero value | `echo`, `resample`, `agc`, `preprocess`, `buffer`, `internal/fft`, `internal/testutil` | WP7 | bit-exact (unchanged on valid input) | Validated |
 | WP8 | Developer documentation | package docs, examples, root package `govoipdsp`, `docs/` | WP7, WP7b | n/a | Validated |
 | WP9 | Performance | `internal/kernels`, hot paths | WP8 | bit-exact with the portable code | Planned |
