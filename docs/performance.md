@@ -1,7 +1,7 @@
 # Performance
 
 Measured results only, each with its environment and command. Targets are
-labelled as targets. Each work package edits only its own section.
+labelled as targets. Each component has its own section.
 
 ## Reference environments
 
@@ -58,16 +58,18 @@ CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./internal/fft
 | 1280 | 16508 | 10716 | 0 |
 | 1920 | 26688 | 16452 | 0 |
 
-`Forward` includes copying the input into the buffer it rewrites. The
-benchmark reads each size as one 10 ms hop of `Size/2` samples, so
-`rt-fraction` for size 1920 (48 kHz) is 0.0027 for `Forward` and 0.0016 for
-`Inverse`. One run, not averaged; no Linux VM numbers yet.
+Both directions include copying the input into the buffer they rewrite. The
+benchmark reads each size as one 10 ms hop of `Size/2` samples (a rate of
+`50 * Size` Hz, so 96 kHz for size 1920), so `rt-fraction` for size 1920 is
+0.0027 for `Forward` and 0.0016 for `Inverse`. One run, not averaged; no Linux
+VM numbers yet.
 
 ## Ring buffers (`buffer`, WP2)
 
 Mac, 2026-10-26, while other work packages ran tests on the same machine
 (load average about 78 on 10 cores), so these are upper bounds with large
-noise, not quiet-machine numbers. A rerun on an idle machine is still to do.
+noise, not quiet-machine numbers. They have not been rerun on an idle
+machine.
 
 ```sh
 go test -run '^$' -bench . -benchmem -count 1 ./buffer
@@ -91,8 +93,9 @@ cycles wrap; the others use 4 × chunk, or 1000 for the odd sizes.
 Benchmarks: `BenchmarkRingWriteRead/<case>/<policy>`,
 `BenchmarkRingWriteSlices/<case>` and `BenchmarkSPSCWriteRead/<case>`.
 `BenchmarkSPSCRead/handoff_480`, with a real producer goroutine, measured
-670.6 ns per 480-sample frame, most of it scheduler yields while one side
-waits. Every benchmark reports 0 B/op and 0 allocs/op.
+670.6 ns per 480-sample frame. Both goroutines call `runtime.Gosched` while
+they wait, so most of that is probably scheduler yields; this was not
+profiled. Every benchmark reports 0 B/op and 0 allocs/op.
 
 Targets (`docs/acceptance/buffer.md`): 0 allocs/op everywhere, met; a
 480-sample write/read cycle under 500 ns for `Ring` and for `SPSC` on one
@@ -132,7 +135,9 @@ CGO_ENABLED=0 go test ./resample -run '^$' -bench . -benchmem -count 1
 Each cell is ns/op and `rt-fraction` (processing time over the duration
 of the input chunk) for one `Process` call on a chunk of the given frames
 (10 ms, 20 ms, 7 or 331 frames at the input rate). Every benchmark
-reports 0 B/op and 0 allocs/op.
+reports 0 B/op and 0 allocs/op. The table shows 144 of the 192
+configurations of `BenchmarkResamplerProcess`: the stereo 7-frame and
+331-frame cases are not shown.
 
 | Config | mono 10 ms | mono 20 ms | stereo 10 ms | stereo 20 ms | mono 7 | mono 331 |
 |---|---|---|---|---|---|---|
@@ -173,7 +178,18 @@ Construction (`BenchmarkResamplerNew`), which builds the sinc table with
 |---|---|---|
 | q3 48k→16k mono | 3890 | 19372 |
 | q10 44.1k→48k mono | 129632 | 37772 |
-| q10 48k→8k stereo | 23792 | 28312 |
+| q10 48k→8k stereo | 23792 | 28313 |
+
+The ns/op figures are from the 2026-10-26 run. B/op and allocs/op were
+measured again at commit e4fbd22 (MacBookPro18,1, Apple M1 Pro, go1.26.5
+darwin/arm64, 2026-11-02, three runs, load average 10 to 20, so the ns/op of
+that run are not comparable):
+
+```sh
+CGO_ENABLED=0 go test ./resample -run '^$' -bench BenchmarkResamplerNew -benchmem -count 3
+```
+
+It gave 19372, 37772 to 37774 and 28313 B/op, and 6 allocs/op in every case.
 
 `go build -gcflags=-m ./resample` shows `fixed.Mult16x16`,
 `fixed.Mult16x32Q15`, `fixed.Saturate32PShr` and the other macro ports
@@ -215,7 +231,11 @@ Medians of five runs, after 200 adapting frames of speech in noise, VAD on:
 | 48 kHz, 480 | 120.9 | 114.0 | 0.0121 | 0 |
 | 48 kHz, 960 | 261.8 | 230.1 | 0.0131 | 0 |
 
-`New` at 48 kHz with `N` = 960: 178 µs, 35 allocations, 115 KiB.
+`RunEcho` is given the same synthetic residual spectrum on every frame (the
+samples of the first frame, squared and shifted right by 6), not one from
+`echo`, so its time with a real residual can differ.
+
+`New` at 48 kHz with `FrameSize` 960: 178 µs, 35 allocations, 115 KiB.
 
 The machine was shared with other jobs during the run (load average 108 on
 10 cores), and single runs varied by up to 30%, so these are upper bounds.
@@ -247,8 +267,8 @@ and the numbers are upper bounds.
 | `AGCProcess/16k_37` | 110.7 (108 to 129) | 113.7 (112 to 141) | 0 |
 | `AGCNew` (48 kHz) | 278.0 (268 to 299) | 348.6 (340 to 527) | 2 (v1 400 B, v2 480 B) |
 
-v2 costs about 30 to 45 ns more per 10 ms frame (the level estimate runs
-once per frame), 1 % to 13 % depending on the frame length. An earlier
+v2 costs about 15 to 35 ns more per 10 ms frame (the level estimate runs
+once per frame), 1% to 13% depending on the frame length. An earlier
 alternating run under heavier load (40 to 70) gave v2 medians up to 1.8
 times v1; a back-to-back rerun then showed no difference, so that run is
 not used. A CPU profile of v2 `16k_160` puts 6 % of the time in the
@@ -318,8 +338,8 @@ send path of one call (`echo` `Cancel` and `Residual`, `preprocess`
 measured with the monotonic clock around every frame. At 48 kHz the frame
 also includes resampling the microphone and far end to 16 kHz and the
 receive path from 16 kHz back to 48 kHz. Input: the 40 s synthetic call
-scenario (`docs/acceptance/integration.md`) repeated, 10 minutes per
-configuration after 2 s of warm-up.
+scenario (`docs/acceptance/integration.md`) repeated, 10 minutes of audio
+per configuration (60000 frames of 10 ms) after 2 s of warm-up.
 
 Mac (MacBookPro18,1, Apple M1 Pro, 10 cores, arm64, macOS 27.0.1, Go
 1.26.5), 2026-10-27, load average 2.3 to 3.1 from other processes. Every

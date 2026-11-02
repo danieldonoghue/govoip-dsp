@@ -86,8 +86,8 @@ func (r *chainRig) step(t testing.TB) {
 	r.k = (r.k + 1) % r.frames
 }
 
-// TestRealTimeBudget times every frame: 10 minutes per configuration with
-// -budget (T1 to T3), else 10 s, checking only that no GC runs.
+// TestRealTimeBudget times every frame: 10 minutes of audio per configuration
+// with -budget (T1 to T3), else 10 s of audio, checking only that no GC runs.
 func TestRealTimeBudget(t *testing.T) {
 	if raceEnabled && !*budget {
 		t.Skip("timing under the race detector means nothing; single-goroutine work, skipped under -race (docs/contracts.md section 9)")
