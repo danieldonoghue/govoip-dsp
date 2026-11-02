@@ -267,11 +267,12 @@ Items 1, 2 and 5 of "Design under test" stay. Items 3 and 4 become:
      10 dB above the rest by 100 or more (10² against 10^2.5), so the
      estimate follows the loud frames of speech rather than the dips.
    - **Sustained rise (immediate cut).** If 3 consecutive active frames each
-     have energy above `10·L²` (+10 dB), `E` becomes the 4th power of the
-     smallest of their `r`, and the AGC gain is set to the new target gain
-     at once, bypassing the fall limit. Three frames (30 ms) is the
-     shortest run a 10 ms click cannot produce, since a click touches at
-     most two frames.
+     have energy above `10·L²` (+10 dB; +13 dB as corrected by change 6,
+     with the run length taken from the duration), `E` becomes the 4th
+     power of the smallest of their `r`, and the AGC gain is set to the new
+     target gain at once, bypassing the fall limit. Three frames (30 ms)
+     is the shortest run a 10 ms click cannot produce, since a click
+     touches at most two frames.
    - **Sustained drop.** If `LevelTime/3` consecutive active frames each have
      `r < L/2` (−6 dB), `E` becomes the 4th power of the largest of their
      `r`. Without this, the order-4 mean would need about 18·`LevelTime` to
@@ -548,10 +549,10 @@ the gate keeps 0 dB, and noise above it is driven to −23.98 to
    - **Test.** `TestZeroValueMethods` lists the exported methods by
      reflection (`testutil.CheckZeroValue`), so a method added later is
      covered. It calls each on a fresh zero value with every combination
-     of representative arguments: bools, and nil slices and slices of 1,
-     160 and 161 elements. It fails on a panic, a wrong result, a write
-     into an argument or a change to the zero value. It is shown failing
-     on the code before the change.
+     of representative arguments: bools, and nil slices, empty non-nil
+     slices and slices of 1, 160 and 161 elements. It fails on a panic, a
+     wrong result, a write into an argument or a change to the zero
+     value. It is shown failing on the code before the change.
    - **Valid instances unchanged.** An AGC made by `New` takes the same
      path as before, past one added check in `Process` and one in
      `Reset`. Every existing test passes unchanged, including the
@@ -600,8 +601,8 @@ commit "agc: apply the design v2 corrections" (LibriSpeech present).
 Thresholds are the registered numbers, with changes 2 and 3; the design is
 as corrected by change 6. The G, N4 and N5 rows come from the later test
 commits "agc: check the P4 regression guards" and "agc: test N5,
-stationary noise with the speech flag set"; `agc.go` is unchanged since
-the corrections.
+stationary noise with the speech flag set"; `agc.go` did not change
+between the corrections and those test commits.
 
 | ID | Threshold | v1 | v2 | v2 result |
 |---|---|---|---|---|

@@ -202,7 +202,7 @@ integration through AudioSocket or external media.
    goroutine; the per-frame order of `echo`, `preprocess` and `agc`;
    passing the VAD decision; a `buffer.SPSC` between the network goroutine
    and the processing goroutine, and dropping a backlog; sizing every
-   buffer from the rate and frame duration with `resample.OutLen` and
+   buffer from the rate and frame duration with `Resampler.OutLen` and
    `preprocess.SupportedFrameSize`.
 2. **U2.** Every Go code block in `docs/usage.md` appears verbatim in a
    test file of `integration`, and a test fails if one does not.
@@ -532,7 +532,7 @@ Two decisions after review:
    with the flag.
 
 U1, which asks `docs/usage.md` to cover dropping a backlog and sizing
-every buffer with `resample.OutLen`, is met by the note on sources that
+every buffer with `Resampler.OutLen`, is met by the note on sources that
 deliver the pairing: it quotes the in-step wiring's `newCall`, `newRx`,
 `outLen`, `process` and `resampleInto` (sizing, resampling), `drain`
 (backlog drop, with the `maxBacklog` the tests use) and `step`, which
@@ -543,3 +543,27 @@ recipe B's path, fed the `cancel_*_20ms` and `capture_*_20ms` inputs of
 the reference pairing, must give the echo canceller output, the residual
 spectrum, the preprocess output and the VAD decision of the C chain bit
 for bit.
+
+### Wording corrections (after an audit of the documents)
+
+These corrections change no criterion and no threshold.
+
+1. **Filter length.** "The echo filter length is 200 ms everywhere" in "The
+   chain under test" holds for every case except U11 and U12, whose echo
+   filter is 256 ms (see "U6 kept, U11 added for longer echo delays").
+2. **N2 measure.** The AGC gain of N2 is the energy of the AGC output over
+   the energy of its input (the preprocess output), in each whole second
+   from 1 s on (`TestNoiseThroughSendChain`). The 0.5 dB margin is on that
+   measure, not on the gain the AGC applies to a single frame.
+3. **U7 and U12 with recipe A.** U7 and U12.1 are worded for recipe B and
+   its `Playback`. With recipe A, the processing goroutine passes the sent
+   frame, or the silence it sent, to `Cancel`. U7 then compares the echo
+   tail of that run with a counterfactual run that queues the same sent
+   frames with `Playback` up to 14 s and nothing after, and calls
+   `Capture` (`TestPacedIdleSender`). U12.1 holds for recipe A when the
+   frames the writer sends equal, in order, the frames passed to `Cancel`.
+4. **Later entries.** In "Outcome of the two-way measurement, and U6 again",
+   `drainWith` names the comparison variant that "Comparison removed,
+   reported-only measurements behind a flag" removed from the tests. The
+   `-race` list in "Less work under `-race`" was written before
+   `TestPacedFourGoroutines`, which also runs in full under `-race`.

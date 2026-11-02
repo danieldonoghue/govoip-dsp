@@ -162,9 +162,10 @@ Definitions, over 0.5 s windows:
   `ref` as above, compared with the same ratio for the unprocessed mic
   (`mic - near`).
 
-Every scenario's figures are reported in `docs/algorithms.md` for every
-configuration, and the Go test pins them, so a change in behaviour is
-visible. Sanity floors, which apply at 8 and 16 kHz only:
+The Go test pins every scenario's figures for every configuration in
+`echo/testdata/metrics.golden`, so a change in behaviour is visible;
+`docs/algorithms.md` gives the ranges per rate. Sanity floors, which
+apply at 8 and 16 kHz only:
 
 1. `farend` and `ir_short`: steady-state ERLE at least 10 dB, and
    convergence within 8 s.
@@ -230,7 +231,7 @@ It is accepted when:
    each case it measured.
    The `-race` subset stays as `docs/testing.md` states it.
 2. **Comparisons still run.** Swapping `q07` and `q03` in the adaptation
-   mask (`mdf.go:668`) is still caught by both reference tests, in the
+   rate (`mdf.go:668`) is still caught by both reference tests, in the
    normal run and under `-race`. The mutation is reverted afterwards.
 3. **No shared mutable state.** Parallel subtests share only data that is
    read-only after it is made, or data behind a lock. The review shows
@@ -278,3 +279,25 @@ criteria above and relax nothing. They are met when:
    and after the change, on the same machine, interleaved, with the load
    reported. There is no numeric target.
 7. **Mutation.** Removing the guard from `Cancel` is caught by the test.
+
+### Wording corrections (after an audit of the documents)
+
+These corrections change no criterion and no threshold.
+
+1. **Criterion 5 under `-race`.** Under `-race`, `TestReferenceEcho` and
+   `TestReferenceWithoutResidualCalls` run only one configuration per
+   scenario, and run it in full: 8 kHz, 10 ms frames and a 64 ms filter,
+   and for `diverge` 16 kHz, 20 ms and 64 ms (`fullInPartial`). They skip
+   the other configurations, because they start no goroutines (contracts
+   section 9). Under `-short` without `-race`, every case still compares
+   a leading part.
+2. **Reported figures.** The per-configuration figures are in
+   `echo/testdata/metrics.golden`. `docs/algorithms.md` gives ranges per
+   rate. The text under "Scenario measurements" is worded that way.
+3. **Adaptation rate.** The `q07` and `q03` swap of "Reference tests run in
+   parallel" is in the adaptation rate (`mdf.go:661` to `669`), not in a
+   mask.
+4. **Zero-value arguments.** The integer arguments of the zero-value test
+   (criterion 4 of "Zero-value safety") also include the type's minimum,
+   and the slice arguments also include empty non-nil slices
+   (`zeroSliceLens` and `zeroArgs` in `internal/testutil`).

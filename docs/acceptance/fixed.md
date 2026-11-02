@@ -100,6 +100,8 @@ has it). Any literal whose result is out of range is reported in
 4. The NaN policy tests pass for both `WORD2INT` float variants.
 5. Every port of a `fixed_generic.h` or `arch.h` macro, and every pseudo-float
    operation without a loop, inlines (`-gcflags=-m`), checked by a test.
+   (Narrowed: see "Criterion 5 narrowed" under "Changes", which gives the
+   wording in force.)
 6. All functions are allocation-free (they take and return values only).
 7. The doc comment of every public approximation (`Sqrt`, `Cos`, `CosNorm`,
    `Exp`, `Atan`) states its maximum error against the correctly rounded

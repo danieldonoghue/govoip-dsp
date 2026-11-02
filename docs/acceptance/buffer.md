@@ -246,3 +246,18 @@ those changes.
    - **Mutation.** With no guard to remove, the mutation is one that
      keeps buffers made by the constructors correct: `SPSC.slot` computed
      as `i % len(s.buf)`. The test catches it.
+7. **Wording corrections** (after an audit of the documents). These change
+   no criterion and no threshold.
+   - **Fuzzed capacities.** "Fuzzed capacities from 1 to 300" in "Types
+     covered" is `FuzzRing` and `FuzzSPSC`. `FuzzChunksRing` fuzzes
+     capacities from 1 to 2048.
+   - **S2 chunk sizes.** Chunk sizes go up to `min(2·Cap+3, 300)`, so
+     chunks above the capacity occur at the capacities 1, 2, 3, 7 and 64.
+     At capacity 1000 they stop at 300 samples.
+   - **D2a.** The consumer checks `Len` ≥ min(k, `Len` before the call),
+     because k is drawn from 0 up to 2·`Cap` in a quarter of the draws and
+     can exceed `Len`.
+   - **Zero-value arguments.** The integer arguments of the zero-value
+     test also include the type's minimum, and the slice arguments also
+     include empty non-nil slices (`zeroSliceLens` and `zeroArgs` in
+     `internal/testutil`).

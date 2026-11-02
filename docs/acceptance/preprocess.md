@@ -274,3 +274,23 @@ They are met when:
    unchanged, including the reference tests and the zero-allocation
    tests.
 6. **Mutation.** Removing the guard from `Run` is caught by the test.
+
+### Wording corrections (after an audit of the documents)
+
+These corrections change no criterion and no threshold.
+
+1. **Residual source.** "Standing in for WP6 until WP7 runs the real
+   pairing" and "the Go side cannot regenerate them without WP6" describe
+   the state when the criteria were registered. Both work packages are
+   done. The preprocess tests still feed the recorded residual to
+   `RunEcho`; the real echo canceller and preprocessor pairing is checked
+   in `integration` (`TestReferencePairing`).
+2. **Settings case.** The `ctl` case of "Settings" covers the five numeric
+   settings (`prob_start`, `prob_continue`, `noise_suppress`,
+   `echo_suppress` and `echo_suppress_active`) over default, boundary,
+   out-of-range and extreme `int32` values. Denoise and VAD are booleans:
+   the case sets each once and reads it back (`TestReferenceCtl`).
+3. **Zero-value arguments.** The integer arguments of the zero-value test
+   also include the type's minimum, and the slice arguments also include
+   empty non-nil slices (`zeroSliceLens` and `zeroArgs` in
+   `internal/testutil`).
