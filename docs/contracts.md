@@ -5,23 +5,31 @@ is [requirements.md](requirements.md); this file says how to meet it the same
 way everywhere.
 
 **Editing rule:** append-only. Add new sections at the end, marked with the
-work package that adds them. To change an existing contract, propose the
-change for approval.
+work package that adds them. Mark an addition to an existing section with the
+ADR that accepted it. To change an existing contract, propose the change for
+approval.
 
 ## 1. Packages and files
 
 - Public packages: `resample`, `buffer`, `preprocess`, `echo`, `agc` (and
   `jitter` later). Low-level code lives in `internal/`.
-- `internal/fixed` holds every fixed-point operation. Call it; never
-  re-derive a macro locally. If an operation is missing, append it to
-  `internal/fixed` with a harness test, in its own commit.
+- `internal/fixed` holds every fixed-point operation of the shared headers
+  (`fixed_generic.h`, `arch.h`, `math_approx.h`, `pseudofloat.h`). Call it;
+  never re-derive one of their macros locally. If an operation is missing,
+  append it to `internal/fixed` with a harness test, in its own commit. A
+  macro that one upstream file defines stays with the package that ports
+  that file: `TOP16` in `mdf.c`, `DIV32_16_Q8` and `DIV32_16_Q15` in
+  `preprocess.c`, `S_MUL` and the other `C_` macros in `_kiss_fft_guts.h`
+  (ADR `local-macro-ports`).
 - `internal/testutil` holds shared test support (section 9).
 - A package doc lives in `doc.go`.
 - Fuzz seed corpora live in the package's own `testdata/fuzz/`.
 
 ## 2. Constructors, configuration and errors
 
-Every stateful type has a `Config` struct and a constructor
+Every stateful type of a library package (`resample`, `buffer`, `preprocess`,
+`echo`, `agc` and `internal/fft`, not test support such as
+`testutil.StreamChecker`) has a `Config` struct and a constructor
 `New...(cfg) (*T, error)`. Invalid configuration returns an error; nothing
 panics on caller input. Example shape (not a real package):
 
@@ -71,13 +79,13 @@ Rules:
 5. Choosing an interface, registry or hook over a concrete type needs
    approval (requirements §2) before it is built.
 
-Added by WP7b, accepted (ADR `wp7-zero-value-safety`): no exported method
-of a stateful type panics on its zero value (a `T{}` not made by `New`),
-for any arguments. There, every method with an `error` result returns
-`ErrConfig` and writes nothing, and the other methods return zero values
-and change nothing, except setters that only store a setting. Each
-package tests this for every exported method with
-`testutil.CheckZeroValue`, and its package doc states the behaviour.
+Added by WP7b, accepted (ADR `wp7-zero-value-safety`): no exported method of a
+stateful type of a library package panics on its zero value (a `T{}` not made by
+`New`), for any arguments. There, every method with an `error` result returns
+`ErrConfig` and writes nothing, and the other methods return zero values and
+change nothing, except setters that only store a setting. Each package tests
+this for every exported method with `testutil.CheckZeroValue`, and its package
+doc states the behaviour.
 
 ## 3. Samples and conversion
 
@@ -177,11 +185,15 @@ an entry in `THIRD_PARTY_NOTICES.md`.
 - Division by zero is undefined in C. On the canonical arm64 reference it
   yields 0 without trapping; on amd64 it traps; the `internal/fixed` divisions
   panic, except `Div32x16OrZero` and `PDiv32x16OrZero`, which return 0 as the
-  arm64 reference does (ADR `wp5-zero-divisor`). For every division a port
-  makes, show from the upstream code that the divisor cannot be zero for any
-  input, and test the boundary that comes closest. If a zero divisor is
-  reachable, do not add a guard silently: raise it for a decision, because
-  the reference itself has no defined result there.
+  arm64 reference does (ADR `wp5-zero-divisor`). Three pseudo-float divisions
+  also return without a panic in one case: `FloatDivU` returns `FloatOne`
+  for `b.M <= 0`, as upstream does, and `FloatDiv32` and `FloatDiv32Float`
+  (and its variant `FloatDiv32FloatMasked`) return `FloatZero` when `a` is 0.
+  For every division a port makes, show from the upstream code that the
+  divisor cannot be zero for any input, and test the boundary that comes
+  closest. If a zero divisor is reachable, do not add a guard silently: raise
+  it for a decision, because the reference itself has no defined result
+  there.
 
 ## 9. Tests, benchmarks and shared helpers
 
@@ -194,7 +206,7 @@ Names:
 | Zero allocation | `TestNoAllocs<What>`, using `testutil.AssertNoAllocs` after warm-up |
 | Chunk partition | `TestChunkInvariance<What>`, `FuzzChunks<What>` |
 | Reset | `TestReset<What>` |
-| Benchmark | `Benchmark<Type><Method>/<config>`, for example `BenchmarkResamplerProcess/q5_48k_16k_mono_480` |
+| Benchmark | `Benchmark<Type><Method>/<config>`, for example `BenchmarkResamplerProcess/q5_48k_16k_mono_480`; the whole chain in `integration` is `BenchmarkChain/<config>` |
 
 Benchmarks use `b.Loop()`. Benchmarks of streaming types (per-frame or
 per-chunk processing and their constructors) follow the naming above, report
@@ -215,25 +227,19 @@ them for 100 ms each.
 | `ReportFrameMetrics` | Benchmark metrics |
 | `LoadManifest`, `ReadFile`, `Compare`, `NewStreamChecker`, `EncodeLE`, `DecodeLE` | Fixture loading and comparison |
 | `SpeechFiles`, `LoadSpeech` | LibriSpeech files from `make speech`; skip when absent |
+| `CheckZeroValue`, `CallZeroValue` | Calls every exported method of a zero value (section 2) |
+| `RepoRoot` | The directory that holds `go.mod` |
 
 Do not call `math.Sin`, `math.Exp` or `math.Log` to generate inputs that are
 compared bit for bit: those can differ between architectures. Use the
 `testutil` generators, or write the inputs once and commit or hash them.
 
-Under `-race` or `-short`, a test may reduce work only by comparing a leading
-part of a stream (for example the first chunk hash); it must still run the
-same code paths. Say so in the test. One exception: under `-race`, a package
-that starts no goroutines may run a subset of its reference configurations,
-because the race detector adds run time there, not coverage. The normal
-`go test` still runs every case, and the test and `docs/testing.md` state the
-subset.
-
-Added by WP7, accepted: a package that does start goroutines may also skip
-under `-race` the tests or cases that run on one goroutine only, extending
-the exception above. Every test that starts goroutines runs in full under
-`-race`, and the skipped work runs in full in the normal `go test`. Each
-skipped test or case calls `t.Skip` with a reason that names this rule, so
-`go test -v -race` lists what is skipped; `docs/testing.md` states it.
+Under `-short` or `-race`, a test may skip, or reduce to a named subset, only
+if the normal `go test` runs the full work. A goroutine test may run a shorter
+stream under `-race`, but the same concurrent paths. Every skip or reduction
+is named in the test and listed in `docs/testing.md`. A skipped test gives
+the reason in its `t.Skip` call, so `go test -v` lists it (ADRs
+`test-reduction-rules` and `wp7-race-skips`).
 
 ## 10. Fixtures and the reference harness
 
@@ -242,6 +248,8 @@ harness is described in `reference/README.md`; this section is the contract
 between drivers and Go tests.
 
 ### Manifest
+
+The names and counts in the examples of this section are illustrative.
 
 ```json
 {
@@ -271,7 +279,8 @@ between drivers and Go tests.
 - `chunks` holds the SHA-256 of each run of `chunk` elements (the last may be
   shorter). It covers the whole stream, committed or not.
 - `file`, if present, is the committed prefix: the first `count` elements.
-  A short stream is committed whole (`file.count == count`).
+  A stream no longer than the prefix its driver commits is committed whole
+  (`file.count == count`).
 - `params` is free-form per component, and is where a driver records the
   configuration, seeds and anything it observed.
 
@@ -370,8 +379,7 @@ func (p *Preprocessor) RunEcho(frame []int16, residual []int32) (bool, error)
 ```
 
 The `bool` is the VAD decision, as `speex_preprocess_run` returns it. Names
-and the other methods are each work package's choice; the semantics above are
-the contract.
+and the other methods are not part of the contract; the semantics above are.
 
 Per-frame order, matching the reference call sequence:
 
@@ -400,10 +408,10 @@ Conditions:
   (`TestReferencePairing`).
 - Switching between `Run` and `RunEcho` from frame to frame is allowed and
   matches setting and clearing the echo state between calls in C.
-- WP6 tests that calling `Residual` does not change any later echo output,
-  and WP5 tests `RunEcho` against residual spectra that its driver records
-  from the C pairing. `integration` tests the real pairing bit for bit
-  against the C chain (`TestReferencePairing`).
+- `echo` tests that calling `Residual` does not change any later echo
+  output, and `preprocess` tests `RunEcho` against residual spectra that its
+  driver records from the C pairing. `integration` tests the real pairing bit
+  for bit against the C chain (`TestReferencePairing`).
 
 Alternatives considered: `preprocess` holding a `*echo.Canceller` (mirrors
 the C pointer, but couples the packages and stops WP5 testing without WP6),

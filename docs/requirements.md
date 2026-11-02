@@ -130,8 +130,8 @@ codec (`docs/decisions/codecs-separate-repo.md`).
 - Keep exported APIs small; keep low-level operations in `internal/` unless
   there is a clear reason to export them.
 - Cross-package contracts (for example the echo → preprocess residual-echo
-  coupling) are defined in `docs/contracts.md`. Prefer concrete types; an interface needs
-  approval (§2).
+  coupling) are defined in `docs/contracts.md`. Prefer concrete types; an
+  interface needs approval (§2).
 
 ---
 
