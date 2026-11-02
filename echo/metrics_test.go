@@ -235,8 +235,8 @@ func (f figures) String() string {
 
 // TestScenarioMeasurements measures every scenario in every configuration,
 // checks the sanity floors at 8 and 16 kHz and compares the figures with
-// testdata/metrics.golden. Under -short it measures one configuration of
-// each scenario, under -race only farend in it (docs/testing.md).
+// testdata/metrics.golden. Under -short and -race it measures one
+// configuration (under -race only farend).
 func TestScenarioMeasurements(t *testing.T) {
 	var cs []refCase
 	for _, c := range sortedCases() {
@@ -244,7 +244,7 @@ func TestScenarioMeasurements(t *testing.T) {
 			continue // under -race only farend: run time, no race coverage
 		}
 		if partialCheck() && !(c.rate == 16000 && c.frameMs == 10 && c.filterMs == 128) {
-			continue // -short and -race measure one configuration per scenario
+			continue
 		}
 		cs = append(cs, c)
 	}
