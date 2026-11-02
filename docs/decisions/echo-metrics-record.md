@@ -1,12 +1,13 @@
-# ADR wp6-metrics-record: Where the echo scenario figures are recorded
+# ADR echo-metrics-record: Where the echo scenario figures are recorded
 
-- **Status:** accepted; supersedes in part criterion C8 of
-  `docs/acceptance/echo.md`.
+- **Status:** accepted; supersedes in part the scenario-measurements
+  statement of `docs/acceptance/echo.md` (section "Scenario measurements").
 - **Date:** 2026-11-02
 
 ## Context
 
-Criterion C8 of `docs/acceptance/echo.md` says: "Every scenario's figures
+The scenario-measurements statement of `docs/acceptance/echo.md` (section
+"Scenario measurements") says: "Every scenario's figures
 are reported in `docs/algorithms.md` for every configuration, and the Go
 test pins them". The figures of every configuration are now in
 `echo/testdata/metrics.golden`, one line per case. The file has 384 lines:
@@ -26,7 +27,7 @@ lists, not a line per configuration.
 ## Consequences
 
 - The Go test still pins the figures, so a change in behaviour is visible.
-  Criterion C8 keeps its other statements, including the sanity floors.
+  The statement keeps its other parts, including the sanity floors.
 - A change of the figures is an update of `metrics.golden`
   (`-update-metrics`) and, where a range moves, of `docs/algorithms.md`.
 

@@ -19,8 +19,9 @@ approval.
   append it to `internal/fixed` with a harness test, in its own commit. A
   macro that one upstream file defines stays with the package that ports
   that file, for example `TOP16` in `mdf.c`, `DIV32_16_Q8` and
-  `DIV32_16_Q15` in `preprocess.c`, `toBARK` in `filterbank.c`, and `S_MUL`,
-  `C_MUL` and `sround` in `_kiss_fft_guts.h` (ADR `local-macro-ports`).
+  `DIV32_16_Q15` in `preprocess.c`, the `FIXED_POINT` `toBARK` in
+  `filterbank.c`, and `S_MUL`, `C_MUL` and `sround` in `_kiss_fft_guts.h`
+  (ADR `local-macro-ports`).
 - `internal/testutil` holds shared test support (section 9).
 - A package doc lives in `doc.go`.
 - Fuzz seed corpora live in the package's own `testdata/fuzz/`.

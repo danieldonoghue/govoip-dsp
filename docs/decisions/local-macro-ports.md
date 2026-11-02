@@ -15,9 +15,10 @@ keep a helper for a macro that exactly one upstream file defines, for example:
   itself, as static inline functions; no shared header defines them.
 - `sMul`, `cMul`, `cMul4` and `cFixDiv` for `S_MUL`, `C_MUL`, `C_MUL4` and
   `C_FIXDIV` in `_kiss_fft_guts.h` (`internal/fft/kiss.go`). The same
-  file also defines `sround`, `C_ADD`, `C_SUB` and `kf_cexp2` as `sround`,
+  file's `sround`, `C_ADD`, `C_SUB` and `kf_cexp2` are ported as `sround`,
   `cAdd`, `cSub` and `kfCexp2`.
-- `toBark` for `toBARK` in `filterbank.c` (`preprocess/filterbank.go`).
+- `toBark` for the `FIXED_POINT` `toBARK` in `filterbank.c`
+  (`preprocess/filterbank.go`).
 
 ## Decision
 

@@ -164,7 +164,7 @@ Definitions, over 0.5 s windows:
 
 Every scenario's figures are reported in `docs/algorithms.md` for every
 configuration, and the Go test pins them, so a change in behaviour is
-visible. Superseded in part by ADR `wp6-metrics-record`. Sanity floors,
+visible. Superseded in part by ADR `echo-metrics-record`. Sanity floors,
 which apply at 8 and 16 kHz only:
 
 1. `farend` and `ir_short`: steady-state ERLE at least 10 dB, and

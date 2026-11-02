@@ -6,7 +6,7 @@
   criterion 5 of `docs/acceptance/echo.md`, in its statement for `-race`:
   under `-race` the `echo` reference tests run only the cases of
   `fullInPartial`, in full.
-- **Date:** 2026-10-28
+- **Date:** 2026-10-28; revised 2026-11-02
 
 ## Context
 
@@ -54,8 +54,9 @@ In each case the normal `go test` runs the full work.
   part rule, the exception for packages without goroutines and the
   extension of ADR `wp7-race-skips`, which stays as the record of why the
   single-goroutine skips exist.
-- The leading-part comparison of `partialCheck` (`internal/fixed`,
-  `preprocess`) is a reduction to a named subset under the first rule.
+- The first-chunk comparison that `partialCheck` selects in
+  `internal/fixed` and `preprocess` is a reduction to a named subset under
+  the first rule.
 - A test that reduces its work without being named in the test and in
   `docs/testing.md` breaks the rule.
 
