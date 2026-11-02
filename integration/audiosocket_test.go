@@ -717,26 +717,24 @@ func TestNoAllocsAudioSocket(t *testing.T) {
 			t.Fatalf("%d frames dropped, %v; want none dropped, so that the store is measured", dropped, err)
 		}
 	})
-	// recorder.deliver dropping frames, its writing goroutine blocked.
+	// recorder.deliver dropping frames: no writing goroutine, so frames stays full.
 	t.Run("recorder drops", func(t *testing.T) {
 		skipUnderRace(t)
-		pr, pw := io.Pipe() // Write blocks until the reader below runs
-		r, err := newRecorder(pw, 4*160)
+		frames, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: 4 * 160})
 		if err != nil {
 			t.Fatal(err)
 		}
+		r := &recorder{frames: frames}
 		x := callScenario(8000, 1).mic[:160]
-		for range 10 { // at most 8 frames are stored: the rest are dropped
+		for range 4 {
 			r.deliver(x)
 		}
-		before := r.dropped
-		testutil.AssertNoAllocs(t, 200, func() { r.deliver(x) })
-		if got := r.dropped - before; got != 201 {
-			t.Errorf("%d of 201 measured frames dropped, want all", got)
+		if r.dropped != 0 || frames.Free() != 0 {
+			t.Fatalf("%d frames dropped, %d samples free; want 0 and a full buffer", r.dropped, frames.Free())
 		}
-		go io.Copy(io.Discard, pr)
-		if _, err := r.close(); err != nil {
-			t.Fatal(err)
+		testutil.AssertNoAllocs(t, 200, func() { r.deliver(x) })
+		if r.dropped != 201 {
+			t.Errorf("%d of 201 measured frames dropped, want all", r.dropped)
 		}
 	})
 }
