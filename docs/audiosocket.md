@@ -1,20 +1,84 @@
 # AudioSocket quick start
 
+## Which audio is which
+
+The packages name the two [streams](glossary.md#stream) of a call after
+a device. On this page:
+
+- **[Near end](glossary.md#near-end).** The audio that Asterisk sends to
+  your service: the caller's voice. The docs also call it the microphone
+  signal, and the code calls it `mic`.
+- **[Far-end reference](glossary.md#far-end).** The audio that your
+  service sends back to Asterisk, such as a prompt, text-to-speech or a
+  bridged leg. The code calls it `far`.
+- **[Send path](glossary.md#send-path-and-receive-path).** The
+  processing that cleans the near end. Here it cleans the audio your
+  service receives, not the audio it sends.
+
+The names come from the device case, where the near end is the person at
+the microphone, not from where your code runs. So on a server the caller
+is the near end, even though they are far away, and your service is the
+far end.
+
 This page is a short path for a Go service that takes calls from Asterisk
 over AudioSocket and cleans the caller's audio: echo cancellation, noise
 suppression with voice activity detection ([VAD](glossary.md#vad)), and
-automatic gain control ([AGC](glossary.md#agc)). It gives the protocol
-facts the code needs, a whole program that accepts the connections, the
-[processors](glossary.md#processor) to make for each connection, and the calls for each
-[frame](glossary.md#frame). The
-[developer guide](guide.md) explains each package, and [usage.md](usage.md)
-has the full recipes, their caveats and their measurements.
+automatic gain control ([AGC](glossary.md#agc)). The tutorial comes
+first: the dialplan, a whole program walked through, what to change for
+your application, and how to check that it works. The
+[reference](#reference) after it gives the protocol facts with their
+Asterisk sources, what to expect from echo cancellation, the cost, and
+hold and `Reset`. The [developer guide](guide.md) explains each package,
+and [usage.md](usage.md) has the full recipes, their caveats and their
+measurements.
 
-On a noisy line, set the AGC's gate level before you rely on `agc`. With
-the default gate, `agc` can make steady noise louder. The guide's
-[send path](guide.md#the-send-path-frame-by-frame), "Gate above the
-noise", gives the steps; the code below uses `agc.DefaultConfig`, where
-`GateLevel` is the field to change.
+## Connect a call from the dialplan
+
+Asterisk connects to your service in one of two ways, both set in
+`extensions.conf`. The context name `audiosocket-demo` and the
+extensions 100 and 101 are examples. Each way passes the call's UUID,
+which your service receives first (item 3 of
+[the protocol](#the-protocol)), and the address where the program below
+listens.
+
+```text
+[audiosocket-demo]
+exten => 100,1,Answer()
+exten => 100,2,AudioSocket(40325ec2-5efd-4bd3-805f-53576e581d13,127.0.0.1:9092)
+exten => 100,3,Hangup()
+
+exten => 101,1,Dial(AudioSocket/127.0.0.1:9092/40325ec2-5efd-4bd3-805f-53576e581d13/c(slin))
+exten => 101,2,Hangup()
+```
+
+- **Extension 100: the `AudioSocket()` dialplan application.** Its
+  arguments are the UUID and the service as `host:port`, separated by a
+  comma
+  ([application documentation](https://docs.asterisk.org/Latest_API/API_Documentation/Dialplan_Applications/AudioSocket/);
+  `apps/app_audiosocket.c:58-64`, `apps/app_audiosocket.c:97-107`). The
+  application does not answer the call, and on a channel that is not
+  answered it ends at once with an error, so `Answer()` comes first
+  (`apps/app_audiosocket.c:69`, `apps/app_audiosocket.c:160-163`). It
+  always sends and takes 8 kHz audio, the rate the program below uses.
+- **Extension 101: the `AudioSocket` channel driver, through `Dial()`.**
+  The dial string is `AudioSocket/host:port/UUID/options`, split at each
+  `/` (`channels/chan_audiosocket.c:206-234`). The channel driver answers
+  its own channel when `Dial()` calls it
+  (`channels/chan_audiosocket.c:142-147`). The option `c` names the
+  Asterisk format to use (`channels/chan_audiosocket.c:178`,
+  `channels/chan_audiosocket.c:236-238`): `slin` is 8 kHz signed linear
+  audio and `slin16` is 16 kHz (`main/codec_builtin.c:287-291`,
+  `main/codec_builtin.c:968-970`). Always give `c(slin)` or `c(slin16)`
+  (item 5 of [the protocol](#the-protocol)). With `c(slin16)`, change
+  both `8000` in `main` to `16000`.
+
+The example passes the same UUID for every call, so your service cannot
+tell the calls apart by it, and each call's recording replaces the one
+before ([Write the cleaned audio to a file](#write-the-cleaned-audio-to-a-file)).
+These lines are checked against the Asterisk documentation and sources
+named here; they have not been run on an Asterisk server.
+
+## The program
 
 The Go code blocks on this page, in order, are one complete program. Copy
 them into one file, `main.go`, in a new module that requires the library
@@ -22,174 +86,12 @@ them into one file, `main.go`, in a new module that requires the library
 build it. [How this page is tested](#how-this-page-is-tested) says how
 the blocks are kept building and correct.
 
-## Near end, far end and echo
-
-The packages name the two [streams](glossary.md#stream) of a call after a
-device, but the roles are the same on a server. The names come from the
-device case, not from where your code runs: on a server the caller is
-the [near end](glossary.md#near-end), though they are far away, and
-your service is the [far end](glossary.md#far-end).
-
-- **[Near-end](glossary.md#near-end) signal.** The audio that Asterisk sends to your service: the
-  caller's voice. The docs also call it the microphone signal, and the code
-  calls it `mic`.
-- **[Far-end](glossary.md#far-end) reference.** The audio that your service sends back to
-  Asterisk, such as a prompt, text-to-speech or a bridged leg. The code
-  calls it `far`.
-- **[Echo](glossary.md#echo).** What your service sends comes back in
-  what it receives. On a device the microphone hears the loudspeaker; here
-  the caller's side does the same: a speakerphone caller's microphone
-  picks up your audio from their loudspeaker, or an acoustic or line echo
-  on their side returns it. `echo` cancels it, with the frames you sent
-  as the reference.
-
-Leave out `echo` where nothing can come back:
-
-- **Your service sends nothing back**, for example speech recognition or
-  recording. There is no far end, so there is no echo. Make only
-  `preprocess` and `agc`.
-- **The caller's side returns no echo**, for example a caller on a headset.
-  Use `Run` then `Process`
-  ([A call without echo cancellation](guide.md#a-call-without-echo-cancellation)).
-  The code below ties `echo` to sending audio back: for a headset caller
-  who still gets audio, keep its sending in `step` and replace `received`
-  with the `Run` and `Process` of its other branch.
-
-### What to expect from echo cancellation on a server
-
-- **The echo delay is longer than on a device.** On a server the
-  [echo delay](glossary.md#echo-delay) includes the network round trip
-  to the caller's device and back, and the buffering on the way. The
-  code below uses a 200 ms [filter length](glossary.md#filter-length),
-  the guide's start value, and that may be too short. Echo that arrives
-  later than the filter length is not cancelled.
-- **Choosing the filter length.** The filter must cover the echo delay
-  plus the [echo tail](glossary.md#echo-tail). Measure the delay on test
-  calls of the kind your service handles, then choose the shortest filter
-  that covers it: a longer one costs more and adapts more slowly
-  ([usage.md](usage.md#caveats), "Filter length").
-- **What is measured.** The code below uses the pairing of recipe A of
-  usage.md, on one goroutine. In simulated calls with synthetic
-  [echo paths](glossary.md#echo-path) and up to 30 ms of
-  [jitter](glossary.md#jitter), recipe A cancelled echo delays of 40 to
-  200 ms by 17.1 to 27.2 [dB](glossary.md#db), and a 32 ms delay by only 11.1 and 10.7 dB
-  at 8 and 16 kHz ([usage.md](usage.md#caveats), "Echo delay").
-- **What is not measured.** Real calls through Asterisk, line echo and
-  the round trips of real networks have not been measured. These figures
-  do not promise that the echo of a speakerphone call is cancelled.
-- **The cost.** On the test Mac, on a synthetic call with echo, the
-  whole send path of one call (`echo` with a 200 ms filter, `preprocess`
-  and `agc`) took a median of 71.4 µs per 20 ms frame at 8 kHz and 142.2 µs at
-  16 kHz, under 1% of the frame duration
-  ([performance.md](performance.md#whole-chain-integration-wp7)); the
-  cost without echo has not been measured separately. In the
-  `echo` package's scenario with a silent far end, `echo` lowered the
-  level of the near end by 1.0 dB at 8 kHz and 0.1 dB at 16 kHz, through
-  its DC notch
-  ([measured behaviour](algorithms.md#acoustic-echo-canceller-echo-wp6)).
-  Whether `echo` changes the caller's voice when your service sends audio
-  but no echo comes back has not been measured.
-
-## The protocol
-
-These facts come from the
-[AudioSocket protocol page](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/)
-and from the Asterisk sources at commit
-[`266378a1`](https://github.com/asterisk/asterisk/tree/266378a125bf8b0c72b066503b66ff3796aae175)
-(the file and line references below).
-
-1. AudioSocket runs over TCP (`res/res_audiosocket.c:137`). Asterisk
-   connects to your service: one connection for each run of the
-   `AudioSocket()` application (`apps/app_audiosocket.c:107`) and for
-   each `AudioSocket` channel (`channels/chan_audiosocket.c:265`).
-2. Each message is a 3-byte header and a payload. The header is one byte
-   of kind and two bytes of payload length, big-endian (protocol page;
-   `res/res_audiosocket.c:226-256`).
-3. Asterisk's first message is the call's UUID: kind `0x01`, 16 bytes
-   (`res/res_audiosocket.c:189-215`). It is the UUID given to
-   `AudioSocket()` or in the channel's dial string
-   (`apps/app_audiosocket.c:165`, `channels/chan_audiosocket.c:148`), so
-   your service can match the connection to the call.
-4. The protocol page defines the audio kinds as 16-bit signed linear
-   mono PCM, little-endian. Two bytes make one `int16` sample:
-   `int16(binary.LittleEndian.Uint16(b))`. Asterisk sends such audio
-   from the dialplan application, and from the channel driver only when
-   it is given a signed linear codec (item 5).
-5. The rate is in the kind: `0x10` is 8 kHz and `0x12` is 16 kHz; `0x11`
-   and `0x13` to `0x18` are 12, 24, 32, 44.1, 48, 96 and 192 kHz (protocol
-   page). The dialplan application `AudioSocket()` sets the channel to
-   8 kHz linear audio, so it sends and takes kind `0x10`
-   (`apps/app_audiosocket.c:117-127`). The `AudioSocket` channel driver
-   uses the codec named in its `c` option, for example
-   `Dial(AudioSocket/host:port/uuid/c(slin16))`, or else the first codec
-   the channel offers (`channels/chan_audiosocket.c:194-251`); `slin16`
-   gives kind `0x12` (`res/res_audiosocket.c:237-238`). Always give the
-   channel driver `c(slin)` or `c(slin16)`. Without it, a call whose
-   first codec is, for example, µ-law sends µ-law bytes labelled as kind
-   `0x10`: the driver takes the first codec
-   (`channels/chan_audiosocket.c:244-251`), Asterisk labels every voice
-   frame that is not signed linear as `0x10`
-   (`res/res_audiosocket.c:251-253`), and the code below would read the
-   bytes as samples.
-6. The protocol does not fix how much audio one message holds: Asterisk
-   forwards each voice or DTMF frame it reads from the channel
-   (`apps/app_audiosocket.c:181-196`). So the code collects the samples
-   into 20 ms frames, 160 samples at 8 kHz and 320 at 16 kHz. Comfort
-   noise is a low noise that the caller's side asks the receiver to make
-   during silence, instead of sending audio. Asterisk does not forward
-   comfort noise frames (`res/res_audiosocket.c:263-264`), so where the
-   caller's side suppresses silence, the received audio can have gaps, and
-   the frames sent back follow the received frames, not a clock. The
-   dialplan application ends the session as an error when neither the
-   channel nor the socket has had activity for 2 s
-   (`apps/app_audiosocket.c:48`, `apps/app_audiosocket.c:218-222`). The
-   code below sends only when it receives, so it does nothing to keep
-   such a session going.
-7. A DTMF digit is kind `0x03` with one ASCII byte (protocol page;
-   `res/res_audiosocket.c:258-262`). DTMF tones that stay in the audio
-   itself go through the processors like any other sound. The library
-   does not detect them, and whether a detector still finds them after
-   the processors has not been tested.
-8. Asterisk writes the audio of each message your service sends to the
-   call as soon as it reads it, with `ast_write`
-   (`apps/app_audiosocket.c:198-216`); nothing in that code re-times it
-   or adds silence. So with `echo`, your service paces
-   what it sends: one frame back for each frame received, silence when it
-   has nothing to send. Then the canceller gets the frame that was sent
-   with each received frame. This is the pairing of recipe A of
-   [usage.md](usage.md#recipe-a-sending-paced-by-the-received-frames).
-9. Asterisk accepts only hangup and audio messages from your service. Any
-   other kind, or a payload length of 0, ends the session as an error
-   (`res/res_audiosocket.c:330-376`, `apps/app_audiosocket.c:200-209`).
-   Never send an empty audio message.
-10. When the session ends on the Asterisk side, for example because the
-    caller hangs up, Asterisk closes the connection, and your service
-    reads end of file (`apps/app_audiosocket.c:146`,
-    `channels/chan_audiosocket.c:152-160`). Your service ends the session
-    with the hangup message `0x00 0x00 0x00` or by closing the connection
-    (protocol page; `res/res_audiosocket.c:330-336`).
-11. The protocol page also lists kind `0xff`, an error with an optional
-    error code. The Asterisk sources at this commit do not send it.
-
-### Other rates
-
-The code below takes 8 or 16 kHz only, because `echo` works well at those
-rates only. For audio at another rate, resample both streams to 8 or
-16 kHz first: `newCall` in
-[Sources that deliver the pairing](usage.md#sources-that-deliver-the-pairing)
-does that around the processors, and the guide's
-[receive path](guide.md#the-receive-path) introduces `resample`.
-`preprocess` and `agc` alone accept other rates (their package docs give
-the ranges).
-
-## The program
-
 The file starts with the package clause, the imports and `main`. `main`
 listens on TCP port 9092 and serves each connection from Asterisk at
 8 kHz, the rate of the `AudioSocket()` application, with the example
-application `beeper` ([The application](#the-application)). The
-dialplan application needs an answered channel, so run `Answer()` before
-it (`apps/app_audiosocket.c:69`, `apps/app_audiosocket.c:160`).
+application `beeper` ([The application](#the-application)). `recording`
+also writes each call's cleaned audio to a file
+([Write the cleaned audio to a file](#write-the-cleaned-audio-to-a-file)).
 
 ```go
 package main
@@ -202,6 +104,8 @@ import (
 	"log"
 	"math"
 	"net"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/danieldonoghue/govoip-dsp/agc"
@@ -217,7 +121,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Fatal(acceptAudioSockets(ln, 8000, beeper(8000)))
+	// beeper is the example application; recording also writes each call's
+	// cleaned audio to <UUID>.raw in the working directory.
+	log.Fatal(acceptAudioSockets(ln, 8000, recording(".", 8000, beeper(8000))))
 }
 ```
 
@@ -243,7 +149,7 @@ var (
 )
 ```
 
-## One connection, one goroutine
+### One connection, one goroutine
 
 Each connection is one call. `acceptAudioSockets` serves each connection
 on its own goroutine. `serveAudioSocket` reads the call's UUID, asks the
@@ -437,7 +343,7 @@ func (a *audioSocketCall) next(conn io.ReadWriter, pending *buffer.SPSC, deliver
 }
 ```
 
-## Each frame
+### Each frame
 
 ```go
 // audio cuts the received samples into 20 ms frames and processes each.
@@ -517,7 +423,7 @@ For each message, `next` and `audio` do this:
 5. `deliver` gets the cleaned frame. It must not keep the slice: the next
    frame overwrites it.
 
-## The processors
+### The processors
 
 `pacedCall` holds `echo`, `preprocess` and `agc` for one call. It comes
 from recipe A of usage.md, whose
@@ -615,7 +521,7 @@ func (b *pacedCall) finish(out []int16) error {
 }
 ```
 
-## The application
+### The application
 
 The application runs on its own goroutine and writes the audio it wants
 to send, such as a prompt or text-to-speech, into `pending`:
@@ -710,7 +616,362 @@ func beeper(rate int) func(id uuid) (session, error) {
 }
 ```
 
-## Is one goroutine enough?
+### Write the cleaned audio to a file
+
+`beeper`'s `deliver` only counts the frames. So that you can listen to
+what the processors made, `main` wraps `beeper` in `recording`. It also
+writes each call's cleaned audio to the file `<UUID>.raw` in the working
+directory: raw 16-bit little-endian mono PCM at the call's rate, with no
+header.
+
+`deliver` runs on the connection's goroutine, in the per-frame path, so
+it must not write to the file itself: a slow disk would hold up the
+frames sent back. So the work is split:
+
+1. `recorder.deliver` copies each frame into a `buffer.SPSC` with
+   `onPacket` and returns at once. The copy matters: `deliver` must not
+   keep the slice.
+2. `writePCM`, on a goroutine of its own, takes the samples out of the
+   SPSC and writes them to the file. When the SPSC is empty, it sleeps
+   20 ms.
+3. When the SPSC is full, because the file has fallen 2 s of audio
+   behind, `deliver` drops the frame and counts it. The recording then
+   has a gap; the frames sent back and the processing do not change.
+4. When the session ends, `end` closes `done`, waits until `writePCM` has
+   written what is left and closed the file, and logs the number of
+   dropped frames and the write error, if any.
+
+```go
+// recording wraps start: it also writes each call's cleaned audio to the
+// file <dir>/<UUID>.raw, raw 16-bit little-endian mono PCM at rate Hz.
+func recording(dir string, rate int, start func(id uuid) (session, error)) func(id uuid) (session, error) {
+	return func(id uuid) (session, error) {
+		name := filepath.Join(dir, id.String()+".raw")
+		f, err := os.Create(name)
+		if err != nil {
+			return session{}, err
+		}
+		// Up to 2 s of audio can wait for the disk; deliver drops what does not fit.
+		r, err := newRecorder(f, 2*rate)
+		if err != nil {
+			f.Close()
+			return session{}, err
+		}
+		s, err := start(id)
+		if err != nil {
+			r.close()
+			return session{}, err
+		}
+		deliver, end := s.deliver, s.end
+		s.deliver = func(x []int16) {
+			deliver(x)
+			r.deliver(x)
+		}
+		s.end = func() {
+			end()
+			dropped, err := r.close()
+			log.Printf("call %v: recorded to %s, %d frames dropped, error %v", id, name, dropped, err)
+		}
+		return s, nil
+	}
+}
+```
+
+```go
+// recorder writes frames to a file on its own goroutine, so that deliver,
+// on the connection's goroutine, never waits for the disk.
+type recorder struct {
+	frames  *buffer.SPSC  // samples from deliver to the writing goroutine
+	dropped int           // frames that did not fit; used by deliver's goroutine only
+	done    chan struct{} // closed after the last deliver
+	written chan error    // the writing goroutine's result
+}
+
+// newRecorder starts the goroutine that writes the delivered samples to w;
+// capacity is the number of samples that can wait for it.
+func newRecorder(w io.WriteCloser, capacity int) (*recorder, error) {
+	frames, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: capacity})
+	if err != nil {
+		return nil, err
+	}
+	r := &recorder{frames: frames, done: make(chan struct{}), written: make(chan error, 1)}
+	go func() { r.written <- writePCM(w, frames, r.done) }()
+	return r, nil
+}
+
+// deliver copies the frame x for the writing goroutine, or drops it when
+// that goroutine has fallen behind. It never waits.
+func (r *recorder) deliver(x []int16) {
+	if !onPacket(r.frames, x) {
+		r.dropped++
+	}
+}
+
+// close waits until the writing goroutine has written every stored sample
+// and closed w. Call it once, after the last deliver.
+func (r *recorder) close() (dropped int, err error) {
+	close(r.done)
+	return r.dropped, <-r.written
+}
+
+// writePCM writes the samples in frames to w as 16-bit little-endian PCM
+// until done is closed and frames is empty, then closes w.
+func writePCM(w io.WriteCloser, frames *buffer.SPSC, done <-chan struct{}) error {
+	pcm := make([]int16, frames.Cap())
+	b := make([]byte, 2*len(pcm))
+	for {
+		last := false
+		select {
+		case <-done:
+			last = true // nothing more is delivered: write what is stored, then stop
+		default:
+		}
+		n := frames.Read(pcm)
+		if n == 0 {
+			if last {
+				return w.Close()
+			}
+			time.Sleep(20 * time.Millisecond)
+			continue
+		}
+		for i, s := range pcm[:n] {
+			binary.LittleEndian.PutUint16(b[2*i:], uint16(s))
+		}
+		if _, err := w.Write(b[:2*n]); err != nil {
+			w.Close()
+			return err
+		}
+	}
+}
+```
+
+To listen to a recording at 8 kHz, use SoX's `play` or FFmpeg's
+`ffplay`:
+
+```sh
+play -t raw -r 8000 -e signed-integer -b 16 -c 1 -L 40325ec2-5efd-4bd3-805f-53576e581d13.raw
+ffplay -f s16le -ar 8000 -ch_layout mono 40325ec2-5efd-4bd3-805f-53576e581d13.raw
+```
+
+For a 16 kHz call, write `16000` for `8000`. The input options of both
+commands were checked with SoX 14.4.2 and FFmpeg 6.1.2 on macOS, on a
+file of 16-bit little-endian samples.
+
+## What to change for your application
+
+- **Your application instead of `beeper`.** Write a `start` function
+  that returns a `session` ([The application](#the-application)):
+  `pending` for the audio to send, or nil when you send nothing;
+  `deliver` for the cleaned frames; `end` for the end of the call. Keep
+  `recording` around it while you test, or remove it.
+- **The AGC's gate level, on a noisy line.** Set it before you rely on
+  `agc`. With the default gate, `agc` can make steady noise louder. The
+  guide's [send path](guide.md#the-send-path-frame-by-frame), "Gate
+  above the noise", gives the steps; the code uses `agc.DefaultConfig`,
+  where `GateLevel` is the field to change.
+- **The rate.** With `c(slin16)` in the dial string, change both `8000`
+  in `main` to `16000`. For other rates, see [Other rates](#other-rates).
+- **The echo filter length.** The code uses 200 ms, which may be too
+  short on a server
+  ([What to expect](#what-to-expect-from-echo-cancellation-on-a-server)).
+- **Leave out `echo` where nothing can come back.**
+  - **Your service sends nothing back**, for example speech recognition
+    or recording. There is no far end, so there is no echo. Make only
+    `preprocess` and `agc`: return a `session` with `pending` nil.
+  - **The caller's side returns no echo**, for example a caller on a
+    headset. Use `Run` then `Process`
+    ([A call without echo cancellation](guide.md#a-call-without-echo-cancellation)).
+    The code ties `echo` to sending audio back: for a headset caller
+    who still gets audio, keep its sending in `step` and replace
+    `received` with the `Run` and `Process` of its other branch.
+
+## Check that it works
+
+These are the steps to try on a test call. They have not been run
+against an Asterisk server.
+
+1. Start the program, then call extension 100 or 101.
+2. The caller should hear a 200 ms beep every 2 s: `beeper`'s audio, sent
+   back.
+3. When the call ends, the program logs two lines. The first is
+   `call <UUID>: <n> frames received`, about 50 frames for each second
+   of received audio. The second is
+   `call <UUID>: recorded to <UUID>.raw, 0 frames dropped, error <nil>`.
+4. Play the recording ([the commands](#write-the-cleaned-audio-to-a-file)).
+   It is the caller's voice after the processors.
+5. If the session ends on its own after a pause in the audio, look in
+   the Asterisk log for "Reached timeout after 2000 ms of no activity".
+   The dialplan application waits at most 2 s for the next frame from
+   either side, the call's channel or your service. If neither comes, it
+   logs that line and ends the session as an error
+   (`apps/app_audiosocket.c:48`, `apps/app_audiosocket.c:176-177`,
+   `apps/app_audiosocket.c:218-222`). The program on this page sends a
+   frame only when it receives one, so it never keeps a session going by
+   itself: if Asterisk reads nothing from the caller's channel for 2 s,
+   the session ends. A frame that Asterisk reads from the channel but
+   does not forward, such as comfort noise, also counts as activity
+   (`apps/app_audiosocket.c:179-196`). Whether the channel of a caller
+   whose side suppresses silence goes 2 s without a frame has not been
+   tested. `channels/chan_audiosocket.c` has no such timeout. This page
+   has no tested way to keep a silent session open.
+
+## Reference
+
+The rest of the page is reference: the facts behind the tutorial, with
+their sources and measurements.
+
+### The protocol
+
+These facts come from the
+[AudioSocket protocol page](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/)
+and from the Asterisk sources at commit
+[`266378a1`](https://github.com/asterisk/asterisk/tree/266378a125bf8b0c72b066503b66ff3796aae175)
+(the file and line references on this page).
+
+1. AudioSocket runs over TCP (`res/res_audiosocket.c:137`). Asterisk
+   connects to your service: one connection for each run of the
+   `AudioSocket()` application (`apps/app_audiosocket.c:107`) and for
+   each `AudioSocket` channel (`channels/chan_audiosocket.c:265`).
+2. Each message is a 3-byte header and a payload. The header is one byte
+   of kind and two bytes of payload length, big-endian (protocol page;
+   `res/res_audiosocket.c:226-256`).
+3. Asterisk's first message is the call's UUID: kind `0x01`, 16 bytes
+   (`res/res_audiosocket.c:189-215`). It is the UUID given to
+   `AudioSocket()` or in the channel's dial string
+   (`apps/app_audiosocket.c:165`, `channels/chan_audiosocket.c:148`), so
+   your service can match the connection to the call.
+4. The protocol page defines the audio kinds as 16-bit signed linear
+   mono PCM, little-endian. Two bytes make one `int16` sample:
+   `int16(binary.LittleEndian.Uint16(b))`. Asterisk sends such audio
+   from the dialplan application, and from the channel driver only when
+   it is given a signed linear codec (item 5).
+5. The rate is in the kind: `0x10` is 8 kHz and `0x12` is 16 kHz; `0x11`
+   and `0x13` to `0x18` are 12, 24, 32, 44.1, 48, 96 and 192 kHz (protocol
+   page). The dialplan application `AudioSocket()` sets the channel to
+   8 kHz linear audio, so it sends and takes kind `0x10`
+   (`apps/app_audiosocket.c:117-127`). The `AudioSocket` channel driver
+   uses the codec named in its `c` option, for example
+   `Dial(AudioSocket/host:port/uuid/c(slin16))`, or else the first codec
+   the channel offers (`channels/chan_audiosocket.c:194-251`); `slin16`
+   gives kind `0x12` (`res/res_audiosocket.c:237-238`). Always give the
+   channel driver `c(slin)` or `c(slin16)`. Without it, a call whose
+   first codec is, for example, µ-law sends µ-law bytes labelled as kind
+   `0x10`: the driver takes the first codec
+   (`channels/chan_audiosocket.c:244-251`), Asterisk labels every voice
+   frame that is not signed linear as `0x10`
+   (`res/res_audiosocket.c:251-253`), and the program would read the
+   bytes as samples.
+6. The protocol does not fix how much audio one message holds: Asterisk
+   forwards each voice or DTMF frame it reads from the channel
+   (`apps/app_audiosocket.c:181-196`). So the code collects the samples
+   into 20 ms frames, 160 samples at 8 kHz and 320 at 16 kHz. Comfort
+   noise is a low noise that the caller's side asks the receiver to make
+   during silence, instead of sending audio. Asterisk does not forward
+   comfort noise frames (`res/res_audiosocket.c:263-264`), so where the
+   caller's side suppresses silence, the received audio can have gaps, and
+   the frames sent back follow the received frames, not a clock. The
+   dialplan application ends the session as an error when neither the
+   channel nor the socket has had activity for 2 s
+   (`apps/app_audiosocket.c:48`, `apps/app_audiosocket.c:218-222`). The
+   program sends only when it receives, so it does nothing to keep such a
+   session going ([Check that it works](#check-that-it-works), step 5).
+7. A DTMF digit is kind `0x03` with one ASCII byte (protocol page;
+   `res/res_audiosocket.c:258-262`). DTMF tones that stay in the audio
+   itself go through the processors like any other sound. The library
+   does not detect them, and whether a detector still finds them after
+   the processors has not been tested.
+8. Asterisk writes the audio of each message your service sends to the
+   call as soon as it reads it, with `ast_write`
+   (`apps/app_audiosocket.c:198-216`); nothing in that code re-times it
+   or adds silence. So with `echo`, your service paces
+   what it sends: one frame back for each frame received, silence when it
+   has nothing to send. Then the canceller gets the frame that was sent
+   with each received frame. This is the pairing of recipe A of
+   [usage.md](usage.md#recipe-a-sending-paced-by-the-received-frames).
+9. Asterisk accepts only hangup and audio messages from your service. Any
+   other kind, or a payload length of 0, ends the session as an error
+   (`res/res_audiosocket.c:330-376`, `apps/app_audiosocket.c:200-209`).
+   Never send an empty audio message.
+10. When the session ends on the Asterisk side, for example because the
+    caller hangs up, Asterisk closes the connection, and your service
+    reads end of file (`apps/app_audiosocket.c:146`,
+    `channels/chan_audiosocket.c:152-160`). Your service ends the session
+    with the hangup message `0x00 0x00 0x00` or by closing the connection
+    (protocol page; `res/res_audiosocket.c:330-336`).
+
+### Other rates
+
+The program takes 8 or 16 kHz only, because `echo` works well at those
+rates only. For audio at another rate, resample both streams to 8 or
+16 kHz first: `newCall` in
+[Sources that deliver the pairing](usage.md#sources-that-deliver-the-pairing)
+does that around the processors, and the guide's
+[receive path](guide.md#the-receive-path) introduces `resample`.
+`preprocess` and `agc` alone accept other rates (their package docs give
+the ranges).
+
+### Echo on a server
+
+What your service sends comes back in what it receives: that is the
+[echo](glossary.md#echo). On a device the microphone hears the
+loudspeaker; here the caller's side does the same: a speakerphone
+caller's microphone picks up your audio from their loudspeaker, or an
+acoustic or line echo on their side returns it. `echo` cancels it, with
+the frames you sent as the reference.
+
+### What to expect from echo cancellation on a server
+
+- **The echo delay is longer than on a device.** On a server the
+  [echo delay](glossary.md#echo-delay) includes the network round trip
+  to the caller's device and back, and the buffering on the way. The
+  program uses a 200 ms [filter length](glossary.md#filter-length),
+  the guide's start value, and that may be too short. Echo that arrives
+  later than the filter length is not cancelled.
+- **Choosing the filter length.** The filter must cover the echo delay
+  plus the [echo tail](glossary.md#echo-tail). Measure the delay on test
+  calls of the kind your service handles, then choose the shortest filter
+  that covers it: a longer one costs more and adapts more slowly
+  ([usage.md](usage.md#caveats), "Filter length").
+- **What is measured.** The program uses the pairing of recipe A of
+  usage.md, on one goroutine. In simulated calls with synthetic
+  [echo paths](glossary.md#echo-path) and up to 30 ms of
+  [jitter](glossary.md#jitter), recipe A cancelled echo delays of 40 to
+  200 ms by 17.1 to 27.2 [dB](glossary.md#db), and a 32 ms delay by only 11.1 and 10.7 dB
+  at 8 and 16 kHz ([usage.md](usage.md#caveats), "Echo delay").
+- **Reading the dB figures.** Each echo figure is an
+  [ERLE](glossary.md#erle): the energy of the echo before the canceller
+  divided by the energy of what is left, in dB. A reduction of R dB
+  leaves `10^(-R/20)` of the echo's RMS amplitude and `10^(-R/10)` of
+  its energy ([dB](glossary.md#db)). So 20 dB makes the echo ten times
+  smaller in amplitude. What a given reduction sounds like to a caller
+  has not been measured.
+
+  | Reduction | Amplitude left | Energy left | Where it appears |
+  |---|---|---|---|
+  | 10 dB | 0.32, about a third | 1/10 | the level reached again after a path change ([Hold, transfer and Reset](#hold-transfer-and-reset)) |
+  | 10.7 dB | 0.29, about 1/3.4 | about 1/12 | 32 ms echo delay, 16 kHz |
+  | 11.1 dB | 0.28, about 1/3.6 | about 1/13 | 32 ms echo delay, 8 kHz |
+  | 17.1 dB | 0.14, about 1/7 | about 1/51 | the least for delays of 40 to 200 ms |
+  | 20 dB | 0.10, 1/10 | 1/100 | for comparison |
+  | 27.2 dB | 0.044, about 1/23 | about 1/525 | the most for delays of 40 to 200 ms |
+
+- **What is not measured.** Real calls through Asterisk, line echo and
+  the round trips of real networks have not been measured. These figures
+  do not promise that the echo of a speakerphone call is cancelled.
+- **The cost.** On the test Mac, on a synthetic call with echo, the
+  whole send path of one call (`echo` with a 200 ms filter, `preprocess`
+  and `agc`) took a median of 71.4 µs per 20 ms frame at 8 kHz and 142.2 µs at
+  16 kHz, under 1% of the frame duration
+  ([performance.md](performance.md#whole-chain-integration-wp7)); the
+  cost without echo has not been measured separately. In the
+  `echo` package's scenario with a silent far end, `echo` lowered the
+  level of the near end by 1.0 dB at 8 kHz and 0.1 dB at 16 kHz (to
+  0.89 and 0.99 of its amplitude), through its DC notch
+  ([measured behaviour](algorithms.md#acoustic-echo-canceller-echo-wp6)).
+  Whether `echo` changes the caller's voice when your service sends audio
+  but no echo comes back has not been measured.
+
+### Is one goroutine enough?
 
 Yes, for reading, processing and writing, as above. Asterisk's messages
 arrive at the pace of the call, so the received frames drive the loop. The
@@ -739,7 +1000,7 @@ A second goroutine, joined by a `buffer.SPSC`, is needed in these cases:
   processing sends nothing for that frame instead of waiting ("A full
   writer" in its caveats).
 
-## Added delay
+### Added delay
 
 With 20 ms frames, the processing delays the cleaned audio by about 22 ms:
 `echo` adds none, `preprocess` one frame (20 ms) and `agc` 2 ms
@@ -750,7 +1011,7 @@ the first sample of a frame. The audio your
 service sends back passes through no processor, so the library adds no
 delay to it other than the time it waits in `pending`.
 
-## Hold, transfer and Reset
+### Hold, transfer and Reset
 
 Each connection is one call. Make its processors and buffers when it
 connects, as `serveAudioSocket` does. To reuse them for the next
@@ -762,13 +1023,14 @@ cover reuse.
 No method needs `Reset` within a call. After a hold or a transfer, the
 [echo path](glossary.md#echo-path) can change, and the canceller adapts
 by itself: in the synthetic scenarios of the `echo` package doc it
-cancelled 10 dB again within 1 s of a sudden path change, and in the
-recipes of usage.md 2.5 to 3.5 s after the echo delay stepped from 100 to
-140 ms. `Reset` clears what a processor has learned: `echo` its filter
-(it keeps some learned state, listed in its package doc), `preprocess`
-its noise estimate and other adaptive state, and `agc` its gain. Whether
-a `Reset` after a hold makes the canceller cancel again sooner has not
-been measured.
+cancelled 10 dB again (about a third of the echo's amplitude left)
+within 1 s of a sudden path change, and in the recipes of usage.md 2.5
+to 3.5 s after the echo delay stepped from 100 to 140 ms. `Reset`
+clears what a processor has learned: `echo` its filter (it keeps some
+learned state, listed in its package doc), `preprocess` its noise
+estimate and other adaptive state, and `agc` its gain. Whether a `Reset`
+after a hold makes the canceller cancel again sooner has not been
+measured.
 
 ## Next steps
 
@@ -800,5 +1062,13 @@ Every Go block on this page except the first is copied from
   the UUIDs, the beep frames sent back and the log line at each end.
 - `TestReadUUID` and `TestAudioSocketMessages` check the handling of each
   message kind on hand-written bytes.
+- `TestAudioSocketRecording` serves a call through `recording` at 8 and
+  16 kHz, with and without audio sent back, and checks that the file
+  holds exactly the bytes of the cleaned frames that `deliver` got, and
+  that the log reports no dropped frame and no error.
+- `TestAudioSocketRecorderDrops` blocks the writing goroutine and checks
+  that `deliver` drops the frames that do not fit and that the file holds
+  the others, in order.
 - `TestNoAllocsAudioSocket` checks that handling an audio message
-  allocates nothing.
+  allocates nothing, and that `recorder.deliver` allocates nothing while
+  its writing goroutine runs.
