@@ -372,7 +372,7 @@ count of 32 or more:
 
 | Upstream site | Report | Reached through | Port |
 |---|---|---|---|
-| `pseudofloat.h:236:41` and `:236:53`; `:228:14` (`FLOAT_EXTRACT16`) | shift exponents 79 and 80 too large for a 32-bit type (a pseudo-float exponent of -80) | For `:236`: `FLOAT_EXTRACT32(bound)`, `mdf.c:1108`, when `Sey` is near 0 and `Syy` is large | `FloatExtract32Masked`: the compiled reference shifts modulo 32 (`docs/algorithms.md`, "Shifts outside [0, 31]") |
+| `pseudofloat.h:236:41` and `:236:53`; `:228:14` (`FLOAT_EXTRACT16`) | shift exponents 79 and 80 too large for a 32-bit type | For `:236`: `FLOAT_EXTRACT32(bound)`, `mdf.c:1108`, when `Sey` is near 0 and `Syy` is large | `FloatExtract32Masked`: the compiled reference shifts modulo 32 (`docs/algorithms.md`, "Shifts outside [0, 31]") |
 
 In the probe, `FLOAT_DIV32_FLOAT` with a divisor mantissa of -1 also
 divides -2^31 by -1, which arm64 `SDIV` and Go both give as -2^31.
