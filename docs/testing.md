@@ -22,7 +22,7 @@ section.
 
 ```sh
 make check           # gofmt, vet, CGO_ENABLED=0 tests, purego tests, deps guard, staticcheck
-make check-short     # the quick checks: gofmt, vet, go test -short, deps guard, staticcheck
+make check-short     # the quick checks: gofmt, vet, go test -short (also with -tags purego), deps guard, staticcheck
 make hooks           # once per clone: run make check-short before every git push
 make race            # go test -race ./...
 go test -short ./... # shorter reference runs; see "Race detector and short mode"
@@ -31,13 +31,14 @@ make fixtures-host   # rebuild with the host clang and compare with the committe
 make speech          # download LibriSpeech dev-clean into .cache/speech/
 ```
 
-CI runs `make speech` on one job, `test (ubuntu-24.04, Go 1.27.x)`, and
-caches the converted files under a key made from the hash of
-`internal/testutil/fetch-speech.sh`. The speech tests (for example the AGC's
-P4 and G1 to G4) run there on every CI run that changes code and skip in the
-other jobs. A cache miss downloads about 338 MB from OpenSLR, which happens
-when the script changes or when GitHub has evicted the cache after 7 days
-without use.
+On one job, `test (ubuntu-24.04, Go 1.27.x)`, CI restores the converted
+files from a cache whose key is the hash of
+`internal/testutil/fetch-speech.sh`, and runs `make speech` (after it
+installs `flac`) only on a cache miss. The speech tests (for example the
+AGC's P4 and G1 to G4) run there on every CI run that changes code and skip
+in the other jobs. A cache miss downloads about 338 MB from OpenSLR, which
+happens when the script changes or when GitHub has evicted the cache after
+7 days without use.
 
 ## Reference parity summary
 
@@ -79,9 +80,9 @@ against behavioural criteria (Strategy, item 2). The ADRs cited are in
   at 8, 16, 32 and 48 kHz, 10 and 20 ms frames and 64, 128 and 256 ms
   filters, eight 60 s and two 10-minute runs, and the pseudo-float probe.
   The Apple clang 21 host build gives identical hashes. Supported at 8 and
-  16 kHz only (ADR `wp6-rates-and-shifts`). One deviation that no fixture
-  reaches: `FLOAT_MUL32` shift counts outside [-31, 31] saturate (same
-  ADR).
+  16 kHz only; the port accepts rates up to 48 kHz and is bit-exact there
+  (ADR `wp6-rates-and-shifts`). One deviation that no fixture reaches:
+  `FLOAT_MUL32` shift counts outside [-31, 31] saturate (same ADR).
 - **WP7 `integration`:** the echo and preprocess pairing through
   `SET_ECHO_STATE`, plus 48 to 16 kHz resampling, is bit-exact with the
   container harness (clang 19, linux/arm64) on all 12 cases of
@@ -207,9 +208,10 @@ architecture and the SHA-256 of `config.h`.
   file above 1 MB. Each case commits 3200 output samples and two frames of
   residual spectra; every stream (inputs, op stream, output, residual,
   impulse response) is covered by chunk hashes.
-- The case list and the inputs come from the Go test
-  (`harness-inputs: ./echo`, `TestHarnessInputs` in
-  `echo/reference_test.go`): it writes
+- The case list and the inputs come from the Go test `TestHarnessInputs`
+  in `echo/reference_test.go`. The driver's `harness-inputs: ./echo` header
+  names that package, and `reference/fixtures.sh` runs the test before the
+  driver ([reference/README.md](../reference/README.md#adding-a-driver)). It writes
   `cases.txt`, one input pair per scenario and rate, and an op stream per
   case (0 cancel, 1 playback, 2 capture, 3 reset, 4 set rate). The driver
   interprets them, so the case table exists only in Go. The inputs take
@@ -260,8 +262,8 @@ a mutation of the `Eh` update was reported at op 14 in `Eh`.
   `SPEEX_PREPROCESS_SET_ECHO_STATE`, so the C preprocessor fetches the
   residual echo itself. It calls `speex_echo_get_residual` once more after
   each frame only to record the spectrum. The case table and the inputs
-  come from `integration/reference_test.go`
-  (`harness-inputs: ./integration`).
+  come from `TestHarnessInputs` in `integration/reference_test.go`,
+  which the driver's `harness-inputs: ./integration` header names.
 - Host cross-check
   (`HARNESS_MODE=host sh reference/fixtures.sh --check integration`): the
   Apple clang 21 build gives identical cases sections to the committed
@@ -269,7 +271,7 @@ a mutation of the `Eh` update was reported at op 14 in `Eh`.
 - Sanitizer builds (container and host) give identical outputs to the
   plain build. Each log holds 38 report lines, at the sites listed below.
 - Go side: `go test ./integration -run TestReferencePairing` passes on
-  darwin/arm64 (22 s). This is the first test of the real pairing of
+  darwin/arm64 (22 s). It tests the real pairing of
   `docs/contracts.md` section 12: `echo.Canceller.Residual` feeding
   `preprocess.Preprocessor.RunEcho`, against C where the preprocessor
   reads the canceller directly. No exceptions.
@@ -322,11 +324,18 @@ The two allocation sites appear twice in the log (12 lines, 10 sites).
 
 | Upstream site | Report | Reached through |
 |---|---|---|
-| `resample.c:456` | signed overflow in `PDIV32`: `-2^31 + -1` | `den_rate` at or above 2^31 (1000000007:3000000019), where `SHL32` of the remainder gives -2^31 and the `int16` half of `den_rate` is -1 |
-| `resample.c:980` | variable-length array of size 0 | `speex_resampler_process_float` with an output length of 0 |
+| `resample.c:456` | signed overflow in `PDIV32`: `-2^31 + -1` | `den_rate` 4294967295 (case `wrap_q0_frac_4294967294_4294967295`), where `SHL32` of the remainder gives -2^31 and the `int16` half of `den_rate` is -1 |
+| `resample.c:980` | variable-length array of size 0 | `speex_resampler_process_float` with an output length of 0 (first case to report it: `f_q0_48000_16000`) |
 
 In the first, the plain build, the sanitizer build and Go all wrap. The
-second reads nothing from the array.
+second reads nothing from the array. The cases at 1000000007:3000000019
+(`q0_frac_1000000007_3000000019` to `q10_frac_1000000007_3000000019`), whose
+`den_rate` is also above 2^31, run before the wrap cases and report nothing:
+the `int16` half of 3000000019 is 12041, not -1. The cases were named by
+running the host sanitizer build (Apple clang 21.0.0, clang-2100.3.34.2,
+arm64) with a case name printed to standard error as each case starts. The
+sanitizer prints each site once, so a site is attributed to the first case
+that reaches it.
 
 ### `preprocess` (WP5)
 
@@ -351,17 +360,14 @@ with outputs identical to the plain build.
 
 ### `echo` (WP6)
 
-The probe case runs first and deliberately shifts out of range, so in the
-committed run its sites take the deduplicated reports. An earlier host run
-without the probe (same fixtures otherwise) gives the reports from
-`mdf.c` itself: signed overflow and left shifts of negative values at
-`mdf.c:200-206` (DC notch), `:220-222` (`mdf_inner_prod`), `:357`
-(`mdf_adjust_prop`), `:818` (weight update), `:840`, `:848`, `:853`
-(AUMDF), `:896-897`, `:911`, `:925`, `:933`, `:943` (foreground logic),
-`:1044` (second `Sxx` sum), `:1101` (`RER`), `:468` (window), and in
-`pseudofloat.h`, `math_approx.h`, `kiss_fft*.c` and `fftwrap.c` as listed
-for `fixed` and `fft`. Go wraps and shifts the same way. The one report
-that is not two's-complement arithmetic:
+The host log (67 report lines) holds reports from `mdf.c` itself: signed
+overflow and left shifts of negative values at `mdf.c:200-206` (DC notch),
+`:220-222` (`mdf_inner_prod`), `:357` (`mdf_adjust_prop`), `:818` (weight
+update), `:840`, `:848`, `:853` (AUMDF), `:896-897`, `:911`, `:925`, `:933`,
+`:943` (foreground logic), `:1044` (second `Sxx` sum), `:1101` (`RER`),
+`:468` (window), and in `pseudofloat.h`, `math_approx.h`, `kiss_fft*.c` and
+`fftwrap.c` as listed for `fixed` and `fft`. Go wraps and shifts the same
+way. The one report that is not two's-complement arithmetic:
 
 | Upstream site | Report | Reached through | Port |
 |---|---|---|---|
@@ -503,8 +509,8 @@ nine signals; the inputs were added for them (`docs/acceptance/fft.md`,
 
 #### Zero value (WP7b)
 
-On commit 42f42a9, before the zero-value changes,
-`TestZeroValueMethods` passed: a zero `FFT` already met the rule.
+With `TestZeroValueMethods` applied to commit 42f42a9, before the
+zero-value changes, the test passed: a zero `FFT` already met the rule.
 
 Run with `go test ./internal/fft -run 'TestZeroValueMethods$' -count=1` on a
 scratch change, restored after each.
@@ -548,11 +554,11 @@ package (with `-race` for the SPSC index mutations).
 The ordering mutations without `-race` were caught on arm64, whose memory
 model is weak; on amd64 a plain-store mutation may only be caught by the
 race detector. `TestSeqCheckerDetects` checks that the sequence checker
-reports a lost, a duplicated and a stale sample. The independent review ran
-six further mutations of its own (a re-loaded `w` in `Read`, index stores
-between the two wrap segments on each side, a write view one sample too
-large, `Reset` zeroing only `w`, `count` with `>`): all caught. Its
-seventh is the `goto` and `atomic.AddUint32` row above.
+reports a lost, a duplicated and a stale sample. Six further mutations (a
+re-loaded `w` in `Read`, index stores between the two wrap segments on each
+side, a write view one sample too large, `Reset` zeroing only `w`, `count`
+with `>`) were all caught, as was the `goto` and `atomic.AddUint32` row
+above.
 
 #### `buffer` backlog drop (WP2b)
 
@@ -578,8 +584,8 @@ results on the code with the drop path (`spsc.go` unchanged).
 
 #### Zero value (WP7b)
 
-On commit 42f42a9, before the zero-value changes,
-`TestZeroValueMethods` passed: a zero `Ring` and `SPSC` already met the
+With `TestZeroValueMethods` applied to commit 42f42a9, before the
+zero-value changes, the test passed: a zero `Ring` and `SPSC` already met the
 rule.
 
 Run with `go test ./buffer -run 'TestZeroValueMethods$' -count=1` on a
@@ -619,10 +625,10 @@ restored after each.
 | an allocation in `Process` | caught (`TestNoAllocsProcess`) |
 | `Reset` not clearing `last_sample` | caught (`TestResetMonoEqualsNew`) |
 | strided kernel writing next to its element | caught (`TestStridesLeaveOtherElements`) |
-| zero kernel position without saturation (the code before review) | caught (`TestHugeRatioAfterFailedChange`, panic; and `FuzzConfigResampler`) |
-| `frames` as `(n+stride-1)/stride` (the code before review) | caught (`TestHugeStrides`, hang) |
+| zero kernel position without saturation | caught (`TestHugeRatioAfterFailedChange`, panic; and `FuzzConfigResampler`) |
+| `frames` as `(n+stride-1)/stride` | caught (`TestHugeStrides`, hang) |
 | cap comparison `>` → `>=` | caught (`TestCapBoundary`) |
-| filter length wrapping to 0 accepted (the code before review) | caught (`TestFilterLengthWrap`, panic) |
+| filter length wrapping to 0 accepted | caught (`TestFilterLengthWrap`, panic) |
 | resource cap removed (`maxEntries` set to `math.MaxInt64`) | caught (`TestResourceCap`: each of the six rejection cases allocates 34 MB to 4.1 GB against a bound of 1 MiB; two `New` cases then succeed, and the other four fail through C's limits only after allocating, so only the allocation and time bounds catch those; `New` at 4000000:1, quality 10, takes about 15 to 19 s) |
 | `OutLen` without the +1 | caught (`TestOutLenMatrix`, slack 0) |
 | `OutLen` with +2 | caught (`TestOutLenMatrix`, slack 2) |
@@ -644,8 +650,8 @@ restored after each.
 
 #### Zero value (WP7b)
 
-On commit 42f42a9, before the zero-value changes,
-`TestZeroValueMethods` failed: `OutLen`, `OutputLatency`, `Process`,
+With `TestZeroValueMethods` applied to commit 42f42a9, before the
+zero-value changes, the test failed: `OutLen`, `OutputLatency`, `Process`,
 `ProcessFloat`, `SetRate` and `SetRateFrac` panicked with an integer
 divide by zero, `ProcessChannel` and `ProcessChannelFloat` returned
 `ErrChannel`, and `SetQuality` returned nil for quality 0 and panicked
@@ -701,14 +707,15 @@ each mutation reverted before the next.
 | `SET_ECHO_SUPPRESS_ACTIVE`: `-ABS` → negation | caught |
 | `GET_NOISE_PSD`: `PSHR32` → `SHR32` | caught |
 
-Only the two cases that pass 10000 frames catch the `min_range` row: the
-210 s run added for it (`docs/acceptance/preprocess.md`, "Changes") and the
-`N` = 1 case. A `QCONST16(.89f,15)` constant changed by one fails 218
-subtests, in the full run and in `-short` mode.
+Three cases pass 10000 frames: `8000_80_vlong` (21000 frames, the 210 s run
+added for it, `docs/acceptance/preprocess.md`, "Changes"), `8000_1_extra`
+(24000) and `8000_2_extra` (12000). Only the first two catch the `min_range`
+row; `8000_2_extra` passes. A `QCONST16(.89f,15)` constant changed by one
+fails 218 subtests, in the full run and in `-short` mode.
 
-The independent review tried 26 further mutations of its own: 19 caught, 6
-not caught and equivalent, and 1 not caught as a test gap (the VAD start
-`>=`), closed by the 77% and 84% cases.
+Of 26 further mutations, 19 were caught, 6 not caught and equivalent, and 1
+not caught as a test gap (the VAD start `>=`), closed by the 77% and 84%
+cases.
 
 `SupportedFrameSize` (WP5b), with the full `go test ./preprocess`:
 
@@ -724,8 +731,8 @@ not caught and equivalent, and 1 not caught as a test gap (the VAD start
 
 #### Zero value (WP7b)
 
-On commit 42f42a9, before the zero-value changes,
-`TestZeroValueMethods` failed: `PSD` and `NoisePSD` returned nil instead
+With `TestZeroValueMethods` applied to commit 42f42a9, before the
+zero-value changes, the test failed: `PSD` and `NoisePSD` returned nil instead
 of `ErrConfig`.
 
 Run with `go test ./preprocess -run 'TestZeroValueMethods$' -count=1` on a
@@ -740,9 +747,9 @@ scratch change, restored after each.
 
 #### Design v2
 
-Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
-the commit "agc: test the level bias, low-gain rates and first-frame
-clamp", with the LibriSpeech files present (the unmutated run passes, P4
+Run with `go test -count=1 ./agc` per mutation on a copy of the code at
+commit `08b4eb3` ("agc: test the level bias, low-gain rates and first-frame
+clamp"), with the LibriSpeech files present (the unmutated run passes, P4
 included), restoring `agc.go` after each.
 
 | Mutation | Result |
@@ -802,10 +809,10 @@ checks.
 
 #### Design v1 (fallback)
 
-Run with `go test -count=1 ./agc` per mutation on a copy of the branch at
-the commit "agc: check the ceiling and exact gain limits in more acceptance
-tests", without the LibriSpeech files (so P4 skips and the unmutated run
-passes), restoring `agc.go` after each.
+Run with `go test -count=1 ./agc` per mutation on a copy of the code at
+commit `dd49034` ("agc: check the ceiling and exact gain limits in more
+acceptance tests"), without the LibriSpeech files (so P4 skips and the
+unmutated run passes), restoring `agc.go` after each.
 
 | Mutation | Result |
 |---|---|
@@ -832,8 +839,8 @@ passes), restoring `agc.go` after each.
 
 #### Zero value (WP7b)
 
-On commit 42f42a9, before the zero-value changes,
-`TestZeroValueMethods` failed: `Process` returned nil for empty input
+With `TestZeroValueMethods` applied to commit 42f42a9, before the
+zero-value changes, the test failed: `Process` returned nil for empty input
 and panicked on other input when `out` was long enough, and `Reset`
 changed the zero value.
 
@@ -847,9 +854,10 @@ scratch change, restored after each.
 
 ### `echo` (WP6)
 
-Run on the working tree, one mutation of `echo/mdf.go` at a time, against 13
-reference cases covering every path (the tests that `-run TestReference`
-selects, or the full `go test ./echo` where stated). 38 mutations: 33 caught
+One mutation of `echo/mdf.go` at a time, against the reference tests (the
+tests that `-run TestReference` selects, which replay every case of
+`testdata/speexdsp/echo`, or the full `go test ./echo` where stated). 38
+mutations: 33 caught
 (one of them only by the allocation test, and semantically equivalent), 5 not
 caught: three boundaries that no input reaches, one equivalent mutation, and one
 whose difference a later clamp hides in every frame where it occurs.
@@ -901,8 +909,8 @@ twice (`docs/acceptance/echo.md`, "Changes").
 
 #### Zero value (WP7b)
 
-On commit 42f42a9, before the zero-value changes,
-`TestZeroValueMethods` failed: every exported method panicked with a nil
+With `TestZeroValueMethods` applied to commit 42f42a9, before the
+zero-value changes, the test failed: every exported method panicked with a nil
 pointer dereference (`SetSampleRate` only for a valid rate).
 
 Run with `go test ./echo -run 'TestZeroValueMethods$' -count=1` on a
@@ -957,12 +965,12 @@ One mutation of the test's Go chain, or of a recipe, at a time.
 
 From `go test ./integration -run 'TestPipeline|TestNoise' -v`
 (darwin/arm64, 2026-10-27). The `TestFinding48k` figures are reproduced
-with `go test ./integration -run TestFinding48k -v -args -report`. Definitions and thresholds are in
-`docs/acceptance/integration.md`: B1 is the echo stage over 8 to 14 s,
-B2 the echo through the whole chain over 8 to 14 s and 36 to 40 s, B3
-the near-end output level (active 20 ms frames, 18 to 24 s), B4 the
-double-talk level against B3, B5 the output peak against the ceiling
-29205.
+with `go test ./integration -run TestFinding48k -v -args -report`.
+Definitions and thresholds are in `docs/acceptance/integration.md`: B1 is
+the echo stage over 8 to 14 s, B2 the echo through the whole chain over 8
+to 14 s and 36 to 40 s, B3 the near-end output level (active 20 ms frames,
+18 to 24 s), B4 the double-talk level against B3, B5 the output peak
+against the ceiling 29205.
 
 | Signal, rate, frame | B1 (dB) | B2 (dB) | B3 (dBFS) | B4 (dB) | B5 peak |
 |---|---|---|---|---|---|
@@ -1049,7 +1057,7 @@ counterfactual, `Capture` with nothing queued after the application
 stops, is a `Playback`/`Capture` construct; recipe A is compared against
 the same counterfactual, which shows what sending silence gains.
 
-**Why recipe A uses `Cancel`.** A decision after review
+**Why recipe A uses `Cancel`.** A decision recorded in ADR `wp7-recipes`
 (`docs/acceptance/integration.md`, "Changes"): `Cancel` with the frame just sent
 avoids the comparison variant's one-frame lag. That lag costs most with short
 echoes (the 32 ms case above), and also at 16 kHz with a 100 ms echo and jitter,
@@ -1159,7 +1167,8 @@ reported as speech.
 | 16 kHz, pink, 200 | -61.4 | -65.4 | 96% | -65.4 | 0.0 dB |
 | 16 kHz, pink, 60 | -71.8 | -77.7 | 50% | -77.7 | 0.0 dB |
 
-The answer to ADR `wp4-noise-protection`: denoise does not keep the residual
+The answer to ADR `wp4-noise-protection`, which ADR `wp7-agc-noise` records
+as documented only: denoise does not keep the residual
 noise below the -50 dBFS gate for white noise at -40 dBFS and above, or for pink
 noise at -52 dBFS and above at the input. There the AGC raises the noise by 16.5
 to 23.0 dB, up to its target for the loudest inputs. This happens even where the
@@ -1185,10 +1194,37 @@ it passes.
 
 ## Race detector and short mode
 
+A test may skip, or compare a named subset, under `-short` or `-race` only
+if the normal `go test` runs the full work. A test that starts goroutines
+may run a shorter stream under `-race`, with the same concurrent paths.
+Each skip or reduction is named in the test and listed here (ADR
+[`test-reduction-rules`](decisions/test-reduction-rules.md)). No test of
+`internal/fft`, `internal/testutil`, `resample`, `agc` or the root package
+reads `testing.Short()` or a race build tag, so those packages run the same
+work in every mode. The reductions of the other packages:
+
+| Package | Test | `-short` | `-race` |
+|---|---|---|---|
+| `internal/fixed` | `TestReference` | first chunk of every stream | same |
+| `internal/fixed` | `TestInlining`, `TestMaskedInlining`, `TestInliningDivOrZero` | skipped | run |
+| `buffer` | `TestStressSPSC` | 2·10^5 samples per capacity, not 10^6 | same |
+| `preprocess` | `TestReferenceRun` | the 60 s runs up to their first chunk | same |
+| `echo` | `TestReferenceEcho`, `TestReferenceWithoutResidualCalls` | first 1 s of every case; one configuration per scenario in full | only that configuration per scenario, in full |
+| `echo` | `TestScenarioMeasurements` | one configuration (16 kHz, 10 ms, 128 ms) per scenario | `farend` in that configuration only |
+| `echo` | `TestEdgesHitBoundaries` | runs | skips 32 and 48 kHz |
+| `echo` | `TestCappedInputsArePrefixes` | skipped | skipped |
+| `integration` | `TestReferencePairing` | committed prefixes; three cases in full | same |
+| `integration` | `TestRecipeThroughSPSC`, `TestBufferedTwoGoroutines`, `TestPacedFourGoroutines` | 3 s of audio, not 10 s | run in full |
+| `integration` | `TestScenarioIsPrefixSafe` | skipped | skipped |
+| `integration` | the single-goroutine tests listed below | run | skipped |
+| `integration` | `TestRealTimeBudget` | runs | skipped unless `-budget` |
+
 Under `-race` (detected by the `race` build tag) and `-short`, the
 `internal/fixed` reference tests compare the committed prefix and the first
 chunk of every stream instead of all 10^7 inputs. Full comparisons run in
-the normal `go test`.
+the normal `go test`. The three inlining tests build the package with
+`-gcflags=-m`, so they skip under `-short` and run under `-race` and in the
+normal `go test`.
 
 The `buffer` SPSC stress test moves 2·10^5 samples per capacity under
 `-race` or `-short` instead of 10^6, with the same capacities, chunk sizes
@@ -1219,9 +1255,12 @@ run only `farend` at 16 kHz, 10 ms, 128 ms. The package code starts no
 goroutines and uses no `sync`, so the race detector adds run time there, not
 coverage: the only shared state it checks is the tests' input cache. The
 normal `go test` checks all 395 cases in full. Swapping `q07` and `q03` in
-the adaptation mask (`mdf.go:668`) is caught under `-race` by both
+the adaptation rate (`mdf.go:667`) is caught under `-race` by both
 reference tests. Under `-short` (no race) the scenario measurements run one
-configuration (16 kHz, 10 ms, 128 ms).
+configuration (16 kHz, 10 ms, 128 ms) of each scenario.
+`TestCappedInputsArePrefixes` compares the capped inputs of the partial runs
+with the full ones, so it skips in both modes and runs in the normal
+`go test`.
 
 The `echo` reference cases and scenario measurements run as parallel
 subtests. Each input set is generated by the first case that needs it,
@@ -1231,7 +1270,9 @@ the last one.
 Wall time of `go test -count=1` of one package at a time, with the test
 binaries built beforehand, median of three runs on the M1 Pro (10 cores,
 macOS, Go 1.26.5, 2026-10-27). "Serial" is the test files at commit
-`05b676c`, which run every case one at a time.
+`05b676c`. There `echo` runs every case one at a time. `preprocess` already
+ran its reference cases as parallel subtests, but `TestReferenceRun` and the
+sanity tests did not run alongside other tests.
 
 | Package, mode | Serial | Parallel |
 |---|---|---|
@@ -1263,9 +1304,15 @@ every case in full. The 10-minute cases then generate one 40 s repetition
 of their inputs, which `TestScenarioIsPrefixSafe` shows equals the start
 of the full inputs.
 
+Under `-short`, the three goroutine tests of the table feed 3 s of audio
+through the same goroutines and hand-offs, not 10 s, and
+`TestScenarioIsPrefixSafe` skips, because it generates the 10-minute
+inputs. Under `-race` the goroutine tests run the full 10 s.
+
 Under `-race`, `integration` also skips its single-goroutine measurement and
-allocation tests, case by case, by the rule that `docs/contracts.md` section 9
-adds for packages that start goroutines: `TestPipelineCall`,
+allocation tests, case by case, by the rule of ADR `test-reduction-rules`
+(`docs/contracts.md` section 9) for packages that start goroutines:
+`TestPipelineCall`,
 `TestPipelineSpeech`, `TestReceivePath`, `TestNoiseThroughSendChain`,
 `TestFinding48k`, `TestScenarioIsPrefixSafe`, `TestReferenceRecipes`, the
 recipe A tests `TestPacedUnevenTiming`, `TestPacedIdleSender`,
@@ -1284,6 +1331,10 @@ under `-race`:
 3. The short checks: `TestPacedWriterFull`, `TestDrainDropsBacklog`,
    `TestQueueFullIsReported`, `TestUsageCodeIsTested`,
    `TestReferenceCaseList` and `Example_call`.
+
+`TestHarnessInputs` (in `internal/fixed`, `internal/fft`, `preprocess`,
+`echo` and `integration`) skips in every mode unless `-harness-inputs` is
+given, which `reference/fixtures.sh` does.
 
 The normal `go test` runs everything. The run times of `-race` before and
 after the skips are in ADR `wp7-race-skips`.
@@ -1344,7 +1395,9 @@ them to refresh the figures in this file:
 make report    # CGO_ENABLED=0 go test ./integration -count=1 -timeout 20m -v -args -report
 ```
 
-The reported figures in this file are reproduced with the flag.
+The reported figures in this file are reproduced with the flag, except the
+comparison columns for recipe A, which were measured at commit `09a990a`
+(see "Whole-chain measurements").
 
 ## Speech
 
@@ -1354,9 +1407,10 @@ published by OpenSLR), and converts the first 20 utterances to 16 kHz int16
 raw files. Tests that use them call `testutil.SpeechFiles`, which skips with
 a message when they are absent. Run on 2026-10-26: 20 files written.
 
-`echo` (`TestSpeechScenario`, 2026-10-27, 16 kHz): the first 10 files as
-far end and the last 10 as near end, 30 s, echo path A, far end only for
-the first 15 s, then double talk. ERLE is pooled over the last 4 s before
+`echo` (`TestSpeechScenario`, 2026-10-27, 16 kHz): files of the first half
+of the 20 as far end and of the second half as near end, each concatenated
+in order to at most 30 s, echo path A, far end only for the first half,
+then double talk. ERLE is pooled over the last 4 s before
 the double talk; definitions as in `docs/acceptance/echo.md`.
 
 | Frame, filter | Steady-state ERLE | Convergence | Near-to-residual, out / mic | Gain |
@@ -1377,14 +1431,13 @@ against -27.9 and -26.8 dBFS, +1.0 and +0.6 dB with the 1/4 scaling.
 `internal/fixed` has no fuzz target: its functions are pure, and the
 exhaustive and 10^7-input comparisons cover their domains.
 
-`internal/fft` has `FuzzTransform`: any supported size, any input and a wrong
-length in either slice, for both directions. It checks that a wrong length gives
-`ErrBufferSize`, that neither call fails otherwise, that `Inverse` leaves its
-input unchanged, and that `Forward` restores an input without -32768. Runs on
-2026-10-26
-(`go test ./internal/fft -run '^$' -fuzz FuzzTransform -fuzztime <t>`): 60 s
-before the length check was added, 2.5 million executions; 30 s with it; no
-failure in either.
+`internal/fft` has `FuzzTransform`: any supported size, any input, and a wrong
+length in `in` (checked on `Forward`) or in `out` (checked on `Inverse`). It
+checks that a wrong length gives `ErrBufferSize`, that neither call fails
+otherwise, that `Inverse` leaves its input unchanged, and that `Forward`
+restores an input without -32768. Run on 2026-11-02 at commit `e4fbd22`
+(`go test ./internal/fft -run '^$' -fuzz FuzzTransform -fuzztime 30s`, Apple
+M1 Pro): 1,567,299 executions, no failure.
 
 ### `buffer` (WP2)
 
@@ -1405,9 +1458,8 @@ go test -run '^$' -fuzz '^<target>$' -fuzztime <t> -parallel 4 -timeout 15m ./bu
 | `FuzzSPSC` | 10 min | 37,028,094 | none |
 | `FuzzChunksRing` | 3 min | 2,201,674 | none |
 
-`FuzzRing` and `FuzzSPSC` take operation codes modulo 12, so a committed
-seed added before the drop and keep-newest operations decodes to a
-different sequence than when it was added.
+`FuzzRing` and `FuzzSPSC` decode each operation code modulo 12 into one of
+twelve operations (`checker.op` in `buffer/model_test.go`).
 
 ### `resample` (WP1)
 
@@ -1417,17 +1469,17 @@ different sequence than when it was added.
   nothing panics. Fuzzed for 5 minutes on the Mac (290374 executions), no
   failure. Two seeds come from harness bugs that fuzzing found (plans that
   never offer input and output together, and long runs of empty calls).
-- `FuzzConfigResampler`: arbitrary channel counts, ratios (downsampling by at
+- `FuzzConfigResampler`: 1 to 4 channels, ratios (downsampling by at
   most 64, so filters stay small, or by more than 6e8, which the size limits
   reject before allocating), qualities, strides near 1, within 4096 of
   `math.MaxInt` and spread between, and sequences of process, rate, quality,
   reset and skip-zeros calls; checks that nothing panics and that invalid
-  arguments are rejected. Fuzzed for 5 minutes on the Mac (5144408 executions),
-  no failure. With the panic (ratios of 2^31 and more after a rejected
-  change) and the stride panic (strides near `math.MaxInt`) that this domain covers
-  restored in the code, the target finds the panic within 2 minutes and the
-  stride panic within 1 s; both inputs are seeds. A further 45 s run gave
-  372k executions, no failure.
+  arguments are rejected. Fuzzed for 5 minutes on the Mac (5144408
+  executions), no failure. With the panic (ratios of 2^31 and more after a
+  rejected change) and the stride panic (strides near `math.MaxInt`) that
+  this domain covers restored in the code, the target finds the panic within
+  2 minutes and the stride panic within 1 s; both inputs are seeds. A further
+  45 s run gave 372k executions, no failure.
 - `FuzzOutLen`: channel counts 1 to 3, ratios with denominators up to 200
   (downsampling by up to 8), qualities, events (quality and rate changes,
   a rejected change, `Reset`, `SkipZeros`) and calls of 0 to 1275 frames
@@ -1461,8 +1513,9 @@ nothing to commit to `agc/testdata/fuzz/`.
 
 ### `echo` (WP6)
 
-`FuzzCanceller`: a random configuration (frame sizes 1 to 480,
-filter lengths, rates including 32767, 32768 and 44100), then a random
+`FuzzCanceller`: a random configuration (a frame size from 1, 2, 8, 17, 80,
+160, 320 and 480, filter lengths, and a rate from 8000, 11025, 16000, 32000,
+32767, 32768, 44100 and 48000), then a random
 sequence of `Cancel`, `Playback`, `Capture`, `Reset`, `SetSampleRate`,
 `Residual`, `ImpulseResponse` and wrong-length calls, with samples from the
 input or set to -32768 or alternating full scale. It checks that nothing
