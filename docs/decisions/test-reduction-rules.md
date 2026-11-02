@@ -1,6 +1,8 @@
 # ADR test-reduction-rules: When a test may skip or reduce under -short or -race
 
-- **Status:** accepted.
+- **Status:** accepted; supersedes in part ADR
+  [`wp7-race-skips`](wp7-race-skips.md): its rule that every test that
+  starts goroutines runs in full under `-race`.
 - **Date:** 2026-10-28
 
 ## Context
