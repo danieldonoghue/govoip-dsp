@@ -372,7 +372,7 @@ count of 32 or more:
 
 | Upstream site | Report | Reached through | Port |
 |---|---|---|---|
-| `pseudofloat.h:236:41` and `:236:53`; `:228:14` (`FLOAT_EXTRACT16`) | shift exponents 79 and 80 too large for a 32-bit type | For `:236`: `FLOAT_EXTRACT32(bound)`, `mdf.c:1108`, when `Sey` is near 0 and `Syy` is large | `FloatExtract32Masked`: the compiled reference shifts modulo 32 (`docs/algorithms.md`, "Shifts outside [0, 31]") |
+| `pseudofloat.h:236:41` and `:236:53`; `:228:14` (`FLOAT_EXTRACT16`) | shift exponents 79 and 80 too large for a 32-bit type | For `:236`: `FLOAT_EXTRACT32(bound)`, `mdf.c:1108`, when `Sey` is near 0 and `Syy` is large. For `:228`: `FLOAT_EXTRACT16` at `mdf.c:1090`, `:1113` or `:1163` (which one is not traced) | `FloatExtract16Masked` and `FloatExtract32Masked`: the compiled reference shifts modulo 32 (`docs/algorithms.md`, "Shifts outside [0, 31]") |
 
 In the probe, `FLOAT_DIV32_FLOAT` with a divisor mantissa of -1 also
 divides -2^31 by -1, which arm64 `SDIV` and Go both give as -2^31.
@@ -769,14 +769,14 @@ included), restoring `agc.go` after each.
 | Loud run one frame shorter | caught (T4 straddling, R5 pauses and 9999 Hz, R5 at 44.1 kHz) |
 | Loud run fixed at 3 frames at every rate | caught (R5 at 9999 Hz) |
 | Inactive frames do not end the loud run | caught (R5 pauses) |
-| Cut threshold +10 dB instead of +13 dB | not caught: P4 at −34 dBFS does not trigger it; the effect shows at louder levels, which are reported without a threshold (3.41 to 5.39 dB at −27 to −20 dBFS); at this commit, caught later by G3 and G4 (next table) |
+| Cut threshold +10 dB instead of +13 dB | not caught: P4 at −34 dBFS does not trigger it; the effect shows at louder levels, which are reported without a threshold (3.41 to 5.39 dB at −27 to −20 dBFS); not caught at `08b4eb3`, caught by G3 and G4, added later (next table) |
 | Immediate cut removed | caught (R4, C1) |
 | Sustained-drop reset removed | caught (C2, C3, C4, edge configs) |
 | Warm-up removed | caught (`TestSpeechFlag` only; P3, P4 and S1 still pass) |
 | First frame not clamped | caught (`TestFirstFrameClick`) |
 | Mean update `(1 − c)·E + c·x` (truncation bias) | caught (`TestLevelBias`) |
 | Gain kept in Q15 instead of Q22 | caught (`TestLowGainRates`) |
-| Power mean of order 2 instead of 4 | not caught: passes every registered criterion; its weakness shows at −20 dBFS (P4 6.78 dB, reported only); at this commit, caught later by G4 (next table) |
+| Power mean of order 2 instead of 4 | not caught: passes every registered criterion; its weakness shows at −20 dBFS (P4 6.78 dB, reported only); not caught at `08b4eb3`, caught by G4, added later (next table) |
 | Gain not clamped to MaxGain | caught (C6) |
 | Gain not clamped to MinGain | caught (C6, T1/T2 suite) |
 | `Reset` keeps the delay line | caught (`TestResetProcess`) |

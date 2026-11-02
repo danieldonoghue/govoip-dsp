@@ -853,8 +853,10 @@ investigated.
 **Shifts outside [0, 31].** In C a shift by 32 or more is undefined. The
 sanitizer build reports such shifts in `FLOAT_EXTRACT32` (`pseudofloat.h:236`,
 from `mdf.c:1108`, pseudo-float exponent -32 and below, so a shift count of 32
-or more), when `Sey` is near 0 and `Syy` is large. clang 19 (container) and
-Apple clang 21 (host) compile `FLOAT_EXTRACT16`, `FLOAT_EXTRACT32` and
+or more), when `Sey` is near 0 and `Syy` is large, and in `FLOAT_EXTRACT16`
+(`pseudofloat.h:228`, from `mdf.c:1090`, `:1113` or `:1163`). clang 19
+(container) and Apple clang 21 (host) compile `FLOAT_EXTRACT16`,
+`FLOAT_EXTRACT32` and
 `FLOAT_DIV32_FLOAT` in `mdf.c` to scalar `LSLV`/`ASRV` on 32-bit registers,
 which take the count modulo 32, so the port uses the masked variants of
 `internal/fixed` there. A one-off count (not in the tests) over all fixture
