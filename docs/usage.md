@@ -8,8 +8,8 @@ the far-end reference, whose echo may return in the received audio, for
 example from a speakerphone caller
 ([near end](glossary.md#near-end), [far end](glossary.md#far-end)).
 For a Go service on Asterisk AudioSocket, the
-[AudioSocket quick start](audiosocket.md) is a shorter path, with one
-goroutine per connection.
+[AudioSocket quick start](audiosocket.md) is a shorter path, with the
+processing of each connection on one goroutine.
 
 | Recipe | Where the far end comes from | Echo canceller call |
 |---|---|---|

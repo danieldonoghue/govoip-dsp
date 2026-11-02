@@ -13,8 +13,9 @@ Every Go code block on this page is copied from
 if one is not. `TestAudioSocketQuickStart` runs the code against a fake
 Asterisk over a loopback TCP connection, at 8 and 16 kHz, with and without
 audio sent back, and ends each session with a hangup message or a closed
-connection. `TestNoAllocsAudioSocket` checks that handling an audio message
-allocates nothing.
+connection. `TestAudioSocketMessages` checks the handling of each message
+kind on hand-written bytes, and `TestNoAllocsAudioSocket` checks that
+handling an audio message allocates nothing.
 
 ## Near end, far end and echo
 
@@ -39,8 +40,11 @@ Leave out `echo` where nothing can come back:
   recording. There is no far end, so there is no echo. Make only
   `preprocess` and `agc`.
 - **The caller's side returns no echo**, for example a caller on a headset.
-  Use `Run` then `Process`, as the code below does without audio sent
-  back ([A call without echo cancellation](guide.md#a-call-without-echo-cancellation)).
+  Use `Run` then `Process`
+  ([A call without echo cancellation](guide.md#a-call-without-echo-cancellation)).
+  The code below ties `echo` to sending audio back: for a headset caller
+  who still gets audio, keep its sending in `step` and replace `received`
+  with the `Run` and `Process` of its other branch.
 
 ## The protocol
 
@@ -72,14 +76,19 @@ and from the Asterisk sources at commit
    the channel offers (`channels/chan_audiosocket.c:194-251`); `slin16`
    gives kind `0x12` (`res/res_audiosocket.c:237-238`).
 6. The protocol does not fix how much audio one message holds: Asterisk
-   forwards each frame it reads from the channel
+   forwards each voice or DTMF frame it reads from the channel
    (`apps/app_audiosocket.c:181-196`). So the code collects the samples
-   into 20 ms frames, 160 samples at 8 kHz and 320 at 16 kHz.
+   into 20 ms frames, 160 samples at 8 kHz and 320 at 16 kHz. Comfort
+   noise frames are not forwarded (`res/res_audiosocket.c:263-264`), so
+   where the caller's leg suppresses silence, the received audio can have
+   gaps, and the frames sent back follow the received frames, not a
+   clock.
 7. A DTMF digit is kind `0x03` with one ASCII byte (protocol page;
    `res/res_audiosocket.c:258-262`).
-8. Asterisk writes the audio your service sends to the call as it
-   arrives, without re-timing it or adding silence
-   (`apps/app_audiosocket.c:198-216`). So with `echo`, your service paces
+8. Asterisk writes the audio of each message your service sends to the
+   call as soon as it reads it, with `ast_write`
+   (`apps/app_audiosocket.c:198-216`); nothing in that code re-times it
+   or adds silence. So with `echo`, your service paces
    what it sends: one frame back for each frame received, silence when it
    has nothing to send. Then the canceller gets the frame that was sent
    with each received frame. This is recipe A of
@@ -106,7 +115,8 @@ const (
 	kindUUID   = 0x01 // the call's UUID, 16 bytes: Asterisk's first message
 	kindDTMF   = 0x03 // one DTMF digit, 1 ASCII byte
 	kindSlin   = 0x10 // audio: 16-bit signed mono PCM, little-endian, 8 kHz
-	kindSlin16 = 0x12 // the same at 16 kHz
+	kindSlin16 = 0x12 // the same at 16 kHz; 0x11 and 0x13 to 0x18 are other rates
+	kindLast   = 0x18 // the last audio kind, 192 kHz
 	kindError  = 0xff // an error; the payload is an optional error code
 )
 
@@ -125,7 +135,9 @@ processor is single-owner: it keeps the state of its call and is used from
 one goroutine only. With audio sent back, `newAudioSocketCall` makes
 `echo`, `preprocess` and `agc` with `newPacedCall` of
 [recipe A, step 1](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs);
-without, it makes `preprocess` and `agc` only.
+without, it makes `preprocess` and `agc` only. It takes 8 or 16 kHz,
+because `echo` works well at those rates only; `preprocess` and `agc` alone
+accept other rates (their package docs give the ranges).
 
 ```go
 // audioSocketCall is the send path of one AudioSocket connection. Use it
@@ -233,14 +245,14 @@ func (a *audioSocketCall) next(conn io.ReadWriter, pending *buffer.SPSC, deliver
 	if _, err := io.ReadFull(conn, payload); err != nil {
 		return true, err
 	}
-	switch a.hdr[0] {
-	case a.kind:
+	switch k := a.hdr[0]; {
+	case k == a.kind:
 		return false, a.audio(conn, payload, pending, deliver)
-	case kindHangup:
+	case k == kindHangup:
 		return true, nil
-	case kindError:
+	case k == kindError:
 		return true, errAudioSocket
-	case kindSlin, kindSlin16:
+	case k >= kindSlin && k <= kindLast:
 		return true, errOtherRate
 	default:
 		return false, nil // kindUUID, kindDTMF (payload[0] is the digit), others
@@ -311,9 +323,11 @@ func (a *audioSocketCall) step(w io.Writer, pending *buffer.SPSC, deliver func([
 
 For each message, `next` and `audio` do this:
 
-1. `next` reads the header and the payload. A hangup message, a closed
-   connection or an error message ends the session; a UUID, a DTMF digit or
-   another kind is skipped.
+1. `next` reads the header and the payload. A hangup message, a
+   connection closed between messages or an error message ends the
+   session; a connection closed within a message returns
+   `io.ErrUnexpectedEOF`. Audio at another rate returns `errOtherRate`.
+   A UUID, a DTMF digit or another kind is skipped.
 2. `audio` converts the payload to `int16` samples and adds them to the
    `buffer.Ring` `in`.
 3. For each whole 20 ms frame in `in`, `step` takes the oldest pending
@@ -330,8 +344,14 @@ For each message, `next` and `audio` do this:
 Yes, for reading, processing and writing, as above. Asterisk's messages
 arrive at the pace of the call, so the received frames drive the loop. The
 processing calls never block or allocate; only the network reads and
-writes wait. A write that waits holds up the loop: TCP keeps the received
-bytes meanwhile, so the frames are processed late, not lost.
+writes wait. A short wait holds up the loop: TCP keeps the received bytes
+meanwhile, so the frames are processed late, not lost, but the frames sent
+after it go out as a burst, which Asterisk plays later than the canceller
+assumed (see "A stalled processing goroutine" in usage.md, recipe A). A
+long stall fills the socket buffers; Asterisk's socket does not block, so
+its write then fails and it ends the session
+(`res/res_audiosocket.c:137`, `res/res_audiosocket.c:273-276`,
+`apps/app_audiosocket.c:189-194`).
 
 A second goroutine, joined by a `buffer.SPSC`, is needed in these cases:
 
@@ -359,9 +379,11 @@ no delay to it.
 
 ## Hold, transfer and Reset
 
-Each connection is one call. Make its processors when it connects, as
-`serveAudioSocket` does. To reuse them for the next connection instead,
-call `Reset` on each first: it starts a new stream without allocating.
+Each connection is one call. Make its processors and buffers when it
+connects, as `serveAudioSocket` does. To reuse them for the next
+connection instead, call `Reset` on each first, `in` and `pending`
+included, `pending` only with its producer stopped: `Reset` starts a new
+stream without allocating. The quick start's tests do not cover reuse.
 
 No method needs `Reset` within a call. After a hold or a transfer, the
 echo path can change, and the canceller adapts by itself: in the

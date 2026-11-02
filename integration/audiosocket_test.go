@@ -1,11 +1,13 @@
 package integration
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,7 +28,8 @@ const (
 	kindUUID   = 0x01 // the call's UUID, 16 bytes: Asterisk's first message
 	kindDTMF   = 0x03 // one DTMF digit, 1 ASCII byte
 	kindSlin   = 0x10 // audio: 16-bit signed mono PCM, little-endian, 8 kHz
-	kindSlin16 = 0x12 // the same at 16 kHz
+	kindSlin16 = 0x12 // the same at 16 kHz; 0x11 and 0x13 to 0x18 are other rates
+	kindLast   = 0x18 // the last audio kind, 192 kHz
 	kindError  = 0xff // an error; the payload is an optional error code
 )
 
@@ -123,14 +126,14 @@ func (a *audioSocketCall) next(conn io.ReadWriter, pending *buffer.SPSC, deliver
 	if _, err := io.ReadFull(conn, payload); err != nil {
 		return true, err
 	}
-	switch a.hdr[0] {
-	case a.kind:
+	switch k := a.hdr[0]; {
+	case k == a.kind:
 		return false, a.audio(conn, payload, pending, deliver)
-	case kindHangup:
+	case k == kindHangup:
 		return true, nil
-	case kindError:
+	case k == kindError:
 		return true, errAudioSocket
-	case kindSlin, kindSlin16:
+	case k >= kindSlin && k <= kindLast:
 		return true, errOtherRate
 	default:
 		return false, nil // kindUUID, kindDTMF (payload[0] is the digit), others
@@ -228,7 +231,9 @@ func TestAudioSocketQuickStart(t *testing.T) {
 }
 
 func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
-	const seconds = 3
+	// The far end is silent for its first 2 s (farOn), so the application
+	// sends 4 s of it and the call lasts 6 s: the canceller adapts.
+	const seconds = 6
 	kind := byte(kindSlin)
 	if rate == 16000 {
 		kind = kindSlin16
@@ -410,11 +415,20 @@ func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
 		}
 	}
 	t.Logf("%d received frames, %d with silence sent", frames, silent)
+	if next-1 != appFrames {
+		t.Errorf("sent %d of the %d application frames", next-1, appFrames)
+	}
 	if silent == 0 {
 		t.Error("no silence was sent; the test did not reach the idle branch")
 	}
 	_, want := replayPaced(t, rate, 20, 200, sent, mic)
 	testutil.Compare(t, "replay, chain output", want, got)
+	// A replay that cancels against silence must differ, or the comparison
+	// above could not catch a wrong pairing.
+	_, silentWant := replayPaced(t, rate, 20, 200, make([]int16, len(sent)), mic)
+	if slices.Equal(silentWant, got) {
+		t.Error("the output equals a replay against silence; the test cannot see the pairing")
+	}
 }
 
 // asLoop replays one message for every Read and discards every Write.
@@ -452,7 +466,7 @@ func TestNoAllocsAudioSocket(t *testing.T) {
 			deliver := func([]int16) {}
 			k := 0
 			handle := func() {
-				if k%4 != 3 { // every 4th message finds nothing pending
+				if k%4 != 3 { // every 4th message adds no frame, so some frames find none
 					onPacket(pending, s.far[k*a.frame:(k+1)*a.frame])
 				}
 				k = (k + 1) % 100
@@ -464,6 +478,78 @@ func TestNoAllocsAudioSocket(t *testing.T) {
 				handle()
 			}
 			testutil.AssertNoAllocs(t, 200, handle)
+		})
+	}
+}
+
+// asBytes is a connection that reads r and records what is written.
+type asBytes struct {
+	r io.Reader
+	w []byte
+}
+
+func (c *asBytes) Read(p []byte) (int, error)  { return c.r.Read(p) }
+func (c *asBytes) Write(p []byte) (int, error) { c.w = append(c.w, p...); return len(p), nil }
+
+// TestAudioSocketMessages checks next on hand-written messages, so that the
+// framing does not depend on the helpers that build the other tests' messages.
+func TestAudioSocketMessages(t *testing.T) {
+	frame := make([]byte, 320) // one 20 ms frame at 8 kHz: samples 0x0201, then zeros
+	frame[0], frame[1] = 0x01, 0x02
+	cases := []struct {
+		name  string
+		msg   []byte
+		sends bool
+		done  bool
+		err   error
+		in    []int16 // samples waiting in the ring afterwards
+		reply []byte  // bytes sent back
+	}{
+		{name: "audio", msg: []byte{0x10, 0x00, 0x04, 0x01, 0x00, 0xff, 0xff}, in: []int16{1, -1}},
+		{name: "frame sent back", msg: append([]byte{0x10, 0x01, 0x40}, frame...), sends: true,
+			reply: append([]byte{0x10, 0x01, 0x40, 0x34, 0x12}, make([]byte, 318)...)},
+		{name: "uuid", msg: append([]byte{0x01, 0x00, 0x10}, make([]byte, 16)...)},
+		{name: "dtmf", msg: []byte{0x03, 0x00, 0x01, '5'}},
+		{name: "hangup", msg: []byte{0x00, 0x00, 0x00}, done: true},
+		{name: "end of file", msg: nil, done: true},
+		{name: "cut mid-message", msg: []byte{0x10, 0x00, 0x04, 0x01}, done: true, err: io.ErrUnexpectedEOF},
+		{name: "error", msg: []byte{0xff, 0x00, 0x00}, done: true, err: errAudioSocket},
+		{name: "12 kHz audio", msg: []byte{0x11, 0x00, 0x02, 0x00, 0x00}, done: true, err: errOtherRate},
+		{name: "192 kHz audio", msg: []byte{0x18, 0x00, 0x02, 0x00, 0x00}, done: true, err: errOtherRate},
+		{name: "odd payload", msg: []byte{0x10, 0x00, 0x03, 0x00, 0x00, 0x00}, err: errOddPayload},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a, err := newAudioSocketCall(8000, c.sends)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pending, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: 8000})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c.sends {
+				p := make([]int16, a.frame)
+				p[0] = 0x1234
+				onPacket(pending, p)
+			}
+			conn := &asBytes{r: bytes.NewReader(c.msg)}
+			delivered := 0
+			done, err := a.next(conn, pending, func([]int16) { delivered++ })
+			if done != c.done || err != c.err {
+				t.Fatalf("next: done %v, %v; want %v, %v", done, err, c.done, c.err)
+			}
+			in := make([]int16, a.in.Len())
+			a.in.Read(in)
+			if !slices.Equal(in, c.in) {
+				t.Errorf("samples waiting: %v, want %v", in, c.in)
+			}
+			if !bytes.Equal(conn.w, c.reply) {
+				t.Errorf("sent back % x, want % x", conn.w, c.reply)
+			}
+			if c.reply != nil && delivered != 1 {
+				t.Errorf("%d frames delivered, want 1", delivered)
+			}
 		})
 	}
 }
