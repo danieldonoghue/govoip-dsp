@@ -1,6 +1,7 @@
 # ADR wp7-race-skips: Single-goroutine tests skipped under -race
 
-- **Status:** accepted.
+- **Status:** accepted; superseded in part by ADR
+  [`test-reduction-rules`](test-reduction-rules.md).
 - **Date:** 2026-10-27
 
 ## Context
