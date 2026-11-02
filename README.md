@@ -10,13 +10,13 @@ Releases are tagged as v0.x; the API may change until v1.0.
 
 ## Features
 
-| Package | What it does | Typical use | SpeexDSP status | Docs |
+| Package | What it does | Typical use | SpeexDSP status ([bit-exact](docs/glossary.md#bit-exact) means the same output samples as the C library) | Docs |
 |---|---|---|---|---|
-| `echo` | Acoustic echo cancellation: removes the echo of the audio a call sends (the far-end reference) from the audio it receives (the near-end signal) | Send path of a call where what is sent can come back: a device whose microphone hears its loudspeaker, or a server whose callers may be on a speakerphone; 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
-| `preprocess` | Noise suppression, voice activity detection (VAD) and residual-echo suppression | Send path, after `echo` where there is one, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
-| `agc` | Automatic gain control with a lookahead limiter | Last stage of the send path, before the encoder | Own design; SpeexDSP has no fixed-point AGC | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/agc), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `echo` | Acoustic echo cancellation: removes the echo of the audio a call sends (the [far-end reference](docs/glossary.md#far-end)) from the audio it receives (the [near-end signal](docs/glossary.md#near-end)) | Send path of a call where what is sent can come back: a device whose microphone hears its loudspeaker, or a server whose callers may be on a speakerphone; 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `preprocess` | Noise suppression, voice activity detection ([VAD](docs/glossary.md#vad)) and suppression of the [residual echo](docs/glossary.md#residual-echo) | Send path, after `echo` where there is one, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `agc` | Automatic gain control ([AGC](docs/glossary.md#agc)) with a lookahead [limiter](docs/glossary.md#limiter) | Last stage of the send path, before the encoder | Own design; SpeexDSP has no fixed-point AGC | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/agc), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `resample` | Sample-rate conversion, any ratio within its size limits, 1 to 256 channels, any chunk size | Decoder rate to device rate; 48 kHz down to 16 kHz for `echo` | Bit-exact port of `resample.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/resample), [guide](docs/guide.md#the-receive-path) |
-| `buffer` | `Ring`, a sample FIFO for one goroutine, and `SPSC`, a wait-free FIFO between two | Handing frames from a network or device goroutine to the processing goroutine | Own design; `buffer.c` was design input only | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/buffer), [guide](docs/guide.md#handing-audio-between-goroutines) |
+| `buffer` | `Ring`, a sample FIFO for one goroutine, and `SPSC`, a [wait-free](docs/glossary.md#wait-free) [FIFO](docs/glossary.md#fifo) between two goroutines | Handing frames from a network or device goroutine to the processing goroutine | Own design; `buffer.c` was design input only | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/buffer), [guide](docs/guide.md#handing-audio-between-goroutines) |
 
 ## How they fit together
 
@@ -83,11 +83,14 @@ go test github.com/danieldonoghue/govoip-dsp -run Example -v
 - **No cgo.** The library builds and runs with `CGO_ENABLED=0`; no C
   compiler, native library or external program is needed to build, test or
   use it.
-- **SpeexDSP compatibility.** The resampler, the echo canceller, the
-  preprocessor, the shared fixed-point arithmetic (`internal/fixed`) and the
-  FFT (`internal/fft`) are bit-exact ports of SpeexDSP 1.2.1, fixed-point
-  build (commit `1b28a0f6`), checked against fixtures from a C reference
-  harness. The ring buffers and the AGC are own designs.
+- **SpeexDSP compatibility.** SpeexDSP is a C library for the same jobs.
+  The resampler, the echo canceller, the preprocessor, the shared
+  [fixed-point](docs/glossary.md#fixed-point) arithmetic
+  (`internal/fixed`) and the [FFT](docs/glossary.md#fft) (`internal/fft`)
+  are [bit-exact](docs/glossary.md#bit-exact) ports of SpeexDSP 1.2.1,
+  fixed-point build (commit `1b28a0f6`). They are checked against output
+  files (fixtures) from a C reference harness. The ring buffers and the
+  AGC are own designs.
 - **Real-time safety.** No allocation, locking or blocking on the
   per-frame path
   ([requirements §16](docs/requirements.md#16-real-time-and-memory-safety-rules)).
@@ -170,29 +173,40 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
 
 ## Limitations
 
-- Mono echo cancellation and preprocessing only in the first release.
-- The echo canceller is supported at 8 and 16 kHz only; resample higher
+- Echo cancellation and preprocessing are mono (one channel) in the first
+  release.
+- The echo canceller works well at 8 and 16 kHz only. Resample higher
   rates down first.
-- The VAD reports speech on stationary noise and on residual echo, so the
-  AGC's level gate is its only noise protection. With the default gate,
-  the AGC raises what noise suppression leaves of white noise from about
-  -40 dBFS and pink noise from about -52 dBFS at the input by 16 to
-  23 dB, so that noise leaves the chain 3.5 to 18.6 dB louder than it
-  entered; set `GateLevel` above the residual noise
+- **The AGC can make noise louder.** The VAD reports speech on
+  [stationary noise](docs/glossary.md#stationary-noise) and on residual
+  echo, so the AGC's level gate is its only protection. Set `GateLevel`
+  above the noise left after noise suppression
+  ([how to choose it](docs/guide.md#the-send-path-frame-by-frame), under
+  "Gate above the noise"). The default gate is -50 dBFS. With it, the
+  noise raised is white noise from about -40 dBFS and pink noise from
+  about -52 dBFS at the input. It comes out 16 to 23 dB louder, so it
+  leaves the chain 3.5 to 18.6 dB louder than it entered
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
-- The whole chain, tested in `integration`, passes every pipeline
-  criterion at 8 and 16 kHz. On the chain resampled from 48 kHz two
-  behavioural criteria fail: the echo stage cancels less and the AGC
-  holds the near end lower
+- **Resampling from 48 kHz costs quality.** The whole chain, tested in
+  `integration`, passes every pipeline criterion at 8 and 16 kHz. On a
+  chain resampled from 48 kHz, two behavioural criteria fail: the echo
+  stage cancels less and the AGC holds the near end lower
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
-- The recipes of [docs/usage.md](docs/usage.md) cancel echo within the
-  delays measured in simulated calls with up to 30 ms of jitter: 40 to
-  200 ms for recipe A (paced sending, `Cancel`), 60 to 200 ms for recipe
-  B (separate callbacks, `Playback` and `Capture`, one frame late). With
-  a 32 ms echo and that jitter neither does (U6 fails).
-- Go is not a hard real-time platform; tail latencies are measured and
-  reported ([docs/performance.md](docs/performance.md)), not guaranteed.
-  The Linux amd64 reference environment has not been measured yet.
+- **Echo cancellation needs the echo to come back late enough.** The
+  recipes of [docs/usage.md](docs/usage.md) were tested in simulated calls
+  with up to 30 ms of jitter. Recipe A (paced sending, `Cancel`) cancelled
+  echo that came back 40 to 200 ms after it was sent. Recipe B (separate
+  callbacks, `Playback` and `Capture`, one frame late) cancelled 60 to
+  200 ms.
+- **A 32 ms echo with that jitter is not cancelled by either recipe.**
+  This is the "uneven timing" criterion, U6 in the
+  [acceptance criteria](docs/acceptance/integration.md), and it fails. The
+  [recipe A caveats](docs/usage.md#caveats), under "Echo delay", explain
+  why.
+- **Go is not a hard real-time platform.** A frame can occasionally take
+  much longer than usual. The slowest frames are measured and reported
+  ([docs/performance.md](docs/performance.md)), not guaranteed.
+- The Linux amd64 reference environment has not been measured yet.
 
 ## Contributing
 
