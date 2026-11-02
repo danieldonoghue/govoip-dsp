@@ -24,8 +24,10 @@ This page is a short path for a Go service that takes calls from Asterisk
 over AudioSocket and cleans the caller's audio: echo cancellation, noise
 suppression with voice activity detection ([VAD](glossary.md#vad)), and
 automatic gain control ([AGC](glossary.md#agc)). The tutorial comes
-first: the dialplan, a whole program walked through, what to change for
-your application, and how to check that it works. The
+first: the dialplan; a whole program, walked through, that accepts the
+connections, makes the [processors](glossary.md#processor) for each
+connection and calls them for each [frame](glossary.md#frame); what to
+change for your application; and how to check that it works. The
 [reference](#reference) after it gives the protocol facts with their
 Asterisk sources, what to expect from echo cancellation, the cost, and
 hold and `Reset`. The [developer guide](guide.md) explains each package,
@@ -58,7 +60,9 @@ exten => 101,2,Hangup()
   `apps/app_audiosocket.c:58-64`, `apps/app_audiosocket.c:97-107`). The
   application does not answer the call, and on a channel that is not
   answered it ends at once with an error, so `Answer()` comes first
-  (`apps/app_audiosocket.c:69`, `apps/app_audiosocket.c:160-163`). It
+  (`apps/app_audiosocket.c:69`, `apps/app_audiosocket.c:160-163`). Its
+  documentation also names `Progress()`, but the check at line 160
+  accepts only an answered channel. It
   always sends and takes 8 kHz audio, the rate the program below uses.
 - **Extension 101: the `AudioSocket` channel driver, through `Dial()`.**
   The dial string is `AudioSocket/host:port/UUID/options`, split at each
@@ -70,13 +74,15 @@ exten => 101,2,Hangup()
   audio and `slin16` is 16 kHz (`main/codec_builtin.c:287-291`,
   `main/codec_builtin.c:968-970`). Always give `c(slin)` or `c(slin16)`
   (item 5 of [the protocol](#the-protocol)). With `c(slin16)`, change
-  both `8000` in `main` to `16000`.
+  `rate` in `main` to `16000`.
 
 The example passes the same UUID for every call, so your service cannot
-tell the calls apart by it, and each call's recording replaces the one
-before ([Write the cleaned audio to a file](#write-the-cleaned-audio-to-a-file)).
-These lines are checked against the Asterisk documentation and sources
-named here; they have not been run on an Asterisk server.
+tell the calls apart by it. Each call's recording replaces the one
+before, and two calls at the same time write into the same file
+([Write the cleaned audio to a file](#write-the-cleaned-audio-to-a-file)).
+The `AudioSocket()` lines are checked against the application
+documentation and the sources named here, the `Dial()` line against the
+sources only. None of them has been run on an Asterisk server.
 
 ## The program
 
@@ -123,7 +129,8 @@ func main() {
 	}
 	// beeper is the example application; recording also writes each call's
 	// cleaned audio to <UUID>.raw in the working directory.
-	log.Fatal(acceptAudioSockets(ln, 8000, recording(".", 8000, beeper(8000))))
+	const rate = 8000 // 16000 for a dial string with c(slin16)
+	log.Fatal(acceptAudioSockets(ln, rate, recording(".", rate, beeper(rate))))
 }
 ```
 
@@ -646,20 +653,21 @@ frames sent back. So the work is split:
 // file <dir>/<UUID>.raw, raw 16-bit little-endian mono PCM at rate Hz.
 func recording(dir string, rate int, start func(id uuid) (session, error)) func(id uuid) (session, error) {
 	return func(id uuid) (session, error) {
+		s, err := start(id)
+		if err != nil {
+			return session{}, err
+		}
 		name := filepath.Join(dir, id.String()+".raw")
 		f, err := os.Create(name)
 		if err != nil {
+			s.end()
 			return session{}, err
 		}
 		// Up to 2 s of audio can wait for the disk; deliver drops what does not fit.
 		r, err := newRecorder(f, 2*rate)
 		if err != nil {
 			f.Close()
-			return session{}, err
-		}
-		s, err := start(id)
-		if err != nil {
-			r.close()
+			s.end()
 			return session{}, err
 		}
 		deliver, end := s.deliver, s.end
@@ -769,8 +777,8 @@ file of 16-bit little-endian samples.
   guide's [send path](guide.md#the-send-path-frame-by-frame), "Gate
   above the noise", gives the steps; the code uses `agc.DefaultConfig`,
   where `GateLevel` is the field to change.
-- **The rate.** With `c(slin16)` in the dial string, change both `8000`
-  in `main` to `16000`. For other rates, see [Other rates](#other-rates).
+- **The rate.** With `c(slin16)` in the dial string, change `rate` in
+  `main` to `16000`. For other rates, see [Other rates](#other-rates).
 - **The echo filter length.** The code uses 200 ms, which may be too
   short on a server
   ([What to expect](#what-to-expect-from-echo-cancellation-on-a-server)).
@@ -799,7 +807,13 @@ against an Asterisk server.
    `call <UUID>: recorded to <UUID>.raw, 0 frames dropped, error <nil>`.
 4. Play the recording ([the commands](#write-the-cleaned-audio-to-a-file)).
    It is the caller's voice after the processors.
-5. If the session ends on its own after a pause in the audio, look in
+5. If the program logs `audiosocket: EOF` and nothing else for a call
+   to extension 100, check that `Answer()` comes before `AudioSocket()`.
+   On a channel that is not answered, the application connects to your
+   service, then closes the connection before it sends the UUID
+   (`apps/app_audiosocket.c:107`, `apps/app_audiosocket.c:146`,
+   `apps/app_audiosocket.c:160-163`).
+6. If the session ends on its own after a pause in the audio, look in
    the Asterisk log for "Reached timeout after 2000 ms of no activity".
    The dialplan application waits at most 2 s for the next frame from
    either side, the call's channel or your service. If neither comes, it
@@ -874,7 +888,7 @@ and from the Asterisk sources at commit
    channel nor the socket has had activity for 2 s
    (`apps/app_audiosocket.c:48`, `apps/app_audiosocket.c:218-222`). The
    program sends only when it receives, so it does nothing to keep such a
-   session going ([Check that it works](#check-that-it-works), step 5).
+   session going ([Check that it works](#check-that-it-works), step 6).
 7. A DTMF digit is kind `0x03` with one ASCII byte (protocol page;
    `res/res_audiosocket.c:258-262`). DTMF tones that stay in the audio
    itself go through the processors like any other sound. The library
@@ -898,6 +912,8 @@ and from the Asterisk sources at commit
     `channels/chan_audiosocket.c:152-160`). Your service ends the session
     with the hangup message `0x00 0x00 0x00` or by closing the connection
     (protocol page; `res/res_audiosocket.c:330-336`).
+11. The protocol page also lists kind `0xff`, an error with an optional
+    error code. The Asterisk sources at this commit do not send it.
 
 ### Other rates
 
@@ -949,8 +965,8 @@ the frames you sent as the reference.
   | Reduction | Amplitude left | Energy left | Where it appears |
   |---|---|---|---|
   | 10 dB | 0.32, about a third | 1/10 | the level reached again after a path change ([Hold, transfer and Reset](#hold-transfer-and-reset)) |
-  | 10.7 dB | 0.29, about 1/3.4 | about 1/12 | 32 ms echo delay, 16 kHz |
-  | 11.1 dB | 0.28, about 1/3.6 | about 1/13 | 32 ms echo delay, 8 kHz |
+  | 10.7 dB | 0.29, about 1/3.4 | about 1/12 | 32 ms echo delay, 16 kHz, a simulated case that is not a physical call ([usage.md](usage.md#caveats), "Echo delay") |
+  | 11.1 dB | 0.28, about 1/3.6 | about 1/13 | 32 ms echo delay, 8 kHz, the same case |
   | 17.1 dB | 0.14, about 1/7 | about 1/51 | the least for delays of 40 to 200 ms |
   | 20 dB | 0.10, 1/10 | 1/100 | for comparison |
   | 27.2 dB | 0.044, about 1/23 | about 1/525 | the most for delays of 40 to 200 ms |
@@ -1062,13 +1078,14 @@ Every Go block on this page except the first is copied from
   the UUIDs, the beep frames sent back and the log line at each end.
 - `TestReadUUID` and `TestAudioSocketMessages` check the handling of each
   message kind on hand-written bytes.
-- `TestAudioSocketRecording` serves a call through `recording` at 8 and
-  16 kHz, with and without audio sent back, and checks that the file
+- `TestAudioSocketRecording` serves a 3 s call, more than the recorder
+  holds, through `recording` at 8 and 16 kHz, with and without audio
+  sent back, and checks that the file
   holds exactly the bytes of the cleaned frames that `deliver` got, and
   that the log reports no dropped frame and no error.
 - `TestAudioSocketRecorderDrops` blocks the writing goroutine and checks
   that `deliver` drops the frames that do not fit and that the file holds
   the others, in order.
 - `TestNoAllocsAudioSocket` checks that handling an audio message
-  allocates nothing, and that `recorder.deliver` allocates nothing while
-  its writing goroutine runs.
+  allocates nothing, and that `recorder.deliver` allocates nothing, both
+  when it stores a frame and when it drops one.

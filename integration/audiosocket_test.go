@@ -306,20 +306,21 @@ func beeper(rate int) func(id uuid) (session, error) {
 // file <dir>/<UUID>.raw, raw 16-bit little-endian mono PCM at rate Hz.
 func recording(dir string, rate int, start func(id uuid) (session, error)) func(id uuid) (session, error) {
 	return func(id uuid) (session, error) {
+		s, err := start(id)
+		if err != nil {
+			return session{}, err
+		}
 		name := filepath.Join(dir, id.String()+".raw")
 		f, err := os.Create(name)
 		if err != nil {
+			s.end()
 			return session{}, err
 		}
 		// Up to 2 s of audio can wait for the disk; deliver drops what does not fit.
 		r, err := newRecorder(f, 2*rate)
 		if err != nil {
 			f.Close()
-			return session{}, err
-		}
-		s, err := start(id)
-		if err != nil {
-			r.close()
+			s.end()
 			return session{}, err
 		}
 		deliver, end := s.deliver, s.end
@@ -700,18 +701,40 @@ func TestNoAllocsAudioSocket(t *testing.T) {
 			testutil.AssertNoAllocs(t, 200, handle)
 		})
 	}
-	// recording's deliver, with its writing goroutine running meanwhile.
-	t.Run("recorder", func(t *testing.T) {
+	// recorder.deliver storing frames, with its writing goroutine running.
+	t.Run("recorder stores", func(t *testing.T) {
 		skipUnderRace(t)
-		r, err := newRecorder(nopCloser{io.Discard}, 2*8000)
+		r, err := newRecorder(nopCloser{io.Discard}, 400*160) // room for every frame
 		if err != nil {
 			t.Fatal(err)
 		}
 		x := callScenario(8000, 1).mic[:160]
-		for range 200 {
+		for range 10 {
 			r.deliver(x)
 		}
 		testutil.AssertNoAllocs(t, 200, func() { r.deliver(x) })
+		if dropped, err := r.close(); dropped != 0 || err != nil {
+			t.Fatalf("%d frames dropped, %v; want none dropped, so that the store is measured", dropped, err)
+		}
+	})
+	// recorder.deliver dropping frames, its writing goroutine blocked.
+	t.Run("recorder drops", func(t *testing.T) {
+		skipUnderRace(t)
+		pr, pw := io.Pipe() // Write blocks until the reader below runs
+		r, err := newRecorder(pw, 4*160)
+		if err != nil {
+			t.Fatal(err)
+		}
+		x := callScenario(8000, 1).mic[:160]
+		for range 10 { // at most 8 frames are stored: the rest are dropped
+			r.deliver(x)
+		}
+		before := r.dropped
+		testutil.AssertNoAllocs(t, 200, func() { r.deliver(x) })
+		if got := r.dropped - before; got != 201 {
+			t.Errorf("%d of 201 measured frames dropped, want all", got)
+		}
+		go io.Copy(io.Discard, pr)
 		if _, err := r.close(); err != nil {
 			t.Fatal(err)
 		}
@@ -744,7 +767,7 @@ func audioSocketRecording(t *testing.T, rate int, sends bool) {
 		kind = kindSlin16
 	}
 	f := rate * 20 / 1000
-	const frames = 100 // 2 s
+	const frames = 150 // 3 s, more than the recorder holds: a writer that never drains drops
 	mic := callScenario(rate, 1).mic[:frames*f]
 	dir := t.TempDir()
 
@@ -823,9 +846,8 @@ func audioSocketRecording(t *testing.T, rate int, sends bool) {
 	}
 }
 
-// TestAudioSocketRecorderDrops blocks the writing goroutine and checks that deliver
-// drops what does not fit, without waiting, and that the rest is written
-// in order.
+// TestAudioSocketRecorderDrops blocks the writing goroutine and checks that
+// deliver drops what does not fit and that the rest is written in order.
 func TestAudioSocketRecorderDrops(t *testing.T) {
 	const f, delivered = 160, 20
 	pr, pw := io.Pipe() // Write blocks until the test reads
