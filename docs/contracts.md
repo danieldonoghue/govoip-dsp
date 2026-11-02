@@ -237,8 +237,8 @@ compared bit for bit: those can differ between architectures. Use the
 Under `-short` or `-race`, a test may skip, or reduce to a named subset, only
 if the normal `go test` runs the full work. A goroutine test may run a shorter
 stream under `-race`, but the same concurrent paths. Every skip or reduction
-is named in the test and listed in `docs/testing.md`. A skipped test gives
-the reason in its `t.Skip` call, so `go test -v` lists it (ADRs
+is named in the test and listed in `docs/testing.md`. A whole test that
+skips gives the reason in its `t.Skip` call (ADRs
 `test-reduction-rules` and `wp7-race-skips`).
 
 ## 10. Fixtures and the reference harness
@@ -414,10 +414,10 @@ Conditions:
   for bit against the C chain (`TestReferencePairing`).
 
 Alternatives considered: `preprocess` holding a `*echo.Canceller` (mirrors
-the C pointer, but couples the packages and stops WP5 testing without WP6),
-or an interface with a `Residual` method (needs approval, and adds nothing
-the slice does not give). The slice hand-off is confirmed (ADR
-`wp0-residual-handoff`).
+the C pointer, but couples the packages and stops `preprocess` being tested
+without `echo`), or an interface with a `Residual` method (needs approval,
+and adds nothing the slice does not give). The slice hand-off is confirmed
+(ADR `wp0-residual-handoff`).
 
 ## 13. Internal FFT (WP3)
 
