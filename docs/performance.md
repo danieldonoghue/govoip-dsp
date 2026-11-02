@@ -58,11 +58,11 @@ CGO_ENABLED=0 go test -run '^$' -bench . -benchmem -count 1 ./internal/fft
 | 1280 | 16508 | 10716 | 0 |
 | 1920 | 26688 | 16452 | 0 |
 
-Both directions include copying the input into the buffer they rewrite. The
-benchmark reads each size as one 10 ms hop of `Size/2` samples (a rate of
-`50 * Size` Hz, so 96 kHz for size 1920), so `rt-fraction` for size 1920 is
-0.0027 for `Forward` and 0.0016 for `Inverse`. One run, not averaged; no Linux
-VM numbers yet.
+The benchmark copies the input before every call in both directions (`Forward`
+rewrites its input, `Inverse` does not). It reads each size as one 10 ms hop of
+`Size/2` samples (a rate of `50 * Size` Hz, so 96 kHz for size 1920), so
+`rt-fraction` for size 1920 is 0.0027 for `Forward` and 0.0016 for `Inverse`.
+One run, not averaged; no Linux VM numbers yet.
 
 ## Ring buffers (`buffer`, WP2)
 
@@ -178,7 +178,7 @@ Construction (`BenchmarkResamplerNew`), which builds the sinc table with
 |---|---|---|
 | q3 48k→16k mono | 3890 | 19372 |
 | q10 44.1k→48k mono | 129632 | 37772 |
-| q10 48k→8k stereo | 23792 | 28313 |
+| q10 48k→8k stereo | 23792 | 28312 |
 
 The ns/op figures are from the 2026-10-26 run. B/op and allocs/op were
 measured again at commit e4fbd22 (MacBookPro18,1, Apple M1 Pro, go1.26.5
@@ -189,7 +189,8 @@ that run are not comparable):
 CGO_ENABLED=0 go test ./resample -run '^$' -bench BenchmarkResamplerNew -benchmem -count 3
 ```
 
-It gave 19372, 37772 to 37774 and 28313 B/op, and 6 allocs/op in every case.
+It gave 19372, 37772 to 37774 and 28312 to 28313 B/op, and 6 allocs/op in every
+case. A second check on the same commit gave 19372, 37772 and 28312.
 
 `go build -gcflags=-m ./resample` shows `fixed.Mult16x16`,
 `fixed.Mult16x32Q15`, `fixed.Saturate32PShr` and the other macro ports
@@ -332,14 +333,14 @@ configuration stays at 0 allocs/op.
 
 ## Whole chain (`integration`, WP7)
 
-The real-time budget of requirements §7: per-frame wall time of the whole
-send path of one call (`echo` `Cancel` and `Residual`, `preprocess`
-`RunEcho` with denoise and VAD on, `agc` `Process`; echo filter 200 ms),
-measured with the monotonic clock around every frame. At 48 kHz the frame
-also includes resampling the microphone and far end to 16 kHz and the
-receive path from 16 kHz back to 48 kHz. Input: the 40 s synthetic call
-scenario (`docs/acceptance/integration.md`) repeated, 10 minutes of audio
-per configuration (60000 frames of 10 ms) after 2 s of warm-up.
+The real-time budget of requirements §7: per-frame wall time of the whole send
+path of one call (`echo` `Cancel` and `Residual`, `preprocess` `RunEcho` with
+denoise and VAD on, `agc` `Process`; echo filter 200 ms), measured with the
+monotonic clock around every frame. At 48 kHz the frame also includes resampling
+the microphone and far end to 16 kHz and the receive path from 16 kHz back to 48
+kHz. Input: the 40 s synthetic call scenario (`docs/acceptance/integration.md`)
+repeated, 10 minutes of audio per configuration (60000 frames at 10 ms, 30000 at
+20 ms) after 2 s of warm-up.
 
 Mac (MacBookPro18,1, Apple M1 Pro, 10 cores, arm64, macOS 27.0.1, Go
 1.26.5), 2026-10-27, load average 2.3 to 3.1 from other processes. Every

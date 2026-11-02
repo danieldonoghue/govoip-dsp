@@ -306,12 +306,12 @@ rounded up to a multiple of 8.
   configurations, all qualities) equals the harness table entry for entry;
   see `docs/testing.md`, "libm findings".
 - Accumulation is wrapping `int32`; output saturates in `SATURATE32PSHR`.
-- The stopband levels below sit at about -55 to -71 dB for every quality
-  from 1 up. An interpretation, not verified separately: the 16-bit
-  (Q15) filter table and the 16-bit output limit the fixed-point build.
-  A tone of amplitude 2048 at 12, 14, 16, 18 or 20 kHz through 48k→16k at
-  quality 10 gives zero output after the first 198 output samples (the
-  onset); measured once on 1 s of tone, no test pins it.
+- The stopband levels below sit at about -55 to -71 dB for every quality from 1
+  up. An interpretation, not verified separately: the 16-bit (Q15) filter table
+  and the 16-bit output limit the fixed-point build. A tone of amplitude 2048 at
+  12, 14, 16, 18 or 20 kHz through 48k→16k at quality 10 gives zero output after
+  an onset of 163 to 205 output samples, depending on frequency and phase;
+  measured on 1 s of tone, no test pins it.
 
 **Deviations.** See the package doc and `docs/acceptance/resample.md`.
 
@@ -486,10 +486,10 @@ the previous one.
   `filterbank_compute_bank32` (`filterbank.c:144`) and `SHL32(a,15)` in
   `DIV32_16_Q15` (`preprocess.c:139`). The port wraps as the reference does
   with `-fwrapv`; the fixtures exercise all three.
-- `DIV32_16_Q8(a, b)` returns -32768 for `a = 128b - 1` with
-  `512 <= b <= 32768` (the quotient 32768 truncates; `TestDiv32x16Q8Wraps`
-  covers `b` below 32768), so `post` and `prior` can become large and
-  negative from ordinary input. The port keeps this.
+- `DIV32_16_Q8(a, b)` returns -32768 for `a = 128b - 1` with every `b` from 512
+  to 32768 and for many larger `b` (the quotient 32768 truncates;
+  `TestDiv32x16Q8Wraps` covers `b` below 32768), so `post` and `prior` can
+  become large and negative from ordinary input. The port keeps this.
 - The filterbank divisor `PSHR32(mel_interval,15)` is rounded (773 at
   8 kHz, 1138 at 48 kHz). Where it rounds down, the weight `val` can reach
   32768 at a band edge and wrap to a negative `int16`. Measured with the
