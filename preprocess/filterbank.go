@@ -18,7 +18,7 @@ type filterbank struct {
 	banks                   int
 }
 
-// toBark is the FIXED_POINT toBARK (filterbank.c:45).
+// toBark is the FIXED_POINT toBARK (filterbank.c:46).
 func toBark(n int16) int32 {
 	return fixed.Mult16x16(26829, fixed.Atan(fixed.Shr32(fixed.Mult16x16(97, n), 2))) +
 		fixed.Mult16x16(4588, fixed.Atan(fixed.Mult16x32Q15(20, fixed.Mult16x16(n, n)))) +

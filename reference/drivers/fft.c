@@ -22,7 +22,7 @@
 
 #include "harness.h"
 
-/* Private layouts of fftwrap.c:296 and kiss_fftr.c:23, mirrored to read the
+/* Private layouts of fftwrap.c:298 and kiss_fftr.c:23, mirrored to read the
  * twiddle tables. The upstream commit is pinned, so they cannot drift. */
 struct kiss_config {
 	kiss_fftr_cfg forward;

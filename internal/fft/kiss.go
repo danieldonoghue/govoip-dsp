@@ -64,6 +64,7 @@ func cFixDiv(c *cpx, div int) {
 	c.i = sMul(c.i, k)
 }
 
+// cAdd and cSub are C_ADD and C_SUB (_kiss_fft_guts.h:105,111).
 func cAdd(a, b cpx) cpx { return cpx{a.r + b.r, a.i + b.i} }
 func cSub(a, b cpx) cpx { return cpx{a.r - b.r, a.i - b.i} }
 
