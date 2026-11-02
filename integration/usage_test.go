@@ -275,8 +275,15 @@ func TestNoAllocsRecipe(t *testing.T) {
 
 // TestUsageCodeIsTested checks that every Go block of docs/usage.md
 // appears verbatim in this package's tests (criterion U2).
-func TestUsageCodeIsTested(t *testing.T) {
-	doc, err := os.ReadFile(filepath.Join(testutil.RepoRoot(t), "docs", "usage.md"))
+func TestUsageCodeIsTested(t *testing.T) { docCodeIsTested(t, "usage.md") }
+
+// TestAudioSocketCodeIsTested checks the same for docs/audiosocket.md.
+func TestAudioSocketCodeIsTested(t *testing.T) { docCodeIsTested(t, "audiosocket.md") }
+
+// docCodeIsTested checks that every Go block of docs/name appears verbatim
+// in this package's tests.
+func docCodeIsTested(t *testing.T, name string) {
+	doc, err := os.ReadFile(filepath.Join(testutil.RepoRoot(t), "docs", name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,18 +301,18 @@ func TestUsageCodeIsTested(t *testing.T) {
 	}
 	blocks := regexp.MustCompile("(?s)```go\n(.*?)```").FindAllStringSubmatch(string(doc), -1)
 	if len(blocks) == 0 {
-		t.Fatal("docs/usage.md has no Go blocks")
+		t.Fatalf("docs/%s has no Go blocks", name)
 	}
 	for i, b := range blocks {
 		lines := slices.DeleteFunc(strings.Split(b[1], "\n"), func(s string) bool { return strings.TrimSpace(s) == "" })
 		// Each run of non-blank lines must appear in the source.
 		for _, l := range lines {
 			if !strings.Contains(src.String(), l) {
-				t.Errorf("docs/usage.md Go block %d: line %q is not in the integration tests", i+1, l)
+				t.Errorf("docs/%s Go block %d: line %q is not in the integration tests", name, i+1, l)
 			}
 		}
 		if !strings.Contains(src.String(), strings.TrimSpace(b[1])) {
-			t.Errorf("docs/usage.md Go block %d is not verbatim in the integration tests", i+1)
+			t.Errorf("docs/%s Go block %d is not verbatim in the integration tests", name, i+1)
 		}
 	}
 }
