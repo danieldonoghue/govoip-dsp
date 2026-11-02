@@ -10,6 +10,8 @@ was written down at the time.
 | ADR | Decision |
 |---|---|
 | [codecs-separate-repo](codecs-separate-repo.md) | Codecs live in a separate repository |
+| [local-macro-ports](local-macro-ports.md) | Macros that one upstream file defines stay with its package |
+| [test-reduction-rules](test-reduction-rules.md) | When a test may skip or reduce under -short or -race |
 | [wp0-dependencies](wp0-dependencies.md) | Dependency policy |
 | [wp0-go-version](wp0-go-version.md) | Go language version |
 | [wp0-harness](wp0-harness.md) | Reference harness and fixture format |
