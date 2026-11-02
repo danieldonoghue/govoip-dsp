@@ -23,10 +23,11 @@ coding agents alike.
 ```sh
 make help      # list every target (the default)
 make hooks     # once per clone: run make check-short before every git push
-make check     # gofmt -l, CGO_ENABLED=0 vet + test, purego test, deps guard, staticcheck
+make check     # gofmt -l, CGO_ENABLED=0 vet + test, purego test, deps guard, staticcheck (if installed)
 make race      # go test -race ./...  (works on macOS without cgo)
 make bench     # short benchmarks
-make fixtures  # regenerate SpeexDSP reference fixtures (needs clang or Docker, and network)
+make fixtures  # regenerate SpeexDSP reference fixtures (needs Go, git, and clang or Docker;
+               # network on first use, to fetch SpeexDSP and the Docker image)
 make cross     # cross-compile matrix
 ```
 
@@ -191,6 +192,6 @@ network or no compiler), say so in the review request.
 
 ## Environment
 
-The C reference harness uses the host clang (the Xcode Command Line Tools
-clang on macOS) or the pinned Linux container when Docker is available
-(`docs/testing.md`, "Toolchains").
+The C reference harness uses the host clang (Apple clang from Xcode or the
+Command Line Tools on macOS) or the pinned Linux container when Docker is
+available (`docs/testing.md`, "Toolchains").

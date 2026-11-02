@@ -51,7 +51,7 @@ The project is not a CGO wrapper and does not reproduce the C API mechanically.
 | FFT and DSP primitives | `internal/fft` (+ helpers as needed) | Bit-exact | KISS FFT fixed-point via `fftwrap.c` semantics |
 | Noise suppression + VAD | `preprocess` | Bit-exact | Port of `preprocess.c` + `filterbank.c`, mono |
 | Acoustic echo canceller | `echo` | Bit-exact | Port of `mdf.c`, mono (1 mic, 1 speaker) |
-| Automatic gain control | `agc` | Behavioural only | Own fixed-point design (SpeexDSP 1.2.1 has no fixed-point AGC, see §4.4) |
+| Automatic gain control | `agc` | Behavioural only | Own fixed-point design (SpeexDSP 1.2.1 has no fixed-point AGC, see §5.5) |
 | Developer documentation | every public package, root package `govoipdsp`, `docs/` | n/a | §13; GitHub pages with Mermaid diagrams, plus text-only go doc with examples |
 
 ### Stretch (in priority order, after MVP is validated)
@@ -63,7 +63,7 @@ The project is not a CGO wrapper and does not reproduce the C API mechanically.
 4. Multichannel AEC (`speex_echo_state_init_mc` equivalent).
 5. Dereverberation, as an extension only. SpeexDSP 1.2.1 has a dereverb enable
    flag, but its level and decay setters are commented out
-   (`preprocess.c:1112-1125`), so the reverb term is always zero. Do not mirror
+   (`preprocess.c:1112-1127`), so the reverb term is always zero. Do not mirror
    those controls as if they worked.
 
 Performance work (item 3, WP9) follows the developer documentation (WP8).
@@ -130,8 +130,7 @@ codec (`docs/decisions/codecs-separate-repo.md`).
 - Keep exported APIs small; keep low-level operations in `internal/` unless
   there is a clear reason to export them.
 - Cross-package contracts (for example the echo → preprocess residual-echo
-  coupling) are defined in `docs/contracts.md`, which the foundation work
-  package (WP0) creates and owns. Prefer concrete types; an interface needs
+  coupling) are defined in `docs/contracts.md`. Prefer concrete types; an interface needs
   approval (§2).
 
 ---
@@ -174,15 +173,17 @@ codec (`docs/decisions/codecs-separate-repo.md`).
   away. If Docker is unavailable, use the host toolchain and record that.
 - Fixtures live in `testdata/speexdsp/<component>/` as little-endian raw
   streams (`int16`, or `int32`, `float32` and `float64` for intermediate
-  values and tables) plus a JSON manifest (config, input generator and seed,
-  reference commit, compiler, flags, platform, SHA-256 of each stream chunk
-  and committed file).
+  values and tables) plus a JSON manifest (config, the input generator and
+  seed where the driver uses one, reference commit, compiler, flags, platform,
+  SHA-256 of each stream chunk and committed file).
 - Keep fixtures small and deterministic: individual files ≲ 1 MB, total
   committed fixtures ≲ 20 MB. Long-duration comparisons generate inputs at test
   time from seeds and compare against hashes or against harness output
   regenerated locally.
 - `make fixtures` (or a documented script) regenerates everything. Ordinary
-  `go test` and CI never need a C compiler or network access.
+  `go test` never needs a C compiler or network access. CI needs the network
+  to fetch tools and the speech corpus, and a C toolchain for `-race` on Linux
+  (§8).
 - If upstream cannot be fetched or no C compiler can run, never invent
   fixtures. Implement the component, mark its parity as **unverified** in the
   README component table and the parity summary in `docs/testing.md`, and
@@ -355,7 +356,8 @@ The traps are:
 
 - Supported: Linux (including Debian containers), macOS (Apple Silicon),
   Windows; amd64 and arm64, with portable fallbacks building on all Go-supported
-  architectures.
+  architectures. Tested natively in CI: linux/amd64, linux/arm64, darwin/arm64
+  and windows/amd64 (§10); other combinations are not tested.
 - Must pass: `CGO_ENABLED=0 go vet ./...` and `CGO_ENABLED=0 go test ./...`.
 - Architecture kernels are stretch work and need a profile showing the hot spot
   plus a benchmark showing the gain, recorded in `docs/performance.md`. No
@@ -463,8 +465,8 @@ image changes only by a deliberate commit that updates this list and
 `.github/workflows/ci.yml` together.
 
 CI does not run for a change that touches only documentation: Markdown files,
-`docs/`, `LICENSE` and `LICENSES/`. A change that also touches
-anything else runs the full workflow.
+`docs/`, `LICENSE`, `LICENSES/` and package doc files (`doc.go`). A change
+that also touches anything else runs the full workflow.
 
 - gofmt check, vet, staticcheck, `CGO_ENABLED=0 go test ./...` on every runner.
 - Race tests on Linux amd64 and macOS.
@@ -474,8 +476,8 @@ anything else runs the full workflow.
   `linux/arm`, `linux/riscv64`) and report them as **build-only**.
 - Native-dependency guard: build with `CGO_ENABLED=0` and fail if any package
   imports `C` or `go list -deps` shows unexpected modules.
-- Allocation tests run in CI; benchmarks run in short mode as a smoke test only
-  (CI timing is not published).
+- Allocation tests run in CI; benchmarks run once each
+  (`-benchtime 1x`) as a smoke test only (CI timing is not published).
 - Fixture regeneration is a separate, manually triggered workflow.
 
 Never report a platform as tested because it cross-compiled.
@@ -525,9 +527,9 @@ Never report a platform as tested because it cross-compiled.
 | `reference/` | C harness, `config.h`, scripts (no Go files) |
 | `testdata/speexdsp/` | Committed fixtures and manifests |
 | `docs/requirements.md` | This file |
-| `docs/contracts.md` | Cross-package interfaces and conventions (created by WP0) |
+| `docs/contracts.md` | Cross-package interfaces and conventions |
 | `docs/acceptance/` | Pre-registered acceptance criteria |
-| `docs/usage.md` | Tested recipes for wiring one call |
+| `docs/usage.md` | Tested recipes for wiring the components into one voice call |
 | `docs/architecture.md`, `algorithms.md`, `performance.md`, `testing.md` | Reference documentation |
 | `docs/decisions/` | Architecture decision records (ADRs), indexed in its README |
 | `.github/workflows/` | CI |

@@ -11,7 +11,7 @@ It holds C sources and scripts only. Ordinary `go test` never needs it.
 | `fetch.sh` | Fetches SpeexDSP at commit `1b28a0f61bc31162979e1f26f3981fc3637095c8` into `speexdsp/` (git-ignored) and verifies the commit |
 | `config.h` | The reference configuration: `FIXED_POINT`, `USE_KISS_FFT`; no SIMD, `RESAMPLE_FULL_SINC_TABLE` or `FIXED_DEBUG` |
 | `include/speexdsp_config_types.h` | Replaces the header that `configure` generates (Linux only) |
-| `Dockerfile` | The canonical toolchain: Debian 13 arm64, clang 19, both pinned |
+| `Dockerfile` | The canonical toolchain: Debian 13, clang 19, both pinned (`fixtures.sh` builds it for `linux/arm64`) |
 | `fixtures.sh` | Entry point for `make fixtures` and `make fixtures-host` |
 | `harness.sh` | Builds and runs the drivers with the toolchain it runs on |
 | `common/harness.[ch]` | SplitMix64, SHA-256, hashed streams, manifest writer |
