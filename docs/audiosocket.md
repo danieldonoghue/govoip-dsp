@@ -5,17 +5,27 @@ over AudioSocket and cleans the caller's audio: echo cancellation, noise
 suppression with voice activity detection ([VAD](glossary.md#vad)), and
 automatic gain control ([AGC](glossary.md#agc)). It gives the protocol
 facts the code needs, the processors to make for each connection, and the
-calls for each frame. The
+calls for each
+[frame](glossary.md#frame). The
 [developer guide](guide.md) explains each package, and [usage.md](usage.md)
 has the full recipes, their caveats and their measurements.
+
+On a noisy line, set the AGC's gate level before you rely on `agc`. With
+the default gate, `agc` can make steady noise louder. The guide's
+[send path](guide.md#the-send-path-frame-by-frame), "Gate above the
+noise", gives the steps; the code below uses `agc.DefaultConfig`, where
+`GateLevel` is the field to change.
 
 Every Go code block on this page is copied from tested code;
 [How this page is tested](#how-this-page-is-tested) says how.
 
 ## Near end, far end and echo
 
-The packages name the two streams of a call after a device, but the roles
-are the same on a server:
+The packages name the two [streams](glossary.md#stream) of a call after a
+device, but the roles are the same on a server. The names come from the
+canceller's point of view, not from where your code runs: on a server the
+caller is the near end, though they are far away, and your service is
+the far end.
 
 - **[Near-end](glossary.md#near-end) signal.** The audio that Asterisk sends to your service: the
   caller's voice. The docs also call it the microphone signal, and the code
@@ -27,7 +37,7 @@ are the same on a server:
   what it receives. On a device the microphone hears the loudspeaker; here
   the caller's side does the same: a speakerphone caller's microphone
   picks up your audio from their loudspeaker, or an acoustic or line echo
-  on their side returns it. `echo` removes it, with the frames you sent
+  on their side returns it. `echo` cancels it, with the frames you sent
   as the reference.
 
 Leave out `echo` where nothing can come back:
@@ -41,6 +51,39 @@ Leave out `echo` where nothing can come back:
   The code below ties `echo` to sending audio back: for a headset caller
   who still gets audio, keep its sending in `step` and replace `received`
   with the `Run` and `Process` of its other branch.
+
+### What to expect from echo cancellation on a server
+
+- **The echo delay is longer than on a device.** On a server the
+  [echo delay](glossary.md#echo-delay) includes the network round trip
+  to the caller's device and back, and the buffering on the way. The
+  code below uses a 200 ms [filter length](glossary.md#filter-length),
+  the guide's start value, and that may be too short. Echo that arrives
+  later than the filter length is not cancelled.
+- **Choosing the filter length.** The filter must cover the echo delay
+  plus the [echo tail](glossary.md#echo-tail). Measure the delay on test
+  calls of the kind your service handles, then choose the shortest filter
+  that covers it: a longer one costs more and adapts more slowly
+  ([usage.md](usage.md#caveats), "Filter length").
+- **What is measured.** The code below is recipe A of usage.md. In
+  simulated calls with synthetic echo paths and up to 30 ms of
+  [jitter](glossary.md#jitter), recipe A cancelled echo delays of 40 to
+  200 ms by 17.1 to 27.2 dB, and a 32 ms delay by only 11.1 and 10.7 dB
+  at 8 and 16 kHz ([usage.md](usage.md#caveats), "Echo delay").
+- **What is not measured.** Real calls through Asterisk, line echo and
+  the round trips of real networks have not been measured. These figures
+  do not promise that the echo of a speakerphone call is cancelled.
+- **The cost when there is no echo.** On the test Mac, the whole send
+  path of one call (`echo` with a 200 ms filter, `preprocess` and `agc`)
+  took a median of 71.4 µs per 20 ms frame at 8 kHz and 142.2 µs at
+  16 kHz, under 1% of the frame duration
+  ([performance.md](performance.md#whole-chain-integration-wp7)). In the
+  `echo` package's scenario with a silent far end, `echo` lowered the
+  level of the near end by 1.0 dB at 8 kHz and 0.1 dB at 16 kHz, through
+  its DC notch
+  ([measured behaviour](algorithms.md#acoustic-echo-canceller-echo-wp6)).
+  Whether `echo` changes the caller's voice when your service sends audio
+  but no echo comes back has not been measured.
 
 ## The protocol
 
@@ -58,10 +101,15 @@ and from the Asterisk sources at commit
    of kind and two bytes of payload length, big-endian (protocol page;
    `res/res_audiosocket.c:226-256`).
 3. Asterisk's first message is the call's UUID: kind `0x01`, 16 bytes
-   (`res/res_audiosocket.c:189-215`).
-4. Audio payloads are 16-bit signed linear mono PCM, little-endian
-   (protocol page). Two bytes make one `int16` sample:
-   `int16(binary.LittleEndian.Uint16(b))`.
+   (`res/res_audiosocket.c:189-215`). It is the UUID given to
+   `AudioSocket()` or in the channel's dial string
+   (`apps/app_audiosocket.c:165`, `channels/chan_audiosocket.c:148`), so
+   your service can match the connection to the call.
+4. The protocol page defines the audio kinds as 16-bit signed linear
+   mono PCM, little-endian. Two bytes make one `int16` sample:
+   `int16(binary.LittleEndian.Uint16(b))`. Asterisk sends such audio
+   from the dialplan application, and from the channel driver only when
+   it is given a signed linear codec (item 5).
 5. The rate is in the kind: `0x10` is 8 kHz and `0x12` is 16 kHz; `0x11`
    and `0x13` to `0x18` are 12, 24, 32, 44.1, 48, 96 and 192 kHz (protocol
    page). The dialplan application `AudioSocket()` sets the channel to
@@ -70,17 +118,33 @@ and from the Asterisk sources at commit
    uses the codec named in its `c` option, for example
    `Dial(AudioSocket/host:port/uuid/c(slin16))`, or else the first codec
    the channel offers (`channels/chan_audiosocket.c:194-251`); `slin16`
-   gives kind `0x12` (`res/res_audiosocket.c:237-238`).
+   gives kind `0x12` (`res/res_audiosocket.c:237-238`). Always give the
+   channel driver `c(slin)` or `c(slin16)`. Without it, a call whose
+   first codec is, for example, µ-law sends µ-law bytes labelled as kind
+   `0x10`: the driver takes the first codec
+   (`channels/chan_audiosocket.c:244-251`), Asterisk labels every voice
+   frame that is not signed linear as `0x10`
+   (`res/res_audiosocket.c:251-253`), and the code below would read the
+   bytes as samples.
 6. The protocol does not fix how much audio one message holds: Asterisk
    forwards each voice or DTMF frame it reads from the channel
    (`apps/app_audiosocket.c:181-196`). So the code collects the samples
    into 20 ms frames, 160 samples at 8 kHz and 320 at 16 kHz. Comfort
-   noise frames are not forwarded (`res/res_audiosocket.c:263-264`), so
-   where the caller's leg suppresses silence, the received audio can have
-   gaps, and the frames sent back follow the received frames, not a
-   clock.
+   noise is a low noise that the caller's side asks the receiver to make
+   during silence, instead of sending audio. Asterisk does not forward
+   comfort noise frames (`res/res_audiosocket.c:263-264`), so where the
+   caller's side suppresses silence, the received audio has gaps, and
+   the frames sent back follow the received frames, not a clock. The
+   dialplan application ends the session as an error when neither the
+   channel nor the socket has had activity for 2 s
+   (`apps/app_audiosocket.c:48`, `apps/app_audiosocket.c:218-222`). The
+   code below sends only when it receives, so it does nothing to keep
+   such a session going.
 7. A DTMF digit is kind `0x03` with one ASCII byte (protocol page;
-   `res/res_audiosocket.c:258-262`).
+   `res/res_audiosocket.c:258-262`). DTMF tones that stay in the audio
+   itself go through the processors like any other sound. The library
+   does not detect them, and whether a detector still finds them after
+   the processors has not been tested.
 8. Asterisk writes the audio of each message your service sends to the
    call as soon as it reads it, with `ast_write`
    (`apps/app_audiosocket.c:198-216`); nothing in that code re-times it
@@ -101,6 +165,17 @@ and from the Asterisk sources at commit
     (protocol page; `res/res_audiosocket.c:330-336`).
 11. The protocol page also lists kind `0xff`, an error with an optional
     error code. The Asterisk sources at this commit do not send it.
+
+### Other rates
+
+The code below takes 8 or 16 kHz only, because `echo` works well at those
+rates only. For audio at another rate, resample both streams to 8 or
+16 kHz first: `newCall` in
+[Sources that deliver the pairing](usage.md#sources-that-deliver-the-pairing)
+does that around the processors, and the guide's
+[receive path](guide.md#the-receive-path) introduces `resample`.
+`preprocess` and `agc` alone accept other rates (their package docs give
+the ranges).
 
 The message kinds and errors the code uses:
 
@@ -375,28 +450,31 @@ A second goroutine, joined by a `buffer.SPSC`, is needed in these cases:
 
 With 20 ms frames, the processing delays the cleaned audio by about 22 ms:
 `echo` adds none, `preprocess` one frame (20 ms) and `agc` 2 ms
-([the send path](guide.md#the-send-path-frame-by-frame), "Latency"). The
-first samples of a frame also wait until the frame is complete. The audio
-your service sends back passes through no processor, so the library adds
-no delay to it.
+([the send path](guide.md#the-send-path-frame-by-frame), "Latency").
+That is on top of the time the samples wait in `in` until their frame is
+complete: up to 20 ms for the first sample of a frame. The audio your
+service sends back passes through no processor, so the library adds no
+delay to it other than the time it waits in `pending`.
 
 ## Hold, transfer and Reset
 
 Each connection is one call. Make its processors and buffers when it
 connects, as `serveAudioSocket` does. To reuse them for the next
-connection instead, call `Reset` on each first, `in` and `pending`
-included, `pending` only with its producer stopped: `Reset` starts a new
-stream without allocating. The quick start's tests do not cover reuse.
+connection instead, call [`Reset`](glossary.md#reset) on each first, `in`
+and `pending` included, `pending` only with its producer stopped: `Reset`
+starts a new stream without allocating. The quick start's tests do not
+cover reuse.
 
 No method needs `Reset` within a call. After a hold or a transfer, the
-echo path can change, and the canceller adapts by itself: in the
-synthetic scenarios of the `echo` package doc it cancelled 10 dB again
-within 1 s of a sudden path change, and in the recipes of usage.md 2.5 to
-3.5 s after the echo delay stepped from 100 to 140 ms. `Reset` clears what
-a processor has learned: `echo` its filter (it keeps some learned state,
-listed in its package doc), `preprocess` its noise estimate and other
-adaptive state, and `agc` its gain. Whether a `Reset` after a hold makes
-the canceller cancel again sooner has not been measured.
+[echo path](glossary.md#echo-path) can change, and the canceller adapts
+by itself: in the synthetic scenarios of the `echo` package doc it
+cancelled 10 dB again within 1 s of a sudden path change, and in the
+recipes of usage.md 2.5 to 3.5 s after the echo delay stepped from 100 to
+140 ms. `Reset` clears what a processor has learned: `echo` its filter
+(it keeps some learned state, listed in its package doc), `preprocess`
+its noise estimate and other adaptive state, and `agc` its gain. Whether
+a `Reset` after a hold makes the canceller cancel again sooner has not
+been measured.
 
 ## Next steps
 
