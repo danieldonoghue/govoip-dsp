@@ -2,37 +2,33 @@
 
 This page is a short path for a Go service that takes calls from Asterisk
 over AudioSocket and cleans the caller's audio: echo cancellation, noise
-suppression with voice activity detection (VAD), and automatic gain
-control. It gives the protocol facts the code needs, the processors to make
-for each connection, and the calls for each frame. The
+suppression with voice activity detection ([VAD](glossary.md#vad)), and
+automatic gain control ([AGC](glossary.md#agc)). It gives the protocol
+facts the code needs, the processors to make for each connection, and the
+calls for each frame. The
 [developer guide](guide.md) explains each package, and [usage.md](usage.md)
 has the full recipes, their caveats and their measurements.
 
-Every Go code block on this page is copied from
-`integration/audiosocket_test.go`, and `TestAudioSocketCodeIsTested` fails
-if one is not. `TestAudioSocketQuickStart` runs the code against a fake
-Asterisk over a loopback TCP connection, at 8 and 16 kHz, with and without
-audio sent back, and ends each session with a hangup message or a closed
-connection. `TestAudioSocketMessages` checks the handling of each message
-kind on hand-written bytes, and `TestNoAllocsAudioSocket` checks that
-handling an audio message allocates nothing.
+Every Go code block on this page is copied from tested code;
+[How this page is tested](#how-this-page-is-tested) says how.
 
 ## Near end, far end and echo
 
 The packages name the two streams of a call after a device, but the roles
 are the same on a server:
 
-- **Near-end signal.** The audio that Asterisk sends to your service: the
+- **[Near-end](glossary.md#near-end) signal.** The audio that Asterisk sends to your service: the
   caller's voice. The docs also call it the microphone signal, and the code
   calls it `mic`.
-- **Far-end reference.** The audio that your service sends back to
+- **[Far-end](glossary.md#far-end) reference.** The audio that your service sends back to
   Asterisk, such as a prompt, text-to-speech or a bridged leg. The code
   calls it `far`.
-- **Echo.** What your service sends comes back in what it receives. On a
-  device the microphone hears the loudspeaker; here the caller's side does
-  the same: a speakerphone caller's microphone picks up your audio from
-  their loudspeaker, or an acoustic or line echo on their side returns it.
-  `echo` removes it, with the frames you sent as the reference.
+- **[Echo](glossary.md#echo).** What your service sends comes back in
+  what it receives. On a device the microphone hears the loudspeaker; here
+  the caller's side does the same: a speakerphone caller's microphone
+  picks up your audio from their loudspeaker, or an acoustic or line echo
+  on their side returns it. `echo` removes it, with the frames you sent
+  as the reference.
 
 Leave out `echo` where nothing can come back:
 
@@ -131,9 +127,9 @@ var (
 
 Make the processors for each connection when it arrives, and serve the
 connection on its own goroutine. Each connection is one call, and every
-processor is single-owner: it keeps the state of its call and is used from
-one goroutine only. With audio sent back, `newAudioSocketCall` makes
-`echo`, `preprocess` and `agc` with `newPacedCall` of
+processor is [single-owner](glossary.md#single-owner): it keeps the state
+of its call and is used from one goroutine only. With audio sent back,
+`newAudioSocketCall` makes `echo`, `preprocess` and `agc` with `newPacedCall` of
 [recipe A, step 1](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs);
 without, it makes `preprocess` and `agc` only. It takes 8 or 16 kHz,
 because `echo` works well at those rates only; `preprocess` and `agc` alone
@@ -211,7 +207,8 @@ flowchart LR
 The connection goroutine reads each message, processes the whole frames it
 completes, and writes one frame back for each. The application, for
 example a text-to-speech engine, runs on its own goroutine and writes the
-audio to send into `pending`, a `buffer.SPSC`, whole frames at a time with
+audio to send into `pending`, a `buffer.SPSC` (an [SPSC](glossary.md#spsc) is a queue
+between one writing and one reading goroutine), whole frames at a time with
 `onPacket` of [usage.md](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs).
 A service that sends nothing back passes `pending` as nil.
 
@@ -333,8 +330,9 @@ For each message, `next` and `audio` do this:
 3. For each whole 20 ms frame in `in`, `step` takes the oldest pending
    frame, or silence, and sends it to Asterisk.
 4. `received` (recipe A) cancels the echo of what was sent, this frame
-   included, then suppresses noise and the residual echo, and applies the
-   gain on speech. Without audio sent back, `step` calls `Run` and
+   included, then suppresses noise and the
+   [residual echo](glossary.md#residual-echo), and applies the gain on
+   speech. Without audio sent back, `step` calls `Run` and
    `Process` instead.
 5. `deliver` gets the cleaned frame. It must not keep the slice: the next
    frame overwrites it.
@@ -344,11 +342,11 @@ For each message, `next` and `audio` do this:
 Yes, for reading, processing and writing, as above. Asterisk's messages
 arrive at the pace of the call, so the received frames drive the loop. The
 processing calls never block or allocate; only the network reads and
-writes wait. A short wait holds up the loop: TCP keeps the received bytes
-meanwhile, so the frames are processed late, not lost, but the frames sent
-after it go out as a burst, which Asterisk plays later than the canceller
-assumed (see "A stalled processing goroutine" in usage.md, recipe A). A
-long stall fills the socket buffers; Asterisk's socket does not block, so
+writes wait. A short wait holds up the loop. TCP keeps the received bytes
+meanwhile, so the frames are processed late, not lost. The frames sent
+after the wait go out as a burst, which Asterisk plays later than the
+canceller assumed (see "A stalled processing goroutine" in usage.md, recipe
+A). A long stall fills the socket buffers; Asterisk's socket does not block, so
 its write then fails and it ends the session
 (`res/res_audiosocket.c:137`, `res/res_audiosocket.c:273-276`,
 `apps/app_audiosocket.c:189-194`).
@@ -405,3 +403,18 @@ the canceller cancel again sooner has not been measured.
   AGC raises the noise.
 - [Sources that deliver the pairing](usage.md#sources-that-deliver-the-pairing):
   `newCall` resamples a rate other than 8 or 16 kHz for `echo`.
+
+## How this page is tested
+
+Every Go code block on this page is copied from
+`integration/audiosocket_test.go`, and `TestAudioSocketCodeIsTested` fails
+if one is not.
+
+- `TestAudioSocketQuickStart` runs the code against a fake Asterisk over a
+  loopback TCP connection, at 8 and 16 kHz, with and without audio sent
+  back. It ends each session with a hangup message or a closed
+  connection.
+- `TestAudioSocketMessages` checks the handling of each message kind on
+  hand-written bytes.
+- `TestNoAllocsAudioSocket` checks that handling an audio message
+  allocates nothing.
