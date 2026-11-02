@@ -39,7 +39,12 @@ back in what it receives:
 - **A server that sends audio to the caller**, such as a service on
   Asterisk AudioSocket that plays prompts. A speakerphone caller, or an
   acoustic or line echo on the caller's side, returns what the server
-  sent, so the send path is the same, run on the received audio.
+  sent, so the send path is the same, run on the received audio. There
+  the [echo delay](docs/glossary.md#echo-delay) includes the network
+  round trip to the caller's device, so the 200 ms start value of the
+  filter length may be too short, and echo later than the filter length
+  is not cancelled. Echo through a server and line echo have not been
+  measured.
 - **Headset, or a handset at the ear; a server that sends nothing
   back**, such as speech recognition. There is no echo, so the send path
   can be `preprocess` then `agc`, with `SetVAD(true)` on the
@@ -51,6 +56,11 @@ works without `preprocess`, with its `speech` argument true, but then it
 raises noise above its gate level like speech. Leave out `preprocess`
 when the audio is already clean and you don't need a VAD; after `echo`,
 that also drops the suppression of the echo that is left.
+
+On a noisy line, set the AGC's gate level before you rely on `agc`: with
+the default gate, `agc` can make steady noise louder. The guide's
+[send path](docs/guide.md#the-send-path-frame-by-frame), "Gate above the
+noise", gives the steps.
 
 With 20 ms frames the send path delays the audio by about 22 ms: `echo`
 adds no delay, `preprocess` one frame and `agc` 2 ms
@@ -197,13 +207,17 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   with up to 30 ms of jitter. Recipe A (paced sending, `Cancel`) cancelled
   echo delays of 40 to 200 ms. Recipe B (separate
   callbacks, `Playback` and `Capture`, one frame late) cancelled 60 to
-  200 ms.
+  200 ms, and cancelled almost nothing at 50 ms and less (0.3 to
+  1.2 dB).
 - **A 32 ms echo with that jitter is not cancelled by either recipe.**
   This is the "uneven timing" criterion, U6 in the
   [acceptance criteria](docs/acceptance/integration.md). It fails, and the
   test pins it as a reported finding. For recipe A, the
   [caveats](docs/usage.md#caveats) under "Echo delay" explain why. For
-  recipe B the cause has not been traced.
+  recipe B, its caveats explain it by the far end's lag, one frame plus
+  the shift that jitter adds: the canceller models echo delays only from
+  that lag on. Without jitter, recipe B cancels a 32 ms echo by only 7.6
+  and 11.9 dB, and why has not been traced.
 - **Go is not a hard real-time platform.** A frame can occasionally take
   much longer than usual. The slowest frames are measured and reported
   ([docs/performance.md](docs/performance.md)), not guaranteed.

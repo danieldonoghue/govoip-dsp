@@ -299,7 +299,9 @@ send path. On a device it is the person at the microphone. On a server it
 is the caller's side: the audio Asterisk sends over AudioSocket, or the
 RTP stream a media server receives. The near-end signal, which these docs
 also call the microphone signal and `echo` calls `mic`, is that audio.
-"Near-end speech" is that side talking.
+"Near-end speech" is that side talking. The name comes from the device
+case, not from where your code runs: on a server the remote caller is
+the near end.
 
 ### Far end
 
@@ -307,6 +309,7 @@ The other side of a call. The far-end signal, or far-end reference, is the
 audio your code sends toward the near end: on a device, what its
 loudspeaker plays; on a server, what it writes back to Asterisk or sends
 as RTP. It is the source of the [echo](#echo). `echo` calls it `far`.
+On a server the far end is the server's own side, not the remote caller.
 
 ### Echo
 
@@ -551,7 +554,8 @@ The output RMS level in dBFS that the AGC drives a steady signal towards,
 ### Gate level
 
 The level, in dBFS, below which a frame cannot raise the AGC gain:
-`agc.Config.GateLevel`. It is compared with the [RMS](#rms) of each frame.
+`agc.Config.GateLevel`. It is compared with the [RMS](#rms) of each
+[AGC frame](#frame), about 10 ms.
 A frame below it never raises the gain or moves the level estimate,
 though a gain that is falling may go on falling. It is the AGC's only
 protection from raising noise in pauses. The guide says
@@ -695,8 +699,9 @@ unread samples. `buffer.SPSC` always rejects.
 A slice that a method returns and that points into the buffer's own
 storage, such as `ReadSlices` or `WriteSlices` of `buffer`. A view is
 valid until a call that the doc names, and not after it. A view comes as
-two segments, because the stored samples may wrap around the end of the
-storage. The second segment is empty unless they do.
+two segments, because the samples, or the free space that `WriteSlices`
+returns, may wrap around the end of the storage. The second segment is
+empty unless they do.
 
 ### Zero-copy
 

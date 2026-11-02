@@ -556,8 +556,9 @@ Rules for this path:
      `[]int16` that is not all zeros.
   4. Take the loudest piece, not the average. Set `GateLevel` several dB
      above it.
-  5. Run the recording through the AGC and check that the gain stays at
-     0 dB, so the output is as loud as the input.
+  5. Run the recording through the AGC and check that the output level
+     equals the input level (gain 0 dB). The AGC does not report its
+     gain, so compare the levels.
 
   Leave a margin, because an average below the gate is not safe: with
   the default gate, noise whose average was 2 to 6 dB below it was still
@@ -565,7 +566,7 @@ Rules for this path:
   ([whole-chain measurements](testing.md#whole-chain-measurements-integration-wp7)).
   The likely cause is that single frames of the noise are louder than its
   average. Do not set the gate so high that quiet speech falls below it,
-  because the AGC does not raise a frame below the gate, speech or not.
+  because a frame below the gate cannot raise the gain, speech or not.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.

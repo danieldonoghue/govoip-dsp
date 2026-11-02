@@ -133,9 +133,10 @@ Does not fit:
   says that the longer the tail length, the longer the filter takes to
   adapt, and that longer is not better. The long-delay tests use
   256 ms because their longest case, a 200 ms delay with a 48 ms tail,
-  needs 248 ms, and 256 ms is the longest length the `echo` fixtures
-  test. They keep that length for the 100 ms case too, so the two cases
-  differ only in the delay.
+  needs 248 ms, and 256 ms is the longest length that the `echo`
+  [fixtures](glossary.md#reference-harness-and-fixtures) test (the
+  reference test data, made with SpeexDSP in C). They keep that length
+  for the 100 ms case too, so the two cases differ only in the delay.
 - **Changing echo delay.** The delay differs between calls and can change
   within one, for example when a
   [jitter buffer](glossary.md#jitter-buffer) resizes, a route changes,
