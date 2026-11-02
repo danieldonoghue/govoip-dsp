@@ -2,8 +2,7 @@
 
 govoip-dsp is licensed under the BSD 3-Clause licence ([LICENSE](LICENSE)).
 Parts of it are derived from the projects below, which keep their own
-copyright notices and BSD 3-Clause terms. Each work
-package edits only its own entries.
+copyright notices and BSD 3-Clause terms.
 
 ## Upstream sources
 
@@ -19,21 +18,24 @@ test harness only.
 
 | Go file or package | Derived from | Licence |
 |---|---|---|
-| `internal/fixed/fixed.go` | `libspeexdsp/arch.h`, `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
-| `internal/fixed/approx.go` | `libspeexdsp/math_approx.h` (Copyright (C) 2002 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
-| `internal/fixed/pseudofloat.go` | `libspeexdsp/pseudofloat.h` (Copyright (C) 2005 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `echo/mdf.go`, `echo/echo.go` | `libspeexdsp/mdf.c` (Copyright (C) 2003-2008 Jean-Marc Valin), `include/speex/speex_echo.h` (Copyright (C) Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `internal/fft/fft.go` | `libspeexdsp/fftwrap.c` (Copyright (C) 2005-2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `internal/fft/kiss.go` | `libspeexdsp/kiss_fft.c`, `libspeexdsp/_kiss_fft_guts.h` (Copyright (c) 2003-2004, Mark Borgerding; `kiss_fft.c` also Copyright (c) 2005-2007, Jean-Marc Valin) | KISS FFT BSD-3-Clause |
 | `internal/fft/kissr.go` | `libspeexdsp/kiss_fftr.c` (Copyright (c) 2003-2004, Mark Borgerding) | KISS FFT BSD-3-Clause |
-| `internal/fft/fft.go` | `libspeexdsp/fftwrap.c` (Copyright (C) 2005-2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
-| `resample/resample.go`, `resample/filter.go`, `resample/process.go` | `libspeexdsp/resample.c` (Copyright (C) 2007-2008 Jean-Marc Valin, Copyright (C) 2008 Thorvald Natvig) | SpeexDSP BSD-3-Clause |
+| `internal/fixed/approx.go` | `libspeexdsp/math_approx.h` (Copyright (C) 2002 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `internal/fixed/divzero.go` | `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
-| `preprocess/preprocess.go`, `preprocess/run.go`, `preprocess/ctl.go` | `libspeexdsp/preprocess.c` (Copyright (C) 2003 Epic Games (written by Jean-Marc Valin); Copyright (C) 2004-2006 Epic Games) | SpeexDSP BSD-3-Clause |
-| `preprocess/filterbank.go` | `libspeexdsp/filterbank.c` (Copyright (C) 2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `internal/fixed/fixed.go` | `libspeexdsp/arch.h`, `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
 | `internal/fixed/masked.go` | `libspeexdsp/pseudofloat.h` (Copyright (C) 2005 Jean-Marc Valin), `libspeexdsp/fixed_generic.h` (Copyright (C) 2003 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
-| `echo/mdf.go`, `echo/echo.go` | `libspeexdsp/mdf.c` (Copyright (C) 2003-2008 Jean-Marc Valin), `include/speex/speex_echo.h` (Copyright (C) Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `internal/fixed/pseudofloat.go` | `libspeexdsp/pseudofloat.h` (Copyright (C) 2005 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `preprocess/filterbank.go` | `libspeexdsp/filterbank.c` (Copyright (C) 2006 Jean-Marc Valin) | SpeexDSP BSD-3-Clause |
+| `preprocess/preprocess.go`, `preprocess/run.go`, `preprocess/ctl.go` | `libspeexdsp/preprocess.c` (Copyright (C) 2003 Epic Games (written by Jean-Marc Valin); Copyright (C) 2004-2006 Epic Games) | SpeexDSP BSD-3-Clause |
+| `resample/resample.go`, `resample/filter.go`, `resample/process.go` | `libspeexdsp/resample.c` (Copyright (C) 2007-2008 Jean-Marc Valin, Copyright (C) 2008 Thorvald Natvig) | SpeexDSP BSD-3-Clause |
 
-The reference harness (`reference/`) contains no upstream code; it includes
-upstream headers and sources from the fetched tree at build time.
+The reference harness (`reference/`) includes upstream headers and sources
+from the fetched tree at build time. Its code is otherwise not derived from
+upstream, except that `reference/drivers/fft.c` restates the layout of two
+private structs, from `fftwrap.c` and `kiss_fftr.c`, to read the twiddle
+tables.
 
 ## Dependencies
 
