@@ -102,7 +102,7 @@ microphone unless stated.
    the echo fixtures below 6 MB in total. Long runs commit only a prefix.
 5. Under `-short` and `-race` the reference test compares a leading part of
    every case (say so in the test); the full comparison runs in the normal
-   `go test`.
+   `go test`. Superseded in part by ADR `test-reduction-rules`.
 6. The driver can write a per-call trace of every state variable of
    `SpeexEchoState`, and the Go test can compare it, so that a mismatch is
    reported as the first differing call and the first differing variable
@@ -164,7 +164,8 @@ Definitions, over 0.5 s windows:
 
 Every scenario's figures are reported in `docs/algorithms.md` for every
 configuration, and the Go test pins them, so a change in behaviour is
-visible. Sanity floors, which apply at 8 and 16 kHz only:
+visible. Superseded in part by ADR `wp6-metrics-record`. Sanity floors,
+which apply at 8 and 16 kHz only:
 
 1. `farend` and `ir_short`: steady-state ERLE at least 10 dB, and
    convergence within 8 s.

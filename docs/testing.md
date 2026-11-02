@@ -1437,9 +1437,9 @@ exhaustive and 10^7-input comparisons cover their domains.
 length in `in` (checked on `Forward`) or in `out` (checked on `Inverse`). It
 checks that a wrong length gives `ErrBufferSize`, that neither call fails
 otherwise, that `Inverse` leaves its input unchanged, and that `Forward`
-restores an input without -32768. Run on 2026-11-02 at commit `e4fbd22`
+restores an input without -32768. Run on 2026-11-02 at commit `03429b4`
 (`go test ./internal/fft -run '^$' -fuzz FuzzTransform -fuzztime 30s`, Apple
-M1 Pro): 1,567,299 executions, no failure.
+M1 Pro): 1,649,182 executions, no failure.
 
 ### `buffer` (WP2)
 

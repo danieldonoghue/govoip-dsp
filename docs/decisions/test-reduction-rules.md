@@ -2,7 +2,10 @@
 
 - **Status:** accepted; supersedes in part ADR
   [`wp7-race-skips`](wp7-race-skips.md): its rule that every test that
-  starts goroutines runs in full under `-race`.
+  starts goroutines runs in full under `-race`. It also supersedes in part
+  criterion 5 of `docs/acceptance/echo.md`, in its statement for `-race`:
+  under `-race` the `echo` reference tests run only the cases of
+  `fullInPartial`, in full.
 - **Date:** 2026-10-28
 
 ## Context

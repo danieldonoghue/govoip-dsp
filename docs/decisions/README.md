@@ -32,6 +32,7 @@ was written down at the time.
 | [wp4-step-response](wp4-step-response.md) | AGC response to +10 to +13 dB steps |
 | [wp5-reset](wp5-reset.md) | What the preprocessor's Reset keeps |
 | [wp5-zero-divisor](wp5-zero-divisor.md) | Zero divisor in the noise suppressor |
+| [wp6-metrics-record](wp6-metrics-record.md) | Echo scenario figures are pinned in a golden file |
 | [wp6-rates-and-shifts](wp6-rates-and-shifts.md) | Echo canceller rates and out-of-range shifts |
 | [wp6b-parallel-tests](wp6b-parallel-tests.md) | Parallel reference subtests |
 | [wp7-agc-noise](wp7-agc-noise.md) | AGC noise after denoise is documented only |
