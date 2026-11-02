@@ -35,7 +35,7 @@ the [glossary](glossary.md) defines the terms this page uses.
   little-endian, at 8 kHz in the classic format; other formats and rates
   depend on the Asterisk version and channel setup (the
   [AudioSocket protocol page](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/)
-  lists the audio kinds, all little-endian). Converting payload
+  lists the audio kinds and their rates). Converting payload
   bytes to `[]int16` is the application's job and is not part of this
   library.
 - **Rates.** The echo canceller is supported at 8 and 16 kHz only
