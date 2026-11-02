@@ -62,21 +62,22 @@ Sound as numbers:
   use 48000 Hz. A stage that combines two [streams](glossary.md#stream)
   needs both at the same rate, and `resample` converts between rates
   ([sample rate](glossary.md#sample-rate)).
-- **Level, gain and clipping.** The [level](glossary.md#level) of a
-  signal is how large its samples are over a span, measured as
-  [RMS](glossary.md#rms) in [dBFS](glossary.md#dbfs), decibels relative
-  to the full scale of the digital format: 0 dBFS is full scale,
-  amplitude 32768, one step above the largest `int16` sample, and
-  quieter signals are negative. The `agc` target and gate levels are RMS
-  (its limit level is a peak), so on them a full-scale sine wave is about
-  -3 dBFS. Other scales have other zero points.
-  A [gain](glossary.md#gain) is the factor a stage multiplies a signal
-  by. It is given in [dB](glossary.md#db), a logarithmic scale
-  (`20·log10` of the factor): +6 dB roughly doubles the amplitude,
-  +20 dB multiplies it by ten, and -6 dB about halves it. Gains in dB
-  add where the factors multiply. A signal pushed past either end of the
-  scale, -32768 or 32767, is cut flat, which is
-  [clipping](glossary.md#clipping) and sounds distorted.
+- **Level and dBFS.** The [level](glossary.md#level) of a signal is how
+  loud it is over a span of samples. It is given in
+  [dBFS](glossary.md#dbfs): 0 dBFS is the loudest level the 16-bit scale
+  holds, and quieter signals are negative numbers, for example -50 dBFS
+  for a faint hiss. The level of a span is its
+  [RMS](glossary.md#rms), a kind of average size of the samples. The
+  `agc` target and gate levels are RMS levels, and its limit level is a
+  peak.
+- **Gain and dB.** A [gain](glossary.md#gain) is the factor a stage
+  multiplies a signal by, given in [dB](glossary.md#db): 0 dB leaves the
+  signal as it is, +6 dB roughly doubles it, +20 dB multiplies it by ten
+  and -6 dB about halves it. Gains in dB add up where the factors
+  multiply.
+- **Clipping.** A signal that goes past either end of the scale,
+  -32768 or 32767, is cut flat, which sounds distorted. That is
+  [clipping](glossary.md#clipping).
 - **Channel.** One signal of the audio: the samples from one microphone,
   or for one loudspeaker. Mono audio has one channel; stereo has two, left
   and right; surround layouts such as 5.1 and 7.1 have more. `echo`,
@@ -293,7 +294,8 @@ flowchart LR
    decides per frame whether it is speech (the VAD).
 4. `agc` sets the level last, so it sees the cleaned signal. Its `speech`
    argument is the VAD decision, so it does not raise the gain on pauses.
-   The VAD also reports speech on stationary noise, so only a
+   The VAD also reports speech on
+   [stationary noise](glossary.md#stationary-noise), so only a
    `GateLevel` above the noise stops `agc` raising it (see "Gate above
    the noise" in [the send path](#the-send-path-frame-by-frame)).
 5. On the receive path, `resample` converts the decoder's rate to the
@@ -523,10 +525,10 @@ Rules for this path:
   [echo delay](glossary.md#echo-delay) plus the
   [echo tail](glossary.md#echo-tail), and no more: a longer
   [filter](glossary.md#filter-length) costs more and adapts more slowly.
-  The echo delay is the time from a far-end sample being passed to
-  `Cancel` to its echo first arriving in the microphone signal,
-  including device and network buffering; the echo tail is how long the
-  echo of one sample keeps arriving.
+  The echo delay is how long the first echo of a far-end sample takes to
+  reach the microphone signal after you pass the sample to `Cancel`,
+  buffering included; the echo tail is how long that echo keeps
+  arriving.
   Without a measured delay, start with 200 ms
   (`rate/5` samples), which the `call` wiring of [usage.md](usage.md)
   uses, and shorten it once the delay of the calls is known.
@@ -536,23 +538,31 @@ Rules for this path:
   collect a frame, plus any `resample` delay ([latency](glossary.md#latency)).
 - **VAD on.** When `agc` follows, call `SetVAD(true)` on the preprocessor;
   with the VAD off, `RunEcho` reports every frame as speech.
-- **Gate above the noise.** The VAD reports speech on stationary noise,
-  so set `agc.Config.GateLevel`, the [gate level](glossary.md#gate-level)
-  under which the AGC does not raise the gain, clearly above the noise
-  of the line; see the `agc` package doc. The default is -50 dBFS and
-  the range -80 dBFS up to below the target level. Noise whose average
-  is below the gate can still be raised: with the default, noise
-  averaging 2 to 6 dB below it was raised by 16.5 to 23 dB
-  ([whole-chain measurements](testing.md#whole-chain-measurements-integration-wp7)),
-  probably because the gate is tested on each 10 ms
-  [AGC frame](glossary.md#frame) and the noise varies from frame to frame.
-  To find the noise level, record the preprocessor's output during a
-  stretch where nobody talks and compute its [RMS](glossary.md#rms) in
-  [dBFS](glossary.md#dbfs), `20·log10(rms/32768)`, a negative number.
-  Set the gate well above it, then check on that recording that the AGC
-  gain stays at 0 dB. The `dBFS` helper in
-  [example_test.go](../example_test.go) computes the level, rounded to
-  whole dB, for a non-silent `[]int16`.
+- **Gate above the noise.** The VAD reports speech on steady noise, so
+  nothing but the [gate level](glossary.md#gate-level) stops the AGC from
+  raising it. `agc.Config.GateLevel` is the level, in dBFS, under which
+  the AGC does not raise the gain. Set it above the noise of the line.
+  The default is -50 dBFS, and the range is -80 dBFS up to below the
+  target level (the `agc` package doc has the details). To choose it:
+  1. Record the output of `preprocess`, with denoising on, during a
+     stretch where nobody talks, a few seconds long.
+  2. Cut the recording into 10 ms pieces (`rate/100` samples), the size
+     of the [AGC frame](glossary.md#frame) that the gate is tested on.
+  3. For each piece, compute the level in dBFS. The `dBFS` helper in
+     [example_test.go](../example_test.go) does this, in whole dB, for a
+     `[]int16` that is not all zeros.
+  4. Take the loudest piece, not the average. Set `GateLevel` several dB
+     above it.
+  5. Run the recording through the AGC and check that the gain stays at
+     0 dB, so the output is as loud as the input.
+
+  Leave a margin, because an average below the gate is not safe: with
+  the default gate, noise whose average was 2 to 6 dB below it was still
+  raised by 16.5 to 23 dB
+  ([whole-chain measurements](testing.md#whole-chain-measurements-integration-wp7)).
+  The likely cause is that single frames of the noise are louder than its
+  average. Do not set the gate so high that quiet speech falls below it,
+  because the AGC does not raise a frame below the gate, speech or not.
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.
@@ -602,10 +612,11 @@ one consumer goroutine, which reads.
 
 An SPSC is a [ring buffer](glossary.md#ring-buffer): fixed storage
 of [slots](glossary.md#slot-and-index), one per sample, used as a circle,
-so that after the last slot it continues at the first. An index is the
-name of a slot (the slot number is the index modulo the capacity): the
-write index is where the next sample is written, and the read index is
-where the next one is read.
+so that after the last slot it continues at the first. An index is a
+count that names a slot ([the remainder after dividing by the
+capacity](glossary.md#slot-and-index)): the write index says where the
+next sample is written, and the read index says where the next one is
+read.
 
 ```mermaid
 flowchart LR
@@ -756,7 +767,8 @@ them from the start.
 - `echo` does not estimate the echo delay or correct clock drift: the
   caller keeps the far-end reference aligned with the microphone. Echo
   outside the filter length is not cancelled.
-- The VAD reports speech on stationary noise and on residual echo, so the
+- The VAD reports speech on [stationary noise](glossary.md#stationary-noise)
+  and on residual echo, so the
   AGC's gate level is its only noise protection.
 - Go is not a hard real-time platform: tail latencies are measured
   ([performance.md](performance.md)), not guaranteed.
