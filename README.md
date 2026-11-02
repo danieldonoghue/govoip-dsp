@@ -25,9 +25,13 @@ guide lists the [packages for each use case](docs/guide.md#which-packages-you-ne
 The near-end signal is the audio that arrives at your code from the
 caller's side: a device's microphone signal, the audio Asterisk sends
 over AudioSocket, or the RTP stream a media server receives. The
-far-end reference is the audio your code sends toward that side. For a
-call, whether it needs `echo` depends on whether what it sends can come
-back in what it receives:
+far-end reference is the audio your code sends toward that side. So on
+a server the caller is the near end, even though they are far away, and
+the send path cleans the audio the server receives, not the audio it
+sends: the names come from the device case
+([which audio is which](docs/audiosocket.md#which-audio-is-which) on
+AudioSocket). For a call, whether it needs `echo` depends on whether
+what it sends can come back in what it receives:
 
 - **Speakerphone, hands-free, conference room.** The microphone picks
   up what the loudspeaker plays, so the far end would hear itself. The
