@@ -310,8 +310,9 @@ rounded up to a multiple of 8.
   up. An interpretation, not verified separately: the 16-bit (Q15) filter table
   and the 16-bit output limit the fixed-point build. A tone of amplitude 2048 at
   12, 14, 16, 18 or 20 kHz through 48k→16k at quality 10 gives zero output after
-  an onset of 163 to 205 output samples, depending on frequency and phase;
-  measured on 1 s of tone, no test pins it.
+  an onset of about 150 to 215 output samples for most phases; at some phases
+  of 18 kHz a small residual from the input's int16 rounding remains. Measured
+  on 1 s of tone, no test pins it.
 
 **Deviations.** See the package doc and `docs/acceptance/resample.md`.
 
@@ -439,9 +440,10 @@ where f_N is the input Nyquist frequency.
 ## Preprocessor (`preprocess`, WP5)
 
 **Algorithm.** Per frame of `N` samples: a `2N` window with 50% overlap
-(power-complementary: the square root of a squared raised cosine,
-`conj_window`), a real FFT, the power spectrum, and its projection onto 24 Bark
-bands (`filterbank.c`). A minimum-statistics tracker (Cohen and Berdugo) decides
+(power-complementary within Q15 rounding: `conj_window` gives `d` or the
+square root of `1 − d²`, with `d` a raised cosine of a warped phase), a real
+FFT, the power spectrum, and its projection onto 24 Bark bands
+(`filterbank.c`). A minimum-statistics tracker (Cohen and Berdugo) decides
 per bin whether the noise estimate may update. The a posteriori and a priori SNR
 (Ephraim and Malah decision-directed) give a loudness-domain MMSE gain per band
 and per bin, bounded below by a gain floor that mixes the noise and
@@ -493,10 +495,11 @@ the previous one.
 - The filterbank divisor `PSHR32(mel_interval,15)` is rounded (773 at
   8 kHz, 1138 at 48 kHz). Where it rounds down, the weight `val` can reach
   32768 at a band edge and wrap to a negative `int16`. Measured with the
-  port over the 65532 rates from 4 to 65535 Hz with a nonzero divisor:
-  11847 rates with `N` = 2048, among them 22050 and 44100 Hz with one bin
-  each, and 463 rates with `N` = 64, among them 44100 Hz. The port keeps
-  this; the table tests and the rate sweep cover it.
+  port over the 65532 rates from 4 to 65535 Hz with a nonzero divisor (a
+  one-off count, not in the tests): 11847 rates with `N` = 2048, among them
+  22050 and 44100 Hz with one bin each, and 463 rates with `N` = 64, among
+  them 44100 Hz. The port keeps this; the table tests and the rate sweep
+  cover it.
 - The VAD is the reference's "kludge": on stationary noise the speech
   probability stays above the 35% start threshold. Measured on 16 kHz,
   20 ms frames: 0% speech frames on silence, 100% on white noise at -30
@@ -679,9 +682,9 @@ first `2K` output samples of a stream are zero.
 - The 4th power and its root use `fixed.Float` (15-bit normalised
   mantissa). Updating `E` as `E − c·E + c·x` keeps the truncation of
   `FloatMult` in the small terms: the steady-state level error on a sine is
-  −0.024 dB at most, measured at `LevelTime` 100 ms, 3 s and 10 s
-  (`TestLevelBias` checks 10 s, within 0.05 dB; `(1 − c)·E + c·x` gave
-  −0.02 to −0.20 dB depending on `LevelTime`).
+  −0.024 dB at most, measured once at `LevelTime` 100 ms, 3 s and 10 s
+  (`TestLevelBias` checks only 10 s, within 0.05 dB; `(1 − c)·E + c·x` gave
+  −0.02 to −0.20 dB depending on `LevelTime`, also measured once).
 - The gain is kept in Q22, so the rate limits hold at low gains: at
   −36 dB with 1 dB/s, the worst measured rate is 1.02 dB/s, from Q15
   rounding of the per-frame factor (`TestLowGainRates`). The rise step is
@@ -701,14 +704,15 @@ first `2K` output samples of a stream are zero.
   noise at −45 to −24 dBFS ends at −23.98 to −25.18 dBFS, with gains up to +21
   dB. Pink noise at −52 dBFS gets +23.86 dB and ends at −28.22 dBFS (N5). Pink
   noise at −55 dBFS long-term has a loudest frame of −46.26 dBFS, and 193 of its
-  6000 frames reach the −50 dBFS gate; it reaches +23.16 dB (N4, reported;
-  design v1 reached +9.99 dB because it rose more slowly). Noise whose frames
-  all stay below the gate keeps 0 dB. Raising `GateLevel` above the noise is the
-  only protection. This is accepted (ADR `wp4-noise-protection`). The AGC
-  belongs after `preprocess` with denoising on, which lowers stationary noise
-  before the AGC sees it; callers set `GateLevel` above the residual noise. At
-  the default suppression (−15 dB), `preprocess` reduced white noise at −35 dBFS
-  by 13.3 to 14.1 dB but pink noise at −37 dBFS by only 3.7 to 5.8 dB (section
+  6000 frames (a one-off count) reach the −50 dBFS gate; it reaches +23.16 dB
+  (N4, reported; design v1 reached +9.99 dB because it rose more slowly).
+  Noise whose frames all stay below the gate keeps 0 dB. Raising `GateLevel`
+  above the noise is the only protection. This is accepted (ADR
+  `wp4-noise-protection`). The AGC belongs after `preprocess` with denoising
+  on, which lowers stationary noise before the AGC sees it; callers set
+  `GateLevel` above the residual noise. At the default suppression (−15 dB),
+  `preprocess` reduced white noise at −35 dBFS by 13.3 to 14.1 dB but pink
+  noise at −37 dBFS by only 3.7 to 5.8 dB (section
   "Preprocessor", sanity results), so the residual depends on the noise.
   `docs/testing.md`, "Whole-chain measurements", has the measurements of the
   real chain.
@@ -836,7 +840,7 @@ long runs gave these resets per case:
 - Outside the `diverge` scenario, none at 8 and 16 kHz and none at 32 kHz
   with 10 ms frames. At 48 kHz with 10 ms frames, 11 of 45 cases reset, at
   most 3 times. At 32 and 48 kHz with 20 ms frames, 34 and 36 of 45 cases
-  reset, 1 to 13 times.
+  reset, 1 to 5 times at 32 kHz and up to 13 times at 48 kHz.
 - In `diverge`, none at 8 kHz or at 16 kHz with 10 ms frames, and 99 to 201
   at 16 kHz with 20 ms frames and at 32 and 48 kHz.
 
