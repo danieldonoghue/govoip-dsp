@@ -4,8 +4,8 @@ This page is a short path for a Go service that takes calls from Asterisk
 over AudioSocket and cleans the caller's audio: echo cancellation, noise
 suppression with voice activity detection ([VAD](glossary.md#vad)), and
 automatic gain control ([AGC](glossary.md#agc)). It gives the protocol
-facts the code needs, the processors to make for each connection, and the
-calls for each
+facts the code needs, a whole program that accepts the connections, the
+processors to make for each connection, and the calls for each
 [frame](glossary.md#frame). The
 [developer guide](guide.md) explains each package, and [usage.md](usage.md)
 has the full recipes, their caveats and their measurements.
@@ -16,8 +16,11 @@ the default gate, `agc` can make steady noise louder. The guide's
 noise", gives the steps; the code below uses `agc.DefaultConfig`, where
 `GateLevel` is the field to change.
 
-Every Go code block on this page is copied from tested code;
-[How this page is tested](#how-this-page-is-tested) says how.
+The Go code blocks on this page, in order, are one complete program. Copy
+them into one file, `main.go`, in a new module that requires the library
+(`go mod init`, then `go get github.com/danieldonoghue/govoip-dsp`), and
+build it. [How this page is tested](#how-this-page-is-tested) says how
+the blocks are kept building and correct.
 
 ## Near end, far end and echo
 
@@ -177,6 +180,45 @@ does that around the processors, and the guide's
 `preprocess` and `agc` alone accept other rates (their package docs give
 the ranges).
 
+## The program
+
+The file starts with the package clause, the imports and `main`. `main`
+listens on TCP port 9092 and serves each connection from Asterisk at
+8 kHz, the rate of the `AudioSocket()` application, with the example
+application `beeper` ([The application](#the-application)). The
+dialplan application needs an answered channel, so run `Answer()` before
+it (`apps/app_audiosocket.c:69`, `apps/app_audiosocket.c:160`).
+
+```go
+package main
+
+import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"math"
+	"net"
+	"time"
+
+	"github.com/danieldonoghue/govoip-dsp/agc"
+	"github.com/danieldonoghue/govoip-dsp/buffer"
+	"github.com/danieldonoghue/govoip-dsp/echo"
+	"github.com/danieldonoghue/govoip-dsp/preprocess"
+)
+
+func main() {
+	// The dialplan connects a call with, for example, Answer() and then
+	// AudioSocket(40325ec2-5efd-4bd3-805f-53576e581d13,127.0.0.1:9092).
+	ln, err := net.Listen("tcp", ":9092")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Fatal(acceptAudioSockets(ln, 8000, beeper(8000)))
+}
+```
+
 The message kinds and errors the code uses:
 
 ```go
@@ -195,25 +237,97 @@ var (
 	errAudioSocket = errors.New("audiosocket: error message from Asterisk")
 	errOtherRate   = errors.New("audiosocket: audio at another rate")
 	errOddPayload  = errors.New("audiosocket: audio payload of an odd number of bytes")
+	errNoUUID      = errors.New("audiosocket: the first message is not a UUID")
 )
 ```
 
 ## One connection, one goroutine
 
-Make the processors for each connection when it arrives, and serve the
-connection on its own goroutine. Each connection is one call, and every
+Each connection is one call. `acceptAudioSockets` serves each connection
+on its own goroutine. `serveAudioSocket` reads the call's UUID, asks the
+application for its side of the call (a `session`), makes the processors,
+and then handles one message at a time until the session ends. Every
 processor is [single-owner](glossary.md#single-owner): it keeps the state
-of its call and is used from one goroutine only. With audio sent back,
-`newAudioSocketCall` makes `echo`, `preprocess` and `agc` with
-`newPacedCall` of
-[recipe A, step 1](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs);
+of its call and is used from one goroutine only.
+
+```go
+// uuid is the call's UUID, from Asterisk's first message.
+type uuid [16]byte
+
+// String returns the UUID in the form the dialplan writes it.
+func (id uuid) String() string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
+}
+
+// session is the application's side of one call.
+type session struct {
+	pending *buffer.SPSC  // audio to send, written by the application; nil sends nothing back
+	deliver func([]int16) // takes each cleaned frame; must not keep the slice
+	end     func()        // called once, on the connection's goroutine, when the session ends
+}
+
+// acceptAudioSockets accepts connections until ln is closed and serves each
+// on its own goroutine; start makes the application's side of each call.
+func acceptAudioSockets(ln net.Listener, rate int, start func(id uuid) (session, error)) error {
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			return err
+		}
+		go func() {
+			if err := serveAudioSocket(conn, rate, start); err != nil {
+				log.Printf("audiosocket: %v", err)
+			}
+		}()
+	}
+}
+
+// serveAudioSocket serves one connection until the session ends.
+func serveAudioSocket(conn net.Conn, rate int, start func(id uuid) (session, error)) error {
+	defer conn.Close()
+	id, err := readUUID(conn)
+	if err != nil {
+		return err
+	}
+	s, err := start(id)
+	if err != nil {
+		return err
+	}
+	defer s.end()
+	a, err := newAudioSocketCall(rate, s.pending != nil)
+	if err != nil {
+		return err
+	}
+	for {
+		done, err := a.next(conn, s.pending, s.deliver)
+		if done || err != nil {
+			return err
+		}
+	}
+}
+
+// readUUID reads Asterisk's first message, the call's UUID.
+func readUUID(r io.Reader) (id uuid, err error) {
+	var hdr [3]byte
+	if _, err := io.ReadFull(r, hdr[:]); err != nil {
+		return id, err
+	}
+	if hdr[0] != kindUUID || binary.BigEndian.Uint16(hdr[1:]) != 16 {
+		return id, errNoUUID
+	}
+	_, err = io.ReadFull(r, id[:])
+	return id, err
+}
+```
+
+With audio sent back, `newAudioSocketCall` makes `echo`, `preprocess`
+and `agc` with `newPacedCall` ([The processors](#the-processors));
 without, it makes `preprocess` and `agc` only. The numbers in that call
 are the frame length in ms (20) and the echo filter length in ms (200,
 the guide's start value; see "Filter length" in
-[the send path](guide.md#the-send-path-frame-by-frame)). `pacedCall`,
-`received` and `onPacket` are defined in recipe A of usage.md. It takes
-8 or 16 kHz, because `echo` works well at those rates only; `preprocess`
-and `agc` alone accept other rates (their package docs give the ranges).
+[the send path](guide.md#the-send-path-frame-by-frame)). `in` is a
+[ring buffer](glossary.md#ring-buffer), a `buffer.Ring`, that holds the
+received samples until a whole frame is there.
 
 ```go
 // audioSocketCall is the send path of one AudioSocket connection. Use it
@@ -289,26 +403,10 @@ completes, and writes one frame back for each. The application, for
 example a text-to-speech engine, runs on its own goroutine and writes the
 audio to send into `pending`, a `buffer.SPSC` (an [SPSC](glossary.md#spsc) is a queue
 between one writing and one reading goroutine), whole frames at a time with
-`onPacket` of [usage.md](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs).
-A service that sends nothing back passes `pending` as nil.
+`onPacket` ([The application](#the-application) shows how). A session
+that sends nothing back has `pending` nil.
 
 ```go
-// serveAudioSocket serves one connection until it ends. pending holds
-// the audio to send, written by another goroutine; nil sends nothing back.
-func serveAudioSocket(conn net.Conn, rate int, pending *buffer.SPSC, deliver func([]int16)) error {
-	defer conn.Close()
-	a, err := newAudioSocketCall(rate, pending != nil)
-	if err != nil {
-		return err
-	}
-	for {
-		done, err := a.next(conn, pending, deliver)
-		if done || err != nil {
-			return err
-		}
-	}
-}
-
 // next reads one message and handles it; done reports the end of the session.
 func (a *audioSocketCall) next(conn io.ReadWriter, pending *buffer.SPSC, deliver func([]int16)) (done bool, err error) {
 	if _, err := io.ReadFull(conn, a.hdr[:]); err != nil {
@@ -406,16 +504,197 @@ For each message, `next` and `audio` do this:
    `io.ErrUnexpectedEOF`. Audio at another rate returns `errOtherRate`.
    A UUID, a DTMF digit or another kind is skipped.
 2. `audio` converts the payload to `int16` samples and adds them to the
-   `buffer.Ring` `in`.
+   ring buffer `in`.
 3. For each whole 20 ms frame in `in`, `step` takes the oldest pending
    frame, or silence, and sends it to Asterisk.
-4. `received` (recipe A) cancels the echo of what was sent, this frame
-   included, then suppresses noise and the
+4. `received` cancels the echo of what was sent, this frame included,
+   then suppresses noise and the
    [residual echo](glossary.md#residual-echo), and applies the gain on
    speech. Without audio sent back, `step` calls `Run` and
    `Process` instead.
 5. `deliver` gets the cleaned frame. It must not keep the slice: the next
    frame overwrites it.
+
+## The processors
+
+`pacedCall` holds `echo`, `preprocess` and `agc` for one call. It comes
+from recipe A of usage.md, whose
+[step 1](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs)
+and
+[step 2](usage.md#recipe-a-step-2-send-one-frame-and-clean-the-received-frame)
+explain it. `received` cancels the echo of the frames sent so far.
+`finish` passes the canceller's output and its residual echo to
+`preprocess`, then the frame and the VAD decision to `agc`.
+
+```go
+// pacedCall is the send path of a call whose sending the processing
+// goroutine paces off the received frames. Use it from one goroutine.
+type pacedCall struct {
+	rate, frame int
+
+	ec  *echo.Canceller
+	pre *preprocess.Preprocessor
+	gc  *agc.AGC
+
+	echoed   []int16 // the echo canceller's output, before preprocess
+	speech   bool    // the VAD decision of the last frame
+	clean    []int16
+	residual []int32
+}
+
+// newPacedCall makes the processors of one call at rate Hz (8000 or
+// 16000), frames of frameMs and an echo filter of filterMs milliseconds.
+func newPacedCall(rate, frameMs, filterMs int) (*pacedCall, error) {
+	// No resampler here: the echo canceller supports 8 and 16 kHz, so the
+	// network must run at one of them.
+	if rate != 8000 && rate != 16000 {
+		return nil, fmt.Errorf("call: %d Hz; the echo canceller supports 8 and 16 kHz only", rate)
+	}
+	// One frame is the same duration on the network and here (20 ms: 160
+	// samples at 8 kHz, 320 at 16 kHz).
+	b := &pacedCall{rate: rate, frame: rate * frameMs / 1000}
+	if !preprocess.SupportedFrameSize(b.frame) {
+		return nil, fmt.Errorf("call: no preprocessor for %d-sample frames", b.frame)
+	}
+	var err error
+	// The filter must cover the largest echo delay plus its tail; a longer
+	// one costs more and adapts more slowly, so filterMs is the caller's.
+	b.ec, err = echo.New(echo.Config{FrameSize: b.frame, FilterLength: rate * filterMs / 1000, SampleRate: rate})
+	if err != nil {
+		return nil, err
+	}
+	b.pre, err = preprocess.New(preprocess.Config{SampleRate: rate, FrameSize: b.frame})
+	if err != nil {
+		return nil, err
+	}
+	b.pre.SetVAD(true) // the VAD decision tells the AGC which frames are speech
+	b.gc, err = agc.New(agc.DefaultConfig(rate))
+	if err != nil {
+		return nil, err
+	}
+	// Scratch buffers, made once so the per-frame path never allocates.
+	b.echoed = make([]int16, b.frame)
+	b.clean = make([]int16, b.frame)
+	b.residual = make([]int32, b.ec.ResidualLen())
+	return b, nil
+}
+```
+
+```go
+// received cleans a received frame against the frame sent with it.
+func (b *pacedCall) received(mic, sent, out []int16) error {
+	// Cancel models the echo of the frames sent so far, the one sent with
+	// this received frame included, and removes it from mic.
+	if err := b.ec.Cancel(mic, sent, b.echoed); err != nil {
+		return err
+	}
+	return b.finish(out)
+}
+
+// finish runs the rest of the send path on the canceller's output.
+func (b *pacedCall) finish(out []int16) error {
+	// Keep the canceller's output in echoed and work on a copy, because the
+	// preprocessor rewrites its frame in place.
+	copy(b.clean, b.echoed)
+	// The residual is the echo the canceller left in this frame; read it
+	// now, before the next frame replaces it.
+	if err := b.ec.Residual(b.residual); err != nil {
+		return err
+	}
+	speech, err := b.pre.RunEcho(b.clean, b.residual)
+	if err != nil {
+		return err
+	}
+	b.speech = speech
+	// The AGC raises the gain only on speech frames.
+	return b.gc.Process(b.clean, out, speech)
+}
+```
+
+## The application
+
+The application runs on its own goroutine and writes the audio it wants
+to send, such as a prompt or text-to-speech, into `pending`:
+
+- **Frame size.** It writes whole 20 ms frames, 160 samples at 8 kHz or
+  320 at 16 kHz, with `onPacket`, which stores a whole frame or none of
+  it. A part of a frame would shift every later frame boundary.
+- **When `pending` is full**, `onPacket` returns false and stores
+  nothing. To lose no audio, offer the same frame again later.
+- **When the application is late**, `step` finds less than one frame in
+  `pending` and sends silence for that frame. The late audio goes out in
+  a later frame, so the caller hears a gap of silence.
+- **How much waits.** Audio waits in `pending` until a received frame
+  takes it, so the size of `pending` is the longest it can wait before
+  it plays.
+
+`beeper` is an example application. For each call it starts a goroutine
+that writes a 200 ms beep every 2 s into a `pending` of 200 ms, and its
+`end` stops that goroutine and logs the number of frames received.
+Replace it with your own application: `start` gets the call's UUID, and
+the session's `deliver` gets the cleaned audio. `deliver` runs on the
+connection's goroutine, so it must not wait; hand slow work to another
+goroutine ([Is one goroutine enough?](#is-one-goroutine-enough)).
+
+```go
+// onPacket stores the whole frame p in rx, or nothing when it does not
+// fit, so that rx holds whole frames. It reports whether p was stored.
+func onPacket(rx *buffer.SPSC, p []int16) bool {
+	// SPSC.Write stores as much as fits. A partial frame would shift every
+	// later frame boundary, so store the whole frame or nothing.
+	if rx.Free() < len(p) {
+		return false // the processor is behind: drop this packet
+	}
+	rx.Write(p)
+	return true
+}
+```
+
+```go
+// beeper is an example application: for each call it sends a 200 ms beep
+// every 2 s, and logs how many frames it received when the call ends.
+func beeper(rate int) func(id uuid) (session, error) {
+	frame := rate * 20 / 1000
+	cycle := make([]int16, 2*rate) // 2 s: the beep, then silence; shared by every call
+	for i := range rate / 5 {
+		cycle[i] = int16(8000 * math.Sin(2*math.Pi*440*float64(i)/float64(rate)))
+	}
+	return func(id uuid) (session, error) {
+		// pending holds at most 200 ms, so what is sent lags the
+		// application by at most 200 ms.
+		pending, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: rate / 5})
+		if err != nil {
+			return session{}, err
+		}
+		stop := make(chan struct{})
+		go func() { // the application's goroutine, the only writer of pending
+			for k := 0; ; {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				// Whole frames only. When pending is full, wait and offer the
+				// same frame again, so no part of the beep is lost.
+				if onPacket(pending, cycle[k*frame:(k+1)*frame]) {
+					k = (k + 1) % (len(cycle) / frame)
+				} else {
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+		}()
+		frames := 0 // used on the connection's goroutine only
+		return session{
+			pending: pending,
+			deliver: func([]int16) { frames++ },
+			end: func() {
+				close(stop)
+				log.Printf("call %v: %d frames received", id, frames)
+			},
+		}, nil
+	}
+}
+```
 
 ## Is one goroutine enough?
 
@@ -489,15 +768,22 @@ been measured.
 
 ## How this page is tested
 
-Every Go code block on this page is copied from
-`integration/audiosocket_test.go`, and `TestAudioSocketCodeIsTested` fails
-if one is not.
+Every Go block on this page except the first is copied from
+`integration/audiosocket_test.go` and `integration/paced_test.go`, and
+`TestAudioSocketCodeIsTested` fails if one is not.
 
-- `TestAudioSocketQuickStart` runs the code against a fake Asterisk over a
-  loopback TCP connection, at 8 and 16 kHz, with and without audio sent
-  back. It ends each session with a hangup message or a closed
-  connection.
-- `TestAudioSocketMessages` checks the handling of each message kind on
-  hand-written bytes.
+- `TestAudioSocketPageBuilds` joins every Go block of the page, the first
+  included, into one `main.go`, and checks that it is gofmt-clean, builds
+  and passes `go vet` as a program of its own. No test runs `main`.
+- `TestAudioSocketQuickStart` runs `serveAudioSocket` against a fake
+  Asterisk over a loopback TCP connection, at 8 and 16 kHz, with and
+  without audio sent back. It checks the UUID passed to `start`, the
+  frames sent back and the cleaned audio, and ends each session with a
+  hangup message or a closed connection.
+- `TestAudioSocketAccept` runs `acceptAudioSockets` with `beeper` and two
+  calls at once, the first held open until the second ends, and checks
+  the UUIDs, the beep frames sent back and the log line at each end.
+- `TestReadUUID` and `TestAudioSocketMessages` check the handling of each
+  message kind on hand-written bytes.
 - `TestNoAllocsAudioSocket` checks that handling an audio message
   allocates nothing.

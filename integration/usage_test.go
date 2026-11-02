@@ -26,8 +26,8 @@ func newRx(c *call) (*buffer.SPSC, error) {
 	return buffer.NewSPSC(buffer.SPSCConfig{Capacity: c.netRate / 5})
 }
 
-// onPacket runs on the network goroutine for each received frame. It
-// stores the whole frame or none of it, so the buffer holds whole frames.
+// onPacket stores the whole frame p in rx, or nothing when it does not
+// fit, so that rx holds whole frames. It reports whether p was stored.
 func onPacket(rx *buffer.SPSC, p []int16) bool {
 	// SPSC.Write stores as much as fits. A partial frame would shift every
 	// later frame boundary, so store the whole frame or nothing.
@@ -304,6 +304,9 @@ func docCodeIsTested(t *testing.T, name string) {
 		t.Fatalf("docs/%s has no Go blocks", name)
 	}
 	for i, b := range blocks {
+		if i == 0 && strings.HasPrefix(b[1], "package main\n") {
+			continue // the package clause, imports and main: TestAudioSocketPageBuilds builds them
+		}
 		lines := slices.DeleteFunc(strings.Split(b[1], "\n"), func(s string) bool { return strings.TrimSpace(s) == "" })
 		// Each run of non-blank lines must appear in the source.
 		for _, l := range lines {

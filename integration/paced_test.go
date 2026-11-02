@@ -27,8 +27,8 @@ type pacedCall struct {
 	pre *preprocess.Preprocessor
 	gc  *agc.AGC
 
-	echoed   []int16 // the echo canceller's output, which the tests measure
-	speech   bool    // the last VAD decision, which the tests compare
+	echoed   []int16 // the echo canceller's output, before preprocess
+	speech   bool    // the VAD decision of the last frame
 	clean    []int16
 	residual []int32
 }

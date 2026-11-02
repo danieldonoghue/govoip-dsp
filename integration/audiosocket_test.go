@@ -5,9 +5,17 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"go/format"
 	"io"
+	"log"
+	"math"
 	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -37,6 +45,7 @@ var (
 	errAudioSocket = errors.New("audiosocket: error message from Asterisk")
 	errOtherRate   = errors.New("audiosocket: audio at another rate")
 	errOddPayload  = errors.New("audiosocket: audio payload of an odd number of bytes")
+	errNoUUID      = errors.New("audiosocket: the first message is not a UUID")
 )
 
 // audioSocketCall is the send path of one AudioSocket connection. Use it
@@ -97,20 +106,72 @@ func newAudioSocketCall(rate int, sendsAudio bool) (*audioSocketCall, error) {
 	return a, nil
 }
 
-// serveAudioSocket serves one connection until it ends. pending holds
-// the audio to send, written by another goroutine; nil sends nothing back.
-func serveAudioSocket(conn net.Conn, rate int, pending *buffer.SPSC, deliver func([]int16)) error {
+// uuid is the call's UUID, from Asterisk's first message.
+type uuid [16]byte
+
+// String returns the UUID in the form the dialplan writes it.
+func (id uuid) String() string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
+}
+
+// session is the application's side of one call.
+type session struct {
+	pending *buffer.SPSC  // audio to send, written by the application; nil sends nothing back
+	deliver func([]int16) // takes each cleaned frame; must not keep the slice
+	end     func()        // called once, on the connection's goroutine, when the session ends
+}
+
+// acceptAudioSockets accepts connections until ln is closed and serves each
+// on its own goroutine; start makes the application's side of each call.
+func acceptAudioSockets(ln net.Listener, rate int, start func(id uuid) (session, error)) error {
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			return err
+		}
+		go func() {
+			if err := serveAudioSocket(conn, rate, start); err != nil {
+				log.Printf("audiosocket: %v", err)
+			}
+		}()
+	}
+}
+
+// serveAudioSocket serves one connection until the session ends.
+func serveAudioSocket(conn net.Conn, rate int, start func(id uuid) (session, error)) error {
 	defer conn.Close()
-	a, err := newAudioSocketCall(rate, pending != nil)
+	id, err := readUUID(conn)
+	if err != nil {
+		return err
+	}
+	s, err := start(id)
+	if err != nil {
+		return err
+	}
+	defer s.end()
+	a, err := newAudioSocketCall(rate, s.pending != nil)
 	if err != nil {
 		return err
 	}
 	for {
-		done, err := a.next(conn, pending, deliver)
+		done, err := a.next(conn, s.pending, s.deliver)
 		if done || err != nil {
 			return err
 		}
 	}
+}
+
+// readUUID reads Asterisk's first message, the call's UUID.
+func readUUID(r io.Reader) (id uuid, err error) {
+	var hdr [3]byte
+	if _, err := io.ReadFull(r, hdr[:]); err != nil {
+		return id, err
+	}
+	if hdr[0] != kindUUID || binary.BigEndian.Uint16(hdr[1:]) != 16 {
+		return id, errNoUUID
+	}
+	_, err = io.ReadFull(r, id[:])
+	return id, err
 }
 
 // next reads one message and handles it; done reports the end of the session.
@@ -197,6 +258,50 @@ func (a *audioSocketCall) step(w io.Writer, pending *buffer.SPSC, deliver func([
 	return nil
 }
 
+// beeper is an example application: for each call it sends a 200 ms beep
+// every 2 s, and logs how many frames it received when the call ends.
+func beeper(rate int) func(id uuid) (session, error) {
+	frame := rate * 20 / 1000
+	cycle := make([]int16, 2*rate) // 2 s: the beep, then silence; shared by every call
+	for i := range rate / 5 {
+		cycle[i] = int16(8000 * math.Sin(2*math.Pi*440*float64(i)/float64(rate)))
+	}
+	return func(id uuid) (session, error) {
+		// pending holds at most 200 ms, so what is sent lags the
+		// application by at most 200 ms.
+		pending, err := buffer.NewSPSC(buffer.SPSCConfig{Capacity: rate / 5})
+		if err != nil {
+			return session{}, err
+		}
+		stop := make(chan struct{})
+		go func() { // the application's goroutine, the only writer of pending
+			for k := 0; ; {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				// Whole frames only. When pending is full, wait and offer the
+				// same frame again, so no part of the beep is lost.
+				if onPacket(pending, cycle[k*frame:(k+1)*frame]) {
+					k = (k + 1) % (len(cycle) / frame)
+				} else {
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+		}()
+		frames := 0 // used on the connection's goroutine only
+		return session{
+			pending: pending,
+			deliver: func([]int16) { frames++ },
+			end: func() {
+				close(stop)
+				log.Printf("call %v: %d frames received", id, frames)
+			},
+		}, nil
+	}
+}
+
 // asMessage returns one AudioSocket message.
 func asMessage(kind byte, payload []byte) []byte {
 	m := []byte{kind, 0, 0}
@@ -266,8 +371,11 @@ func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
 	defer wg.Wait()
 	defer stop.Store(true) // also when a check fails
 
-	// The service: one goroutine per connection.
+	// The service: serveAudioSocket, as acceptAudioSockets runs it for each
+	// connection, so that the test sees its error.
 	var got []int16 // written by the service goroutine only, until wg.Wait
+	var gotID uuid
+	starts, ends := 0, 0
 	serveErr := make(chan error, 1)
 	wg.Add(1)
 	go func() {
@@ -277,7 +385,15 @@ func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
 			serveErr <- err
 			return
 		}
-		serveErr <- serveAudioSocket(conn, rate, pending, func(x []int16) { got = append(got, x...) })
+		serveErr <- serveAudioSocket(conn, rate, func(id uuid) (session, error) {
+			gotID = id
+			starts++
+			return session{
+				pending: pending,
+				deliver: func(x []int16) { got = append(got, x...) },
+				end:     func() { ends++ },
+			}, nil
+		})
 	}()
 	// The application: writes the audio to send at uneven times.
 	if sends {
@@ -328,7 +444,8 @@ func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
 			t.Fatal(err)
 		}
 	}
-	write(asMessage(kindUUID, make([]byte, 16)))
+	id := uuid{0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 1, 2, 3, 4, 5, 6, 7, 8}
+	write(asMessage(kindUUID, id[:]))
 	r := testutil.SplitMix64{State: testutil.Seed(t.Name() + "/asterisk")}
 	for lo := 0; lo < len(mic); {
 		hi := min(lo+(1+r.Intn(4))*f/2, len(mic)) // 10 to 40 ms
@@ -358,6 +475,9 @@ func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
 	stop.Store(true)
 	wg.Wait()
 
+	if starts != 1 || ends != 1 || gotID != id {
+		t.Fatalf("start called %d times with UUID %v, end %d times; want once with %v, once", starts, gotID, ends, id)
+	}
 	if len(got) != len(mic) {
 		t.Fatalf("processed %d of %d received samples", len(got), len(mic))
 	}
@@ -551,5 +671,241 @@ func TestAudioSocketMessages(t *testing.T) {
 				t.Errorf("%d frames delivered, want 1", delivered)
 			}
 		})
+	}
+}
+
+// TestAudioSocketAccept runs acceptAudioSockets with beeper and two calls
+// at once. The first call stays open until the second has ended, so the
+// test fails if the connections are not served on their own goroutines.
+func TestAudioSocketAccept(t *testing.T) {
+	const rate = 8000
+	f := rate * 20 / 1000
+	var logged syncBuffer
+	log.SetOutput(&logged)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var started []uuid
+	ended := make(chan uuid, 2)
+	beep := beeper(rate)
+	acceptErr := make(chan error, 1)
+	go func() {
+		acceptErr <- acceptAudioSockets(ln, rate, func(id uuid) (session, error) {
+			mu.Lock()
+			started = append(started, id)
+			mu.Unlock()
+			s, err := beep(id)
+			end := s.end
+			s.end = func() { end(); ended <- id }
+			return s, err
+		})
+	}()
+
+	ids := []uuid{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, {0xf0, 0xe0, 0xd0, 0xc0, 0xb0, 0xa0, 0x90, 0x80, 0x70, 0x60, 0x50, 0x40, 0x30, 0x20, 0x10, 0x01}}
+	frames := 50 // 1 s
+	mic := callScenario(rate, 1).mic[:frames*f]
+	first := dialAudioSocket(t, ln.Addr().String(), ids[0])
+	first.write(asAudio(kindSlin, mic[:f]))
+	second := dialAudioSocket(t, ln.Addr().String(), ids[1])
+	for k := range frames {
+		second.write(asAudio(kindSlin, mic[k*f:(k+1)*f]))
+		time.Sleep(20 * time.Millisecond)
+	}
+	second.write([]byte{kindHangup, 0, 0})
+	for _, c := range []*fakeAsterisk{second, first} {
+		if c == first {
+			first.write([]byte{kindHangup, 0, 0})
+		}
+		replies := c.wait(t)
+		want := frames
+		if c == first {
+			want = 1
+		}
+		if len(replies) != want {
+			t.Fatalf("call %v: %d frames sent back, want %d", c.id, len(replies), want)
+		}
+		beeps := 0
+		for k, m := range replies {
+			if m[0] != kindSlin || len(m) != 3+2*f {
+				t.Fatalf("call %v, frame %d sent back: kind %#x, %d bytes; want %#x, %d", c.id, k, m[0], len(m), kindSlin, 3+2*f)
+			}
+			if slices.ContainsFunc(m[3:], func(b byte) bool { return b != 0 }) {
+				beeps++
+			}
+		}
+		t.Logf("call %v: %d of %d frames sent back carry the beep", c.id, beeps, len(replies))
+		if c == second && (beeps == 0 || beeps > 10) {
+			t.Errorf("call %v: %d frames of 1 s carry the beep, want 1 to 10 (one 200 ms beep)", c.id, beeps)
+		}
+	}
+	for range 2 {
+		select {
+		case <-ended:
+		case <-time.After(10 * time.Second):
+			t.Fatal("a session did not end after its hangup")
+		}
+	}
+	ln.Close()
+	if err := <-acceptErr; !errors.Is(err, net.ErrClosed) {
+		t.Errorf("acceptAudioSockets returned %v after the listener closed, want net.ErrClosed", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Equal(started, ids) {
+		t.Errorf("sessions started with UUIDs %v, want %v", started, ids)
+	}
+	for _, id := range ids {
+		if !strings.Contains(logged.String(), fmt.Sprintf("call %v:", id)) {
+			t.Errorf("no log line at the end of call %v; logged %q", id, logged.String())
+		}
+	}
+}
+
+// fakeAsterisk is one AudioSocket connection seen from Asterisk's side.
+type fakeAsterisk struct {
+	id      uuid
+	conn    net.Conn
+	replies chan [][]byte // every message sent back, once the service closes
+	t       *testing.T
+}
+
+// dialAudioSocket connects to addr and sends the UUID, as Asterisk does.
+func dialAudioSocket(t *testing.T, addr string, id uuid) *fakeAsterisk {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	c := &fakeAsterisk{id: id, conn: conn, replies: make(chan [][]byte, 1), t: t}
+	go func() {
+		var replies [][]byte
+		for {
+			hdr := make([]byte, 3)
+			if _, err := io.ReadFull(conn, hdr); err != nil {
+				c.replies <- replies
+				return
+			}
+			m := append(hdr, make([]byte, binary.BigEndian.Uint16(hdr[1:]))...)
+			if _, err := io.ReadFull(conn, m[3:]); err != nil {
+				c.replies <- replies
+				return
+			}
+			replies = append(replies, m)
+		}
+	}()
+	c.write(asMessage(kindUUID, id[:]))
+	return c
+}
+
+func (c *fakeAsterisk) write(m []byte) {
+	if _, err := c.conn.Write(m); err != nil {
+		c.t.Fatal(err)
+	}
+}
+
+// wait returns the messages sent back once the service closes the connection.
+func (c *fakeAsterisk) wait(t *testing.T) [][]byte {
+	select {
+	case r := <-c.replies:
+		return r
+	case <-time.After(10 * time.Second):
+		t.Fatalf("call %v: the service did not close the connection", c.id)
+		return nil
+	}
+}
+
+// syncBuffer is a bytes.Buffer that the log package and the test share.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// TestReadUUID checks readUUID and the String form on hand-written bytes.
+func TestReadUUID(t *testing.T) {
+	msg := []byte{0x01, 0x00, 0x10, 0x6b, 0xa7, 0xb8, 0x10, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8}
+	id, err := readUUID(bytes.NewReader(msg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := id.String(), "6ba7b810-9dad-11d1-80b4-00c04fd430c8"; got != want {
+		t.Errorf("UUID %s, want %s", got, want)
+	}
+	for _, c := range []struct {
+		name string
+		msg  []byte
+		err  error
+	}{
+		{"audio first", []byte{0x10, 0x00, 0x02, 0x00, 0x00}, errNoUUID},
+		{"short UUID", []byte{0x01, 0x00, 0x0f}, errNoUUID},
+		{"cut UUID", msg[:10], io.ErrUnexpectedEOF},
+		{"nothing", nil, io.EOF},
+	} {
+		if _, err := readUUID(bytes.NewReader(c.msg)); err != c.err {
+			t.Errorf("%s: readUUID returned %v, want %v", c.name, err, c.err)
+		}
+	}
+}
+
+// TestAudioSocketPageBuilds puts every Go block of docs/audiosocket.md, in
+// order, into one main.go, and checks that it is gofmt-clean, builds and
+// passes go vet as a program of its own.
+func TestAudioSocketPageBuilds(t *testing.T) {
+	gobin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go command not found")
+	}
+	root := testutil.RepoRoot(t)
+	doc, err := os.ReadFile(filepath.Join(root, "docs", "audiosocket.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var src strings.Builder
+	for i, b := range regexp.MustCompile("(?s)```go\n(.*?)```").FindAllStringSubmatch(string(doc), -1) {
+		if i == 0 && !strings.HasPrefix(b[1], "package main\n") {
+			t.Fatal("the first Go block of docs/audiosocket.md does not start with package main")
+		}
+		if i > 0 {
+			src.WriteString("\n")
+		}
+		src.WriteString(b[1])
+	}
+	formatted, err := format.Source([]byte(src.String()))
+	if err != nil {
+		t.Fatalf("the page's Go blocks do not parse as one file: %v", err)
+	}
+	if string(formatted) != src.String() {
+		t.Error("the page's Go blocks, joined, are not gofmt-clean")
+	}
+	dir := t.TempDir()
+	mod := "module audiosocketpage\n\ngo 1.26\n\nrequire github.com/danieldonoghue/govoip-dsp v0.0.0\n\n" +
+		"replace github.com/danieldonoghue/govoip-dsp => " + root + "\n"
+	for name, data := range map[string]string{"go.mod": mod, "main.go": src.String()} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, args := range [][]string{{"build", "-o", filepath.Join(dir, "page"), "."}, {"vet", "."}} {
+		cmd := exec.Command(gobin, args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=", "GOPROXY=off", "CGO_ENABLED=0")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
 	}
 }
