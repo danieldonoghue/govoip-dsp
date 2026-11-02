@@ -17,6 +17,12 @@ the tests in `integration/` (`paced_test.go`, `buffered_test.go`,
 `call_test.go` and `usage_test.go`), and `TestUsageCodeIsTested` fails if
 one is not. Each section names the tests that back it.
 
+Criteria named U6 to U12 are in `docs/acceptance/integration.md`: U6 uneven
+timing, U7 an idle sender, U8 concurrent goroutines, U9 no allocation, U10 a
+pause then a burst (reported, no threshold), U11 long echo delays and U12 a
+burst sender. A "reported finding" is a measured result that misses its
+registered threshold. The test pins it and the docs report it.
+
 New to these packages? The [developer guide](guide.md) explains each
 package, the per-frame call order and the goroutine hand-off first, and
 the [glossary](glossary.md) defines the terms this page uses.
@@ -26,11 +32,15 @@ the [glossary](glossary.md) defines the terms this page uses.
 - **Samples.** The packages take `[]int16` samples on the 16-bit scale.
   AudioSocket audio messages carry 16-bit signed linear mono samples,
   little-endian, at 8 kHz in the classic format; other formats and rates
-  depend on the Asterisk version and channel setup. Converting payload
+  depend on the Asterisk version and channel setup (the
+  [AudioSocket protocol page](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/)
+  lists the payload kinds, all little-endian). Converting payload
   bytes to `[]int16` is the application's job and is not part of this
   library.
-- **Rates.** The echo canceller supports 8 and 16 kHz only
-  ([ADR `wp6-rates-and-shifts`](decisions/wp6-rates-and-shifts.md)). At any
+- **Rates.** The echo canceller is supported at 8 and 16 kHz only
+  (`echo.New` accepts rates up to 48 kHz, but the reference cancels poorly
+  above 16 kHz;
+  [ADR `wp6-rates-and-shifts`](decisions/wp6-rates-and-shifts.md)). At any
   other network rate, resample both streams to 16 kHz first, as
   `newCall` does in "Sources that deliver the pairing".
 - **One call, one goroutine.** Every processor, and `buffer.Ring`, is
@@ -65,7 +75,7 @@ goroutine takes at most one pending frame, or silence, hands that frame
 to the network writer, and cancels the received frame against that same
 frame with `Cancel`. What is sent and what the canceller sees are the
 same frames, and they are handled in one step, the case for which the
-Speex manual advises `speex_echo_cancellation`.
+Speex manual advises `speex_echo_cancellation`, which `Cancel` ports.
 
 Does not fit:
 
@@ -103,14 +113,15 @@ Does not fit:
 - **Filter length.** Choose the shortest `filterMs` that covers the
   largest echo delay expected plus the echo's tail, not the longest
   available. A longer filter costs more per frame
-  (`docs/performance.md`) and adapts more slowly; the Speex manual's
+  (`docs/performance.md`). It also adapts more slowly: the Speex manual's
   echo-cancellation chapter
   ([node7](https://www.speex.org/docs/manual/speex-manual/node7.html))
-  says so and names an over-long tail as a common reason no echo is
-  cancelled. U11 uses 256 ms because its longest case, a 200 ms delay
-  with a 48 ms tail, needs 248 ms, and 256 ms is the longest length the
-  `echo` fixtures test; it keeps that one length for its 100 ms case too,
-  so the two cases differ only in the delay.
+  says that the longer the tail length, the longer the filter takes to
+  adapt, and that longer is not better. U11 uses 256 ms because its
+  longest case, a 200 ms delay with a 48 ms tail, needs 248 ms, and
+  256 ms is the longest length the `echo` fixtures test; it keeps that
+  one length for its 100 ms case too, so the two cases differ only in
+  the delay.
 - **Changing echo delay.** The delay differs between calls and can change
   within one, for example when a jitter buffer resizes, a route changes,
   clocks drift or the caller moves. The canceller does not estimate the
@@ -125,12 +136,10 @@ Does not fit:
   corrects slow drift within watermarks. Drift correction here would
   come from the planned clock-drift controller, stretch item S2 in
   `docs/architecture.md`, "Work packages".
-- **Typical delays.** Vendor and trade sources (not standards) put the
-  delay that VoIP adds at 50 to 80 ms or more, size network echo
-  cancellers for 64 ms, up to 128 ms on long paths, and note that the
-  network or the phone often removes much of the echo already. These are
-  typical figures, not guarantees; measure the calls the application
-  handles.
+- **Delays differ.** The echo delay depends on the network, the devices
+  and the application, and no figure here is a guarantee. Measure the
+  calls the application handles, and size `filterMs` from what you
+  measure.
 - **Single owner.** `drain` and `received` call one canceller, on the
   processing goroutine. Each SPSC has one producer and one consumer: the
   application writes pending, the network reader writes rx, the
@@ -352,7 +361,7 @@ no pending SPSC: it is the same `Cancel` call with the pairing given by
 the source. The tests keep that wiring as `call` (`call_test.go`): one
 `step` per frame, and resampling to 16 kHz where the source runs at
 another rate. `newCall` sizes every buffer from the rate and the frame
-duration, with `preprocess.SupportedFrameSize` and `resample.OutLen`:
+duration, with `preprocess.SupportedFrameSize` and `Resampler.OutLen`:
 
 ```go
 func newCall(netRate, frameMs int) (*call, error) {
@@ -547,11 +556,12 @@ func (c *call) step(mic, far, out []int16) error {
 }
 ```
 
-`TestReferencePairing`, `TestRecipeThroughSPSC`,
-`TestRecipeDropsUnderRace`, `TestDrainDropsBacklog`,
-`TestQueueFullIsReported`, `TestPipelineCall`, `TestPipelineSpeech` and
-`TestNoAllocsRecipe` back it, and `Example_call` prints the sizes of its
-buffers at 8, 16 and 48 kHz.
+`TestRecipeThroughSPSC`, `TestRecipeDropsUnderRace`,
+`TestDrainDropsBacklog`, `TestQueueFullIsReported`, `TestPipelineCall`,
+`TestPipelineSpeech` and `TestNoAllocsRecipe` back it, and `Example_call`
+prints the sizes of its buffers at 8, 16 and 48 kHz. `TestReferencePairing`
+checks the same stages against the C chain bit for bit, but it builds the
+chain by hand and does not run this wiring.
 
 ## Recipe B: separate capture and playback callbacks
 
@@ -761,8 +771,8 @@ Tests:
 - `TestBufferedTwoGoroutines`: both callbacks as goroutines, compared with
   a replay of the observed order (U8).
 - `TestReferenceRecipes`: recipe B's `played` and `received` on the
-  reference pairing's `capture_*_20ms` inputs give the C chain's output
-  bit for bit.
+  reference pairing's `capture_*_20ms` inputs give the C chain's canceller
+  output, residual, preprocess output and VAD decision bit for bit.
 - `TestBufferedLagIsOneFrame`, `TestNoAllocsBuffered` (U9), and
   `TestBufferedLagAndDelay`, which only reports figures and runs with
   `-report`.
