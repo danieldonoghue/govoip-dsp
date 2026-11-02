@@ -23,10 +23,10 @@ methods of `resample` use the same scale, not -1 to 1.
 
 ### Sample rate
 
-The number of samples per second of one channel, in Hz. Telephony uses
+How many samples one channel has in each second, in Hz. Telephony uses
 8000 Hz (narrowband) or 16000 Hz (wideband); devices often use 48000 Hz.
-The highest frequency a rate can carry is half the rate (the Nyquist
-frequency).
+A rate can carry sound up to half its value, the Nyquist frequency: 4000 Hz
+at 8000 Hz.
 
 ### Channel
 
@@ -85,50 +85,56 @@ and [RTP](#rtp) packets commonly carry 20 ms.
 
 ### Chunk
 
-The samples passed in one method call, for a method that takes any
-length (`resample`, `buffer`, `agc`). A stream is cut into chunks; for these
-packages the cut does not change the output, under conditions each
-package doc states: `agc` needs the same `speech` flag for every
-sample, `resample` needs all input eventually consumed, and `buffer`
-needs no write to overflow.
+The samples you pass in one method call, for a method that takes any
+length (`resample`, `buffer`, `agc`). You cut a stream into chunks, and
+for these packages the cut does not change the output. Each package doc
+gives the conditions. `agc` needs each sample to get the same `speech`
+flag however the stream is cut, `resample` needs all of its input to be
+read in the end, and `buffer` needs that no write overflows.
 
 ### Chunk-partition invariance
 
-The property that any way of cutting a stream into chunks gives the same
-output. `resample`, `buffer` and `agc` have it and test it. `echo` and
+Any way of cutting a stream into chunks gives the same output.
+`resample`, `buffer` and `agc` have this and test it. `echo` and
 `preprocess` take whole processing frames only.
 
 ### Level
 
-How large a signal is over a span of samples, usually its
-[RMS](#rms) in [dBFS](#dbfs). A louder signal has a higher level. The
-`agc` target and gate levels are RMS levels; the limit level is a peak.
+How loud a signal is over a span of samples. It is usually given as its
+[RMS](#rms) in [dBFS](#dbfs): a louder signal has a higher level, and
+quiet levels are negative numbers. The `agc` target and gate levels are
+RMS levels; the limit level is a peak.
 
 ### dB
 
-Decibels: a ratio on a log scale, `10·log10` of a power ratio or
-`20·log10` of an amplitude ratio. +6 dB is about twice the amplitude,
--20 dB a tenth.
+Decibels: a way to give a ratio between two sizes as a small number.
++6 dB is about twice the amplitude and -20 dB is a tenth. Exactly, it is
+`20·log10` of an amplitude ratio, or `10·log10` of a power ratio.
 
 ### dBFS
 
-Decibels relative to full scale on the [16-bit scale](#16-bit-scale):
-`20·log10(level/32768)`. 0 dBFS is amplitude 32768, one step above the
-largest `int16` sample; a sample beyond the `int16` range clips. -6 dBFS is
-about half of it, and all-zero [silence](#silence) is minus infinity.
+[dB](#db) measured against full scale of the [16-bit scale](#16-bit-scale).
+0 dBFS is full scale, the loudest level; quieter signals are negative, and
+-6 dBFS is about half of full scale. All-zero [silence](#silence) is minus infinity.
+Exactly, it is `20·log10(level/32768)`, so 0 dBFS is amplitude 32768, one
+step above the largest `int16` sample. A sample beyond the `int16` range
+clips.
+
 Full scale is a peak. The `agc` target and gate levels are [RMS](#rms), so
-a full-scale sine wave is about -3 dBFS on them; AES17 calls that level
-0 dBFS. Other scales have other zero points: a mixing desk meters in dBu,
-where 0 dBu is 0.775 V RMS, or in VU, where 0 VU is a nominal operating
-level with headroom above it, and sound in air is in dB SPL. The
-`agc` levels are whole dBFS. A `float32` input to `resample` above full
-scale saturates to the `int16` range.
+on them a full-scale sine wave is about -3 dBFS (AES17 calls that level
+0 dBFS). The `agc` levels are whole dBFS. If a `float32` sample sent to
+`resample` is louder than full scale, it is cut to the largest value an
+`int16` can hold.
+
+Other scales have other zero points: a mixing desk meters in dBu, where
+0 dBu is 0.775 V RMS, or in VU, where 0 VU is a nominal operating level
+with headroom above it, and sound in air is in dB SPL.
 
 ### RMS
 
-Root mean square: the square root of the mean of the squared samples. It
-measures the level of a signal over a span of samples. The `agc` target
-and gate levels are RMS levels.
+Root mean square: a measure of the average size of a signal over a span
+of samples. Square each sample, take the mean, then take the square root.
+The `agc` target and gate levels are RMS levels.
 
 ### Silence
 
@@ -136,9 +142,9 @@ Samples that are all zero. "Queue silence" means pass a frame of zeros.
 
 ### Clipping
 
-Output that would pass either end of the
-[16-bit scale](#16-bit-scale), -32768 or 32767, and is cut flat at it,
-which sounds distorted. The AGC's [limiter](#limiter) keeps its output from clipping.
+A signal that is too loud for the [16-bit scale](#16-bit-scale). It
+would pass -32768 or 32767, so it is cut flat at that end, which sounds
+distorted. The AGC's [limiter](#limiter) keeps its output from clipping.
 
 ## The call
 
@@ -192,41 +198,45 @@ received packets back into samples. Codecs are not part of govoip-dsp.
 
 ### Jitter buffer
 
-A buffer that turns packets arriving unevenly into a steady stream of
-frames. Not built yet; planned for this library.
+A buffer that turns packets arriving unevenly (see [jitter](#jitter))
+into a steady stream of frames. Not built yet; planned for this library.
 
 ## Fixed-point arithmetic
 
 ### Fixed point
 
-Arithmetic on integers that stand for fractions with a fixed number of
-fraction bits, instead of floating point. The SpeexDSP FIXED_POINT build,
-and every package here, process audio this way.
+Arithmetic that uses whole numbers to stand for fractions, with a fixed
+number of bits after the point, instead of floating point. The SpeexDSP
+FIXED_POINT build, and every package here, process audio this way.
 
 ### Q-format
 
-The notation for a [fixed-point](#fixed-point) number's fraction bits.
-A Qn value `v` stands for `v/2^n`. Q15 in an `int16` covers -1 to just
-under 1; Q12 in an `int32` has 12 fraction bits.
+The way to say how many bits of a [fixed-point](#fixed-point) number are
+after the point. A Qn number `v` stands for the fraction `v/2^n`. Q15 in
+an `int16` covers -1 to just under 1; Q12 in an `int32` has 12 bits after
+the point.
 
 ### Q15
 
-[Q-format](#q-format) with 15 fraction bits: `v/32768`. Gains and filter
-coefficients of the ports are often Q15.
+[Q-format](#q-format) with 15 bits after the point: a stored number `v`
+stands for `v/32768`. Gains and filter coefficients of the ports are often
+Q15.
 
 ### Saturation
 
-Clamping a result to the range of its type instead of letting it
-[wrap](#wrap): a sum above 32767 that is stored in an `int16` becomes
-32767. The ports saturate exactly where the SpeexDSP code does, and
-nowhere else except at the deviations their package docs list.
+Cutting a result to the largest or smallest value its type can hold,
+instead of letting it [wrap](#wrap). A sum above 32767 that is stored in
+an `int16` becomes 32767. The ports do this exactly where the SpeexDSP
+code does, and nowhere else except at the deviations their package docs
+list.
 
 ### Wrap
 
-What an integer does on overflow when it is not saturated: it continues
-from the other end of its range (32767 + 1 becomes -32768 in an
-`int16`). Go integers wrap; the reference is built with `-fwrapv` so that
-its C integers wrap the same way.
+What a whole number does when it gets too big and is not
+[saturated](#saturation): it starts again at the other end of its range
+(32767 + 1 becomes -32768 in an `int16`). Go integers wrap, and the
+reference is built with `-fwrapv` so that its C integers wrap the same
+way.
 
 ## Compatibility
 
@@ -314,17 +324,17 @@ An adaptive filter models it as an [impulse response](#impulse-response).
 
 ### Acausal
 
-An echo path whose echo would arrive in the microphone signal before the
-far-end frame that causes it is passed to the canceller. No filter can
-cancel it; the caller must pass the far end earlier.
+An echo that would arrive in the microphone signal before the far-end
+frame that causes it has been passed to the canceller. No filter can
+cancel it; pass the far end earlier.
 
 ### Bulk delay
 
-The pure-delay part of the echo path: the time during which the echo
-path passes nothing, before the first sound, usually the direct sound
-from the loudspeaker, reaches the microphone signal. It is the
-[echo delay](#echo-delay) seen as a property of the path; a bulk delay
-larger than the filter length leaves nothing to cancel.
+The part of the echo path that is pure delay: the time before the first
+sound, usually the direct sound from the loudspeaker, reaches the
+microphone signal. It is the [echo delay](#echo-delay) seen as a property
+of the path. If it is larger than the filter length, the filter cannot
+see the echo, so nothing is cancelled.
 
 ### Echo delay
 
@@ -334,9 +344,9 @@ network buffering, not only the sound's travel time.
 
 ### Reverberation time
 
-How long sound takes to die away in a room, usually measured as the time
-to fall by 60 dB. The Speex manual sizes the echo filter at about a
-third of it.
+How long sound takes to fade away in a room, measured as the time to
+fall by 60 dB. The Speex manual sizes the echo filter at about a third of
+it.
 
 ### Echo tail
 
@@ -354,32 +364,36 @@ slowly. The Speex manual calls it the tail length.
 
 ### Impulse response
 
-The output of a linear system for a single unit sample at its input. The
-echo canceller's filter is an estimate of the echo path's impulse
-response; `echo.Canceller.ImpulseResponse` returns it.
+What comes out of a system when you put in a single sample of size 1 and
+then zeros. It shows how the system spreads that one sample over time. The
+echo canceller's filter is an estimate of this for the echo path (the echo
+that one far-end sample causes, over time); `echo.Canceller.ImpulseResponse`
+returns it.
 
 ### Adaptive filter
 
-A filter that changes its coefficients while it runs, so that its output
-follows the echo in the microphone signal. `echo` uses the MDF filter.
+A filter that changes its settings (its coefficients) while it runs, so
+that its output follows the echo in the microphone signal. `echo` uses
+the MDF filter.
 
 ### MDF
 
-Multidelay block frequency-domain adaptive filter: the echo-cancelling
-algorithm of SpeexDSP `mdf.c`, which `echo` ports. It splits the filter
-into blocks of one processing frame and adapts them with FFTs.
+The echo-cancelling algorithm of SpeexDSP `mdf.c`, which `echo` ports.
+The name is short for multidelay block frequency-domain adaptive filter.
+It splits the filter into blocks of one processing frame and adapts them
+with [FFTs](#fft).
 
 ### Convergence
 
-The adaptive filter's approach to a good model of the echo path. After
+The adaptive filter settling on a good model of the echo path. After
 `New`, `Reset` or a change of the echo path, little echo is removed until
-the filter has converged, typically seconds.
+the filter has converged. That typically takes seconds.
 
 ### Double talk
 
-Both ends talking at once. The microphone then carries near-end speech
-and echo together; the canceller slows its adaptation so that it does not
-learn the near-end speech as echo.
+Both ends talking at once. The microphone signal then holds near-end
+speech and echo together. The canceller adapts more slowly, so that it
+does not learn the near-end speech as echo.
 
 ### Residual echo
 
@@ -387,8 +401,9 @@ The echo that the canceller did not remove, still in its output.
 
 ### Residual-echo spectrum
 
-The canceller's estimate of the [power spectrum](#power-spectrum) of the
-[residual echo](#residual-echo) in the frame it last processed:
+The canceller's estimate of how much [residual echo](#residual-echo) is
+at each frequency, as a [power spectrum](#power-spectrum), for the frame it
+last processed:
 `echo.Canceller.Residual`, `FrameSize()+1` values. `preprocess` takes it
 in `RunEcho` to suppress that echo further, as SpeexDSP does with
 `SPEEX_PREPROCESS_SET_ECHO_STATE`.
@@ -396,8 +411,8 @@ in `RunEcho` to suppress that echo further, as SpeexDSP does with
 ### ERLE
 
 Echo return loss enhancement: how much the canceller lowers the echo, in
-dB, `10·log10(echo energy / residual energy)` over the same span. 0 dB
-means no cancellation.
+[dB](#db). 0 dB means no cancellation. Exactly, it is
+`10·log10(echo energy / residual energy)` over the same span.
 
 ### Playback queue
 
@@ -407,15 +422,15 @@ The queue of far-end frames of the canceller's buffered mode
 
 ### Leak estimate
 
-The echo canceller's running estimate, by linear regression of its
-output on its echo estimate, of how much echo is left in its output. It
-scales the residual-echo spectrum.
+The echo canceller's running guess of how much echo is left in its output.
+It finds it by fitting a straight line (linear regression) of the output
+against the echo estimate. It scales the residual-echo spectrum.
 
 ### DC notch
 
-A filter that removes the constant (zero-frequency) part of the
-microphone signal before the canceller models the echo. The rate sets its
-cut-off.
+A filter that removes the constant offset (the zero-frequency part) of
+the microphone signal before the canceller models the echo. The
+[sample rate](#sample-rate) sets its cut-off.
 
 ## Noise suppression and voice activity
 
@@ -433,62 +448,65 @@ does not offer it.
 
 ### Noise suppression
 
-Lowering stationary background noise, such as fan or line hiss, while
-keeping speech. `preprocess` does it in the frequency domain, per
-[bin](#bin) and per [filterbank](#filterbank) band; SpeexDSP and
-`preprocess` call it denoise.
+Lowering steady background noise, such as fan or line hiss, while keeping
+speech. `preprocess` does it per frequency: per [bin](#bin) and per
+[filterbank](#filterbank) band. SpeexDSP and `preprocess` call it
+denoise.
 
 ### Analysis window
 
-The span of samples that `preprocess` transforms per frame: the current
-frame and the one before it, `2*FrameSize` samples, weighted so that
-consecutive windows add up smoothly. It is why `preprocess` delays its
-output by one frame.
+The span of samples that `preprocess` looks at per frame: the current
+frame and the one before it, `2*FrameSize` samples. The samples are
+weighted so that consecutive windows join smoothly. This is why
+`preprocess` delays its output by one frame.
 
 ### Bin
 
-One frequency of an [FFT](#fft)'s output. An FFT of `2*FrameSize`
-samples gives bins spaced `SampleRate/(2*FrameSize)` Hz apart, from 0 Hz
-upwards. `echo.Canceller.Residual` gives one value per bin from 0 Hz to
-half the rate, `FrameSize()+1` values; `preprocess.PSD` gives the first
+One frequency of an [FFT](#fft)'s output, like one slot on a frequency
+scale. An FFT of `2*FrameSize` samples gives bins spaced
+`SampleRate/(2*FrameSize)` Hz apart, from 0 Hz upwards.
+`echo.Canceller.Residual` gives one value per bin from 0 Hz to half the
+rate, `FrameSize()+1` values; `preprocess.PSD` gives the first
 `FrameSize()` bins.
 
 ### Filterbank
 
-The grouping of the FFT bins of `preprocess` into 24 bands spaced like
-human hearing; `filterbank.c` in SpeexDSP. The noise estimate is updated
-per bin and summed into the bands; the speech probability is computed
+The grouping of the FFT bins of `preprocess` into 24 bands, spaced like
+human hearing (`filterbank.c` in SpeexDSP). The noise estimate is updated
+per bin and added up into the bands. The speech probability is computed
 from the bands.
 
 ### Synthesis
 
-The step after the per-band processing that turns the spectrum back into
-samples and adds the overlapping windows together. "Analysis and
-synthesis" is the whole transform in and out of `preprocess`.
+The last step of `preprocess` for a frame: it turns the processed
+frequencies back into samples and adds the overlapping windows together.
+"Analysis and synthesis" is the whole way in and out of the frequency
+view.
 
 ### White noise and pink noise
 
-Random noise with equal power at every frequency (white), or with power
-falling by 3 dB per octave, so more of it is at low frequencies (pink).
-The tests use both as stationary noise.
+Random noise with the same power at every frequency (white), or with
+power that falls by 3 dB for each octave, so that more of it is at low
+frequencies (pink). The tests use both as stationary noise.
 
 ### Stationary noise
 
-Noise whose level and spectrum change slowly, such as hiss or hum.
-Noise suppression estimates and lowers it; it cannot tell it apart from
-speech when the speech is just as steady.
+Noise whose loudness and tone change slowly, such as hiss or hum. Noise
+suppression estimates and lowers it. It cannot tell it apart from speech
+when the speech is just as steady.
 
 ### Power spectrum
 
-The power of a frame in each frequency [bin](#bin). `preprocess.PSD`
-returns the power spectrum of the last frame and `NoisePSD` the noise
-estimate, both `FrameSize()` values.
+How much power a frame has at each frequency, one value per
+[bin](#bin). `preprocess.PSD` returns it for the last frame and `NoisePSD`
+the noise estimate, both `FrameSize()` values.
 
 ### FFT
 
-Fast Fourier transform: the step that turns a span of samples into its
-frequency bins and back. `echo` and `preprocess` use a fixed-point FFT of
-`2*FrameSize` samples, which limits the supported frame sizes.
+Fast Fourier transform: a method that turns a span of samples into how
+much of each frequency it holds (the [bins](#bin)), and back. `echo` and
+`preprocess` use a fixed-point FFT of `2*FrameSize` samples, which limits
+the supported frame sizes.
 
 ### VAD
 
@@ -500,23 +518,22 @@ speech on [stationary noise](#stationary-noise) and on residual echo.
 ### Speech probability
 
 The score behind the VAD decision, 0 to 100 percent,
-`preprocess.Preprocessor.SpeechProb`. It is a heuristic of the reference,
-not a calibrated probability. A frame starts speech when the score is
-above `ProbStart`, and keeps speech going while it is above
-`ProbContinue`.
+`preprocess.Preprocessor.SpeechProb`. It is a rule of thumb of the
+reference, not a true probability. Speech starts when the score is above
+`ProbStart` and goes on while it is above `ProbContinue`.
 
 ## Gain control
 
 ### Gain
 
-The factor by which a stage multiplies its input, given in [dB](#db), a
-logarithmic scale: 0 dB leaves the level unchanged, +6 dB roughly doubles
-the amplitude and -6 dB about halves it. Gains in dB add where the
-factors multiply.
+The factor by which a stage multiplies its input, given in [dB](#db):
+0 dB leaves the level unchanged, +6 dB roughly doubles the amplitude and
+-6 dB about halves it. When stages follow each other, their gains in dB
+add up (their factors multiply).
 
 ### Attenuation
 
-The opposite of gain: how much a stage lowers a level, in dB.
+The opposite of gain: how much a stage lowers a level, in [dB](#db).
 `preprocess` settings give the most attenuation of noise and residual
 echo as negative dB.
 
@@ -532,11 +549,13 @@ The output RMS level in dBFS that the AGC drives a steady signal towards,
 
 ### Gate level
 
-The frame RMS level in dBFS below which a frame cannot raise the AGC
-gain: `agc.Config.GateLevel`. A frame below it never raises the gain or
-moves the level estimate, though a gain that is falling may go on
-falling. It is the AGC's only protection from raising noise in
-pauses.
+The level, in dBFS, below which a frame cannot raise the AGC gain:
+`agc.Config.GateLevel`. It is compared with the [RMS](#rms) of each frame.
+A frame below it never raises the gain or moves the level estimate,
+though a gain that is falling may go on falling. It is the AGC's only
+protection from raising noise in pauses. The guide says
+[how to choose it](guide.md#the-send-path-frame-by-frame), under "Gate
+above the noise".
 
 ### Limit level
 
@@ -563,15 +582,16 @@ and down. Other AGCs call them attack and release.
 
 ### Time constant
 
-The time a one-pole smoother takes to move about 63% of the way to a new
-value. `agc.Config.LevelTime` is the time constant of the level
-estimate; the limiter recovers with 20 ms.
+How fast a smoothed value follows a change: the time it takes to move
+about 63% of the way to a new value. `agc.Config.LevelTime` is the time
+constant of the level estimate; the limiter recovers with 20 ms.
 
 ### Power mean
 
-The mean of values raised to a power, then the root of that power: the
-order-4 power mean of `x` is the fourth root of the mean of `x^4`. Large
-values weigh more than in a plain mean. The AGC's level estimate is one.
+A kind of average in which large values count more than in a plain mean.
+Raise each value to a power, take the mean, then take the matching root:
+the order-4 power mean of `x` is the fourth root of the mean of `x^4`.
+The AGC's level estimate is one.
 
 ### Level estimate
 
@@ -588,20 +608,23 @@ filter, in proportion to the factor.
 
 ### Taps
 
-The coefficients of a filter, one per input sample it weighs. A filter
-of 64 taps combines 64 input samples into each output sample.
+The numbers (coefficients) of a filter, one for each input sample it
+weighs. A filter of 64 taps combines 64 input samples into each output
+sample.
 
 ### Sinc table
 
 The table of filter coefficients that `resample` builds at `New` and at
-each rate or quality change: a windowed sinc (the ideal low-pass
-filter's impulse response) sampled at the filter's phases.
+each rate or quality change. Sinc is the function `sin(πx)/(πx)`; it is
+the [impulse response](#impulse-response) of the ideal low-pass filter.
+The table holds a windowed sinc (a sinc cut off smoothly at both ends)
+sampled at the filter's phases.
 
 ### Magic samples
 
-In `resample`, input samples left over after a rate or quality change
-shortens the filter. The next process calls process them first;
-`OutLen` counts them.
+In `resample`, input samples that are left over after a rate or quality
+change makes the filter shorter. The next `Process` calls handle them
+first; `OutLen` counts them.
 
 ### Filter delay
 
@@ -611,13 +634,13 @@ samples. The first output samples of a stream are the filter warming up;
 
 ### Quality level
 
-The `resample` setting from 0 to 10: a higher quality gives less noise
-and distortion at more cost and latency. The tested recipes of [usage.md](usage.md) use
-`QualityVoIP` (3).
+The `resample` setting from 0 to 10. A higher quality gives less noise
+and distortion, and costs more time and adds more latency. The tested
+recipes of [usage.md](usage.md) use `QualityVoIP` (3).
 
 ### Ratio
 
-The resampling ratio `num/den` of the input and output rates, reduced to
+The input rate divided by the output rate, as a fraction `num/den` in
 lowest terms: 48000 to 16000 Hz is 3/1.
 
 ## Timing
@@ -631,13 +654,13 @@ by the samples stored in it.
 
 ### Jitter
 
-Uneven arrival times of packets or callbacks around their nominal
-period.
+Packets or callbacks that arrive at uneven times, early or late against
+their regular period.
 
 ### Clock drift
 
-A slow difference between two clocks with the same nominal rate, for
-example two sound cards both nominally 48000 Hz. Nothing in the library
+Two clocks that should run at the same rate slowly drift apart, for
+example two sound cards that both say 48000 Hz. Nothing in the library
 corrects it yet.
 
 ## Buffers, concurrency and errors
@@ -648,30 +671,32 @@ First in, first out: samples come out in the order they went in.
 
 ### Ring buffer
 
-A fixed-size FIFO whose storage wraps around: writing past the end
-continues at the start. `buffer.Ring` and `buffer.SPSC` are ring buffers
+A [FIFO](#fifo) of fixed size whose storage wraps around: writing past
+the end continues at the start. `buffer.Ring` and `buffer.SPSC` are ring buffers
 of samples.
 
 ### Slot and index
 
 A slot is the place for one sample in a [ring buffer](#ring-buffer)'s
-storage. An index names a slot: the slot number is the index modulo the
-capacity. `buffer.SPSC` keeps a write index, where the next sample is
-written, and a read index, where the next is read.
+storage. An index is a count that names a slot: the slot number is the
+remainder of the index divided by the capacity. For example, with a
+capacity of 100, index 250 is slot 50. `buffer.SPSC` keeps a write index,
+which says where the next sample is written, and a read index, which says
+where the next is read.
 
 ### Overflow policy
 
-What `buffer.Ring` does with samples that do not fit: `Reject` keeps the
-stored samples and stores only what fits; `Overwrite` discards the
-oldest unread samples. `buffer.SPSC` always rejects.
+What `buffer.Ring` does with samples that do not fit. `Reject` keeps the
+stored samples and stores only what fits. `Overwrite` discards the oldest
+unread samples. `buffer.SPSC` always rejects.
 
 ### View
 
-A slice that a method returns which points into the buffer's own
-storage, such as `ReadSlices` or `WriteSlices` of `buffer`. Each view
-stays valid until a documented call, and expires there. A view comes as
-two segments, because the stored region may wrap around the end of the
-storage; the second segment is empty unless it does.
+A slice that a method returns and that points into the buffer's own
+storage, such as `ReadSlices` or `WriteSlices` of `buffer`. A view is
+valid until a call that the doc names, and not after it. A view comes as
+two segments, because the stored samples may wrap around the end of the
+storage. The second segment is empty unless they do.
 
 ### Zero-copy
 
@@ -692,15 +717,15 @@ stores it.
 
 ### Wait-free
 
-A property of a method used by two goroutines: it finishes in a bounded
-number of its own steps whatever the other goroutine does. It never
-waits, locks or retries. Every `buffer.SPSC` method is wait-free.
+A method used by two goroutines is wait-free if it always finishes in a
+bounded number of its own steps, whatever the other goroutine does. It
+never waits, locks or retries. Every `buffer.SPSC` method is wait-free.
 
 ### Snapshot
 
-A value one goroutine reads about state that another goroutine changes,
-such as `buffer.SPSC.Len` called by the producer. It was true when read
-and may be stale by the time it is used.
+A value that one goroutine reads about state that another goroutine
+changes, such as `buffer.SPSC.Len` called by the producer. It was true
+when read and may be out of date by the time it is used.
 
 ### Quiescent
 
@@ -734,17 +759,17 @@ works in place on its one frame slice.
 
 ### Retention
 
-Keeping a reference to a caller's slice after a method returns. No
-method here retains a caller slice.
+Keeping a reference to a caller's slice after the method returns. No
+method here does this.
 
 ### Zero value
 
-A value of a type that `New` did not make, such as `var c echo.Canceller`. No
-method panics on a zero value: methods with an error result return `ErrConfig`,
-and the others return zero values and change nothing, except that the
-`preprocess` setters store their setting and the getters of those settings
-return what was stored. A zero `Ring` or `SPSC` is an empty buffer of
-capacity 0. It is not a usable instance.
+A value that `New` did not make, such as `var c echo.Canceller`. It is not
+usable, but no method panics on it. Methods with an error result return
+`ErrConfig`. The others return zero values and change nothing, except that
+the `preprocess` setters store their setting and the getters of those
+settings return what was stored. A zero `Ring` or `SPSC` is an empty buffer
+of capacity 0.
 
 ### Sentinel error
 
