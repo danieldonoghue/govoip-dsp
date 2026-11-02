@@ -235,8 +235,8 @@ func (f figures) String() string {
 
 // TestScenarioMeasurements measures every scenario in every configuration,
 // checks the sanity floors at 8 and 16 kHz and compares the figures with
-// testdata/metrics.golden. Under -short and -race it measures one
-// configuration.
+// testdata/metrics.golden. Under -short it measures one configuration of
+// each scenario, under -race only farend in it (docs/testing.md).
 func TestScenarioMeasurements(t *testing.T) {
 	var cs []refCase
 	for _, c := range sortedCases() {

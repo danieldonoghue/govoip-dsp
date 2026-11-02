@@ -115,6 +115,7 @@ func runDirect(t testing.TB, c *call, s callSignals) []int16 {
 // irregular times and compares with a direct frame-by-frame run (U3).
 func TestRecipeThroughSPSC(t *testing.T) {
 	seconds := 10.0
+	// -short feeds 3 s instead of 10 s through the same goroutines (docs/testing.md).
 	if testing.Short() {
 		seconds = 3
 	}

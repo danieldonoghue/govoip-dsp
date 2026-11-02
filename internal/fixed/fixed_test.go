@@ -157,6 +157,7 @@ var mustInline = []string{
 }
 
 func TestInlining(t *testing.T) {
+	// Skipped under -short; -race and the normal go test run it (docs/testing.md).
 	if testing.Short() {
 		t.Skip("builds the package with -gcflags=-m")
 	}

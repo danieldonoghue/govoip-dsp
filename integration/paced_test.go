@@ -418,6 +418,7 @@ func TestPacedFourGoroutines(t *testing.T) {
 func fourGoroutines(t *testing.T) {
 	const frameMs, rate = 20, 8000
 	seconds := 10
+	// -short feeds 3 s instead of 10 s through the same goroutines (docs/testing.md).
 	if testing.Short() {
 		seconds = 3
 	}

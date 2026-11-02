@@ -92,7 +92,8 @@ func TestSeqCheckerDetects(t *testing.T) {
 
 const stressTimeout = 2 * time.Minute
 
-// stressSamples is the number of samples each stress run moves.
+// stressSamples is the number of samples each stress run moves: 2·10^5 under
+// -race or -short, 10^6 otherwise, with the same capacities and chunk sizes.
 func stressSamples() int {
 	if raceEnabled || testing.Short() {
 		return 200 * 1000
