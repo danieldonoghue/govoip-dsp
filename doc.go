@@ -132,7 +132,7 @@
 // Echo cancellation and preprocessing are mono. The echo canceller works
 // well at 8 and 16 kHz only; it does not estimate the echo delay or correct
 // clock drift, so the caller keeps the far end aligned with the
-// microphone. The VAD reports speech on stationary noise, so the AGC's
+// microphone. The VAD reports speech on steady noise such as hiss, so the AGC's
 // gate level is its only protection against raising noise. Go is not a
 // hard real-time platform; tail latencies are measured, not guaranteed.
 // The README lists the current status and limitations.
