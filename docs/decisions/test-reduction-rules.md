@@ -20,10 +20,12 @@ full under `-race`. The tests do more than that:
 - Under `-short`, the `echo` and `integration` reference tests compare a
   leading part of each case and run a few cases in full. Under `-race`,
   the `echo` reference tests run only those cases.
-  `TestScenarioMeasurements` runs one configuration under both flags.
+  `TestScenarioMeasurements` measures one configuration of each scenario
+  under `-short`, and only the `farend` scenario in that configuration
+  under `-race`.
 - `TestRealTimeBudget` (`integration`) skips under `-race` unless
-  `-budget` is set, and 21 other `integration` tests skip under `-race`
-  (ADR `wp7-race-skips`).
+  `-budget` is set, and every other test that calls `skipUnderRace` skips
+  under `-race` (ADR `wp7-race-skips`).
 - `TestPacedFourGoroutines`, `TestBufferedTwoGoroutines` and
   `TestRecipeThroughSPSC` (`integration`) run 3 s of input under `-short`
   and 10 s otherwise.
@@ -49,6 +51,8 @@ In each case the normal `go test` runs the full work.
   part rule, the exception for packages without goroutines and the
   extension of ADR `wp7-race-skips`, which stays as the record of why the
   single-goroutine skips exist.
+- The leading-part comparison of `partialCheck` (`internal/fixed`,
+  `preprocess`) is a reduction to a named subset under the first rule.
 - A test that reduces its work without being named in the test and in
   `docs/testing.md` breaks the rule.
 

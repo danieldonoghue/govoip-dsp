@@ -7,14 +7,17 @@
 
 `docs/contracts.md` section 1 said "never re-derive a macro locally", with
 `internal/fixed` as the single home of fixed-point operations. Some ports
-keep a helper for a macro that exactly one upstream file defines:
+keep a helper for a macro that exactly one upstream file defines, for example:
 
 - `top16` for `TOP16` in `mdf.c` (`echo/mdf.go`).
 - `div32x16Q8` and `div32x16Q15` for `DIV32_16_Q8` and `DIV32_16_Q15` in
   `preprocess.c` (`preprocess/run.go`). `preprocess.c` defines them for
   itself, as static inline functions; no shared header defines them.
 - `sMul`, `cMul`, `cMul4` and `cFixDiv` for `S_MUL`, `C_MUL`, `C_MUL4` and
-  `C_FIXDIV` in `_kiss_fft_guts.h` (`internal/fft/kiss.go`).
+  `C_FIXDIV` in `_kiss_fft_guts.h` (`internal/fft/kiss.go`). The same
+  file also defines `sround`, `C_ADD`, `C_SUB` and `kf_cexp2` as `sround`,
+  `cAdd`, `cSub` and `kfCexp2`.
+- `toBark` for `toBARK` in `filterbank.c` (`preprocess/filterbank.go`).
 
 ## Decision
 
@@ -25,8 +28,8 @@ stays with the package that ports that file.
 
 ## Consequences
 
-- `docs/contracts.md` section 1 states the rule and names the three
-  upstream files above as examples.
+- `docs/contracts.md` section 1 states the rule and names the upstream files
+  above as examples.
 - A local helper still cites the upstream file and line of its macro, and
   a port never keeps a local copy of a shared-header macro.
 
