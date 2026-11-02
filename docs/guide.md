@@ -83,7 +83,8 @@ Sound as numbers:
   and right; surround layouts such as 5.1 and 7.1 have more. `echo`,
   `preprocess` and `agc` take mono; `resample` takes 1 to 256 channels,
   [interleaved](glossary.md#interleaved) (the first sample of every
-  channel, then the second of every channel) or one channel by stride
+  channel, then the second of every channel) or one channel by
+  [stride](glossary.md#stride), the gap between its samples in the slice,
   with `ProcessChannel` ([channel](glossary.md#channel)).
 - **Speech, noise and VAD.** Speech is the voice. Background
   [noise](glossary.md#noise) is any sound in the microphone signal that
@@ -373,7 +374,7 @@ processor, so the garbage collector can free it (step 5).
    the `Config` first.
 2. **Per-frame method calls.** Call the process method once per frame or chunk.
    It does not allocate, block or panic. It returns only unwrapped
-   sentinel errors (for example `ErrBufferSize` for a slice of the wrong
+   [sentinel errors](glossary.md#sentinel-error) (for example `ErrBufferSize` for a slice of the wrong
    length), which cannot occur when the buffers are sized once from the
    processor. Treat them as programming errors. One exception:
    `resample` returns `ErrAllocFailed` from its process methods while a
@@ -566,7 +567,8 @@ Rules for this path:
 
 `Example_sendChain` in the root package runs this path on a synthetic
 call, and [usage.md](usage.md) has the full recipes, with their tests.
-The tests check the echo and preprocess steps bit for bit against the
+The tests check the echo and preprocess steps
+[bit for bit](glossary.md#bit-exact) against the
 same steps in C; the AGC has no C counterpart.
 
 ## The receive path
@@ -665,7 +667,7 @@ Rules for frames through an SPSC:
 - **Pairs of frames.** Where each received frame must stay paired with
   the far-end frame sent at the same time, follow the tested wiring of
   [usage.md](usage.md#sources-that-deliver-the-pairing): its `drain`
-  keeps each pair together, also when it drops a backlog.
+  keeps each pair together, also when it drops a [backlog](glossary.md#backlog).
 - **Whole frames.** `Write` stores as much as fits. The producer checks
   `Free() >= len(frame)` and writes a whole frame or drops it; a partial
   frame would shift every later frame boundary. The consumer reads only
@@ -764,7 +766,8 @@ them from the start.
 - `echo` and `preprocess` are mono.
 - `echo` works well at 8 and 16 kHz only: it accepts rates up to 48 kHz
   but cancels poorly there, so resample higher rates down.
-- `echo` does not estimate the echo delay or correct clock drift: the
+- `echo` does not estimate the echo delay or correct
+  [clock drift](glossary.md#clock-drift): the
   caller keeps the far-end reference aligned with the microphone. Echo
   outside the filter length is not cancelled.
 - The VAD reports speech on [stationary noise](glossary.md#stationary-noise)
