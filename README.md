@@ -175,7 +175,7 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
 
 - Echo cancellation and preprocessing are mono (one channel) in the first
   release.
-- The echo canceller works well at 8 and 16 kHz only. Resample higher
+- The echo canceller is supported at 8 and 16 kHz only. Resample higher
   rates down first.
 - **The AGC can make noise louder.** The VAD reports speech on
   [stationary noise](docs/glossary.md#stationary-noise) and on residual
@@ -183,26 +183,27 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   above the noise left after noise suppression
   ([how to choose it](docs/guide.md#the-send-path-frame-by-frame), under
   "Gate above the noise"). The default gate is -50 dBFS. With it, the
-  noise raised is white noise from about -40 dBFS and pink noise from
-  about -52 dBFS at the input. It comes out 16 to 23 dB louder, so it
-  leaves the chain 3.5 to 18.6 dB louder than it entered
+  AGC raised what noise suppression left of white noise (from about
+  -40 dBFS at the input) and of pink noise (from about -52 dBFS) by 16 to
+  23 dB. That noise left the chain 3.5 to 18.6 dB louder than it entered
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
-- **Resampling from 48 kHz costs quality.** The whole chain, tested in
-  `integration`, passes every pipeline criterion at 8 and 16 kHz. On a
-  chain resampled from 48 kHz, two behavioural criteria fail: the echo
-  stage cancels less and the AGC holds the near end lower
+- **Two criteria fail on a chain resampled from 48 kHz.** The whole
+  chain, tested in `integration`, passes every pipeline criterion at 8
+  and 16 kHz. On a chain resampled from 48 kHz, two behavioural criteria
+  fail: the echo stage cancels less and the AGC holds the near end lower
   ([measurements](docs/testing.md#whole-chain-measurements-integration-wp7)).
-- **Echo cancellation needs the echo to come back late enough.** The
+- **Short echo delays are not cancelled well with jitter.** The
   recipes of [docs/usage.md](docs/usage.md) were tested in simulated calls
   with up to 30 ms of jitter. Recipe A (paced sending, `Cancel`) cancelled
-  echo that came back 40 to 200 ms after it was sent. Recipe B (separate
+  echo delays of 40 to 200 ms. Recipe B (separate
   callbacks, `Playback` and `Capture`, one frame late) cancelled 60 to
   200 ms.
 - **A 32 ms echo with that jitter is not cancelled by either recipe.**
   This is the "uneven timing" criterion, U6 in the
-  [acceptance criteria](docs/acceptance/integration.md), and it fails. The
-  [recipe A caveats](docs/usage.md#caveats), under "Echo delay", explain
-  why.
+  [acceptance criteria](docs/acceptance/integration.md). It fails, and the
+  test pins it as a reported finding. For recipe A, the
+  [caveats](docs/usage.md#caveats) under "Echo delay" explain why. For
+  recipe B the cause has not been traced.
 - **Go is not a hard real-time platform.** A frame can occasionally take
   much longer than usual. The slowest frames are measured and reported
   ([docs/performance.md](docs/performance.md)), not guaranteed.

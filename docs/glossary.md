@@ -102,13 +102,14 @@ Any way of cutting a stream into chunks gives the same output.
 
 How loud a signal is over a span of samples. It is usually given as its
 [RMS](#rms) in [dBFS](#dbfs): a louder signal has a higher level, and
-quiet levels are negative numbers. The `agc` target and gate levels are
-RMS levels; the limit level is a peak.
+levels below full scale are negative numbers. The `agc` target and gate
+levels are RMS levels; the limit level is a peak.
 
 ### dB
 
 Decibels: a way to give a ratio between two sizes as a small number.
-+6 dB is about twice the amplitude and -20 dB is a tenth. Exactly, it is
++6 dB is about twice the amplitude, +20 dB is ten times it and -20 dB
+is a tenth. Exactly, it is
 `20·log10` of an amplitude ratio, or `10·log10` of a power ratio.
 
 ### dBFS
@@ -123,7 +124,7 @@ clips.
 Full scale is a peak. The `agc` target and gate levels are [RMS](#rms), so
 on them a full-scale sine wave is about -3 dBFS (AES17 calls that level
 0 dBFS). The `agc` levels are whole dBFS. If a `float32` sample sent to
-`resample` is louder than full scale, it is cut to the largest value an
+`resample` is louder than full scale, it is cut to the nearest value an
 `int16` can hold.
 
 Other scales have other zero points: a mixing desk meters in dBu, where
@@ -344,7 +345,7 @@ network buffering, not only the sound's travel time.
 
 ### Reverberation time
 
-How long sound takes to fade away in a room, measured as the time to
+How long sound takes to fade away in a room, usually measured as the time to
 fall by 60 dB. The Speex manual sizes the echo filter at about a third of
 it.
 
@@ -364,7 +365,7 @@ slowly. The Speex manual calls it the tail length.
 
 ### Impulse response
 
-What comes out of a system when you put in a single sample of size 1 and
+What comes out of a linear system when you put in a single sample of size 1 and
 then zeros. It shows how the system spreads that one sample over time. The
 echo canceller's filter is an estimate of this for the echo path (the echo
 that one far-end sample causes, over time); `echo.Canceller.ImpulseResponse`
@@ -462,7 +463,7 @@ weighted so that consecutive windows join smoothly. This is why
 
 ### Bin
 
-One frequency of an [FFT](#fft)'s output, like one slot on a frequency
+One frequency of an [FFT](#fft)'s output, one point on its frequency
 scale. An FFT of `2*FrameSize` samples gives bins spaced
 `SampleRate/(2*FrameSize)` Hz apart, from 0 Hz upwards.
 `echo.Canceller.Residual` gives one value per bin from 0 Hz to half the
@@ -678,11 +679,10 @@ of samples.
 ### Slot and index
 
 A slot is the place for one sample in a [ring buffer](#ring-buffer)'s
-storage. An index is a count that names a slot: the slot number is the
-remainder of the index divided by the capacity. For example, with a
-capacity of 100, index 250 is slot 50. `buffer.SPSC` keeps a write index,
-which says where the next sample is written, and a read index, which says
-where the next is read.
+storage. An index is a number that names a slot: the slot number is the
+remainder of the index divided by the capacity. `buffer.SPSC` keeps a
+write index, which says where the next sample is written, and a read
+index, which says where the next is read.
 
 ### Overflow policy
 

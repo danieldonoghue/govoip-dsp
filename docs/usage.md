@@ -24,7 +24,7 @@ code block on this page is copied from tested code in `integration/`;
 
 Some results below are called "reported findings". That is a measured
 result that misses the target set before the test was written. The test
-records it and the docs report it.
+pins the result and the docs report it.
 
 New to these packages? The [developer guide](guide.md) explains each
 package, the per-frame call order and the goroutine hand-off first, and
@@ -109,7 +109,8 @@ Does not fit:
   so the echo shifts against what the canceller saw.
 - **Echo delay.** In simulated calls with up to 30 ms of
   [jitter](glossary.md#jitter), echo
-  that came back 40 to 200 ms after it was sent was cancelled by 17.1 to
+  with a delay of 40 to 200 ms (counted as defined below) was cancelled by
+  17.1 to
   27.2 dB. A cancellation of 20 dB makes the echo about ten times smaller
   in amplitude ([dB](glossary.md#db)). A 32 ms echo with that jitter was
   not cancelled well: 11.1 dB at 8 kHz and 10.7 dB at 16 kHz, a reported
@@ -513,9 +514,10 @@ func (c *call) outLen() int { return 2 * c.frame }
 
 The source's frames reach the processing goroutine through one SPSC with
 room for 200 ms; `drain` drops a [backlog](glossary.md#backlog) after a
-stall and keeps each frame paired. `maxBacklog` is the most it keeps: the
-tests use `3*c.netFrame` (three frames) to test the drop and `math.MaxInt`
-where no drop may happen:
+stall and keeps each frame paired. `maxBacklog` is the number of waiting
+samples above which `drain` drops all but the newest frame: the tests use
+`3*c.netFrame` (three frames) to test the drop and `math.MaxInt` where no
+drop may happen:
 
 ```go
 func newRx(c *call) (*buffer.SPSC, error) {
@@ -828,8 +830,7 @@ In short:
   27.2 dB (at 40 and 50 ms some frames lack part of their echo); with a
   32 ms echo it does not (a reported finding).
 - Recipe B cancels with one frame of lag; with up to 30 ms of jitter it
-  cancelled echo delays of 60 to 200 ms, and not 50 ms and less (a
-  reported finding).
+  cancelled echo delays of 60 to 200 ms, and not 50 ms and less.
 
 ## How this page is tested
 

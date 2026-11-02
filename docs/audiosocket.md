@@ -129,11 +129,16 @@ Make the processors for each connection when it arrives, and serve the
 connection on its own goroutine. Each connection is one call, and every
 processor is [single-owner](glossary.md#single-owner): it keeps the state
 of its call and is used from one goroutine only. With audio sent back,
-`newAudioSocketCall` makes `echo`, `preprocess` and `agc` with `newPacedCall` of
+`newAudioSocketCall` makes `echo`, `preprocess` and `agc` with
+`newPacedCall` of
 [recipe A, step 1](usage.md#recipe-a-step-1-make-the-processors-and-the-hand-offs);
-without, it makes `preprocess` and `agc` only. It takes 8 or 16 kHz,
-because `echo` works well at those rates only; `preprocess` and `agc` alone
-accept other rates (their package docs give the ranges).
+without, it makes `preprocess` and `agc` only. The numbers in that call
+are the frame length in ms (20) and the echo filter length in ms (200,
+the guide's start value; see "Filter length" in
+[the send path](guide.md#the-send-path-frame-by-frame)). `pacedCall`,
+`received` and `onPacket` are defined in recipe A of usage.md. It takes
+8 or 16 kHz, because `echo` works well at those rates only; `preprocess`
+and `agc` alone accept other rates (their package docs give the ranges).
 
 ```go
 // audioSocketCall is the send path of one AudioSocket connection. Use it

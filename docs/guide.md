@@ -65,8 +65,9 @@ Sound as numbers:
 - **Level and dBFS.** The [level](glossary.md#level) of a signal is how
   loud it is over a span of samples. It is given in
   [dBFS](glossary.md#dbfs): 0 dBFS is the loudest level the 16-bit scale
-  holds, and quieter signals are negative numbers, for example -50 dBFS
-  for a faint hiss. The level of a span is its
+  holds (amplitude 32768, one step above the largest `int16`), and
+  quieter signals are negative numbers, for example -60 dBFS for a faint
+  hiss. The level of a span is its
   [RMS](glossary.md#rms), a kind of average size of the samples. The
   `agc` target and gate levels are RMS levels, and its limit level is a
   peak.
@@ -547,8 +548,9 @@ Rules for this path:
   target level (the `agc` package doc has the details). To choose it:
   1. Record the output of `preprocess`, with denoising on, during a
      stretch where nobody talks, a few seconds long.
-  2. Cut the recording into 10 ms pieces (`rate/100` samples), the size
-     of the [AGC frame](glossary.md#frame) that the gate is tested on.
+  2. Cut the recording into pieces of about 10 ms (`rate/100` samples),
+     close to the size of the [AGC frame](glossary.md#frame) that the
+     gate is tested on.
   3. For each piece, compute the level in dBFS. The `dBFS` helper in
      [example_test.go](../example_test.go) does this, in whole dB, for a
      `[]int16` that is not all zeros.
@@ -615,7 +617,7 @@ one consumer goroutine, which reads.
 An SPSC is a [ring buffer](glossary.md#ring-buffer): fixed storage
 of [slots](glossary.md#slot-and-index), one per sample, used as a circle,
 so that after the last slot it continues at the first. An index is a
-count that names a slot ([the remainder after dividing by the
+number that names a slot ([the remainder after dividing by the
 capacity](glossary.md#slot-and-index)): the write index says where the
 next sample is written, and the read index says where the next one is
 read.
