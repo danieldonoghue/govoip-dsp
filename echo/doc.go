@@ -26,7 +26,9 @@
 // Make one Canceller per call with New. For each frame, pass the
 // microphone frame and the loudspeaker frame played while it was captured
 // to Cancel, then, before the next frame, read Residual for the
-// preprocessor:
+// preprocessor. On a server, mic is the frame received from the caller's
+// side and far the frame sent toward it (the glossary's near end and far
+// end):
 //
 //	c, err := echo.New(echo.Config{FrameSize: 160, FilterLength: 1600, SampleRate: 8000})
 //	if err != nil {

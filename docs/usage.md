@@ -3,8 +3,13 @@
 This page gives two recipes for the send path of one call with 20 ms
 frames: echo cancellation, noise suppression with voice activity
 detection (VAD), then automatic gain control. The audio the application
-receives is the "microphone" signal; the audio it sends is the far end,
-whose echo may return in the received audio.
+receives is the near-end, or "microphone", signal; the audio it sends is
+the far-end reference, whose echo may return in the received audio, for
+example from a speakerphone caller
+([near end](glossary.md#near-end), [far end](glossary.md#far-end)).
+For a Go service on Asterisk AudioSocket, the
+[AudioSocket quick start](audiosocket.md) is a shorter path, with one
+goroutine per connection.
 
 | Recipe | Where the far end comes from | Echo canceller call |
 |---|---|---|
@@ -37,7 +42,7 @@ the [glossary](glossary.md) defines the terms this page uses.
   [AudioSocket protocol page](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/)
   lists the audio kinds and their rates). Converting payload
   bytes to `[]int16` is the application's job and is not part of this
-  library.
+  library; the [AudioSocket quick start](audiosocket.md) shows it.
 - **Rates.** The echo canceller is supported at 8 and 16 kHz only
   (`echo.New` accepts rates up to 48 kHz, but the reference cancels poorly
   above 16 kHz;
@@ -47,8 +52,9 @@ the [glossary](glossary.md) defines the terms this page uses.
 - **One call, one goroutine.** Every processor, and `buffer.Ring`, is
   single-owner: make one set per call and use it from one goroutine. Only
   `buffer.SPSC` is shared, between exactly two goroutines.
-- **One audio stream and no call.** An application such as a recorder or
-  a monitor has no far end whose echo could return. Neither recipe is
+- **One audio stream and no call.** An application such as a recorder, a
+  monitor or a speech recognizer that sends nothing back has no far end
+  whose echo could return. Neither recipe is
   needed there: use `preprocess.Preprocessor.Run` if the audio has noise
   or you need a VAD, and `agc.AGC.Process` if you need a steady level.
   Call `SetVAD(true)` when you need the VAD or when `agc` follows. Each

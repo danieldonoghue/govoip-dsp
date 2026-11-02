@@ -20,7 +20,10 @@ package's `example_test.go` (the root's is
 
 ## Start here
 
-Read the guide in this order to get a first call working:
+Writing a Go service on Asterisk AudioSocket? The
+[AudioSocket quick start](audiosocket.md) is a short tested path for one
+connection; come back here for the detail. Otherwise, read the guide in
+this order to get a first call working:
 
 1. Read [Audio basics](#audio-basics) if samples, rates and frames are
    new to you.
@@ -106,12 +109,21 @@ A call and its streams:
 
 - **Call and stream.** A [call](glossary.md#call) carries audio in both
   directions. A [stream](glossary.md#stream) is audio going one
-  way, such as the microphone signal. The [near end](glossary.md#near-end)
-  is the local side, the [far end](glossary.md#far-end) the remote side.
-- **Echo.** [Echo](glossary.md#echo) is far-end sound that the
-  loudspeaker plays and the microphone picks up again, so the far end
-  hears itself. Removing it needs a copy of what the loudspeaker played,
-  the far-end reference. [When each stage is needed](#when-each-stage-is-needed)
+  way, such as the microphone signal.
+- **Near end and far end.** The [near-end](glossary.md#near-end) signal
+  is the audio that arrives at your code from the caller's side: a
+  device's microphone signal, the audio Asterisk sends over AudioSocket,
+  or the RTP stream a media server receives. The
+  [far-end](glossary.md#far-end) reference is the audio your code sends
+  toward that side: what a device plays, what you write back to Asterisk,
+  or the RTP stream a media server sends. The docs call the near-end
+  signal the microphone signal on a server too.
+- **Echo.** [Echo](glossary.md#echo) is what your code sends coming back
+  in what it receives, so the far end hears itself. On a device the
+  microphone picks up what the loudspeaker plays. On a server the
+  caller's side returns it: a speakerphone caller, or an acoustic or line
+  echo on their side. Removing it needs a copy of what was sent, the
+  far-end reference. [When each stage is needed](#when-each-stage-is-needed)
   says when it happens.
 - **Encoder and decoder.** A [codec](glossary.md#encoder-and-decoder)
   has two halves outside this library: the encoder compresses audio
@@ -166,8 +178,8 @@ package's output is another's input, the caller passes it on.
 ## The pipeline
 
 The pipeline is the chain of stages that audio passes through, in
-order. Which stages it has depends on the use case: whether the
-microphone hears the loudspeaker, whether the audio is noisy or you need
+order. Which stages it has depends on the use case: whether what is
+sent can come back as echo, whether the audio is noisy or you need
 to know when someone speaks, whether its level varies, whether two
 sample rates meet, and whether audio passes between goroutines.
 [Which packages you need](#which-packages-you-need) lists common cases.
@@ -195,9 +207,9 @@ the flag is true and the level of each 10 ms
 
 | Application | Needs | Add if you need |
 |---|---|---|
-| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker | `echo` | `preprocess`: noise suppression, residual-echo suppression (`RunEcho`; see [the send path](#the-send-path-frame-by-frame)) or a VAD (`SetVAD(true)`); `agc`: a steady level |
+| A call where the microphone can hear the loudspeaker: a speakerphone, a laptop or phone on hands-free, a conference room, a smart speaker; or a server that sends audio to callers who may be on one, such as a service on Asterisk AudioSocket ([quick start](audiosocket.md)) | `echo` | `preprocess`: noise suppression, residual-echo suppression (`RunEcho`; see [the send path](#the-send-path-frame-by-frame)) or a VAD (`SetVAD(true)`); `agc`: a steady level |
 | A call with a headset, or a handset at the ear: the microphone does not hear the loudspeaker | None | `preprocess`: noise suppression or a VAD (`SetVAD(true)`); `agc`: a steady level |
-| One audio stream and no call, such as a recorder or a monitor | None | `preprocess`: noise suppression, or to know when someone is speaking (`SetVAD(true)`); `agc`: a steady level |
+| One audio stream and no call, such as a recorder or a monitor, or a server that only listens and sends nothing back, such as speech recognition | None | `preprocess`: noise suppression, or to know when someone is speaking (`SetVAD(true)`); `agc`: a steady level |
 | Rate conversion only | `resample` | |
 | A hand-off of audio between goroutines | `buffer` | Any of the others |
 
@@ -224,7 +236,10 @@ happens without it, in pipeline order.
   whenever the microphone hears the loudspeaker. With a headset there is
   no acoustic path from the loudspeaker to the microphone, so a call
   needs no `echo` stage. Without it, where the microphone hears the
-  loudspeaker, the far end hears itself.
+  loudspeaker, the far end hears itself. On a server the test is whether
+  what it sends can come back in what it receives: from a speakerphone
+  caller, or an acoustic or line echo on the caller's side. A server that
+  sends nothing back has no far end, so it needs no `echo` stage.
 - `preprocess` suppresses noise, finds speech (the VAD) and, after
   `echo`, suppresses the residual echo. Leave it out when the audio is
   already clean and you don't need a VAD. Without it, the output of
@@ -265,7 +280,9 @@ flowchart LR
 ```
 
 1. The microphone signal holds the near end's voice and the echo of what
-   the loudspeaker played.
+   the loudspeaker played. On a server, the received audio takes the
+   place of the microphone and the audio sent back the place of the
+   loudspeaker; the [AudioSocket quick start](audiosocket.md) shows it.
 2. `echo` removes that echo. It needs the
    [far-end](glossary.md#far-end) reference: a copy of the samples the
    loudspeaker played, at the same rate as the microphone signal and
@@ -309,8 +326,9 @@ flowchart LR
 `preprocess` works at the common device rates too, so the send path needs
 `resample` only where the encoder's rate differs from the microphone's.
 The `preprocess` package doc's Use section shows this send path in code.
-A recorder or a monitor can use `preprocess`, `agc` or both on its one
-stream; call `SetVAD(true)` when it uses `agc` or reads the VAD itself.
+A recorder, a monitor or a server that only listens can use
+`preprocess`, `agc` or both on its one stream; call `SetVAD(true)` when
+it uses `agc` or reads the VAD itself.
 
 ## The lifecycle of a processor
 
@@ -449,8 +467,9 @@ sequenceDiagram
 
 1. `Cancel(mic, far, clean)` removes the echo of `far` from `mic` and
    writes `clean`. `far` is the loudspeaker frame played while `mic` was
-   captured: the exact samples your code handed to the loudspeaker
-   device, cut into `FrameSize` frames (the receive path's output length
+   captured (on a server, the frame sent with the received frame `mic`):
+   the exact samples your code handed to the loudspeaker device or the
+   network, cut into `FrameSize` frames (the receive path's output length
    varies, so re-cut it), or a frame of silence when nothing was played.
    [usage.md](usage.md#sources-that-deliver-the-pairing) shows the
    wiring. The filter models echo that reaches `mic` up to about the
@@ -617,6 +636,13 @@ method is [wait-free](glossary.md#wait-free). The memory-ordering argument is in
 Producer methods are `Write`, `WriteSlices`, `Commit` and `Free`.
 Consumer methods are `Read`, `ReadSlices`, `Consume` and `Len`. `Cap` is
 for either side. `Reset` needs both sides stopped.
+
+One goroutine can be enough. Where the received frames drive the whole
+call, as on Asterisk AudioSocket, one goroutine can read a frame,
+process it and write the frame to send, and no SPSC is needed between
+them; the [AudioSocket quick start](audiosocket.md#is-one-goroutine-enough)
+says when a second goroutine is needed. Audio that another goroutine
+produces still crosses through an SPSC.
 
 Rules for frames through an SPSC:
 

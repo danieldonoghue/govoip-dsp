@@ -25,10 +25,11 @@
 //     to 16 kHz for the echo canceller, or from a decoder's 8 kHz to the
 //     device. Any rates within its size limits, 1 to 256 channels, any
 //     chunk size.
-//   - echo: acoustic echo cancellation. It removes the far end's voice,
-//     played by the loudspeaker and picked up again by the microphone,
-//     from the microphone signal. Mono; it works well at 8 and 16 kHz
-//     only, although New accepts 8000 to 48000 Hz.
+//   - echo: acoustic echo cancellation. It removes the echo of the audio a
+//     call sends (the far end) from the audio it receives (the near end):
+//     on a device, the loudspeaker picked up by the microphone; on a
+//     server, what the caller's side returns. Mono; it works well at 8 and
+//     16 kHz only, although New accepts 8000 to 48000 Hz.
 //   - preprocess: noise suppression, VAD and suppression of the echo that
 //     echo left. Fixed frame sizes, mono.
 //   - agc: automatic gain control. It brings speech to a steady level and
@@ -43,13 +44,18 @@
 //
 // An application uses only the packages its use case needs; the
 // [developer guide] has a table of use cases and the packages each needs. For a
-// call, whether it needs package echo depends on whether its microphone can
-// hear its loudspeaker. On a speakerphone or in a conference room it can: the
-// microphone picks up what the loudspeaker plays, so the far end would hear
-// itself, and package echo removes it. With a headset, or a handset at the ear,
+// call, whether it needs package echo depends on whether the audio it sends
+// can come back in the audio it receives. On a speakerphone or in a conference
+// room it can: the microphone picks up what the loudspeaker plays, so the far
+// end would hear itself, and package echo removes it. On a server, such as a
+// service on Asterisk AudioSocket, the received audio takes the place of the
+// microphone and the audio sent back that of the loudspeaker; a speakerphone
+// caller, or a line echo on the caller's side, returns what was sent. With a
+// headset, or a handset at the ear, or on a server that sends nothing back,
 // there is no echo, and the send path can be preprocess.Preprocessor.Run
 // followed by agc.AGC.Process, with preprocess.Preprocessor.SetVAD(true) so
-// that agc receives the speech decision.
+// that agc receives the speech decision. The [AudioSocket quick start] is a
+// tested path for a service on Asterisk AudioSocket.
 //
 // preprocess and agc are optional. Leave out agc when the level is already
 // right, for example a source of known, fixed gain. agc still works without
@@ -134,4 +140,5 @@
 // [developer guide]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/guide.md
 // [glossary]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/glossary.md
 // [usage guide]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/usage.md
+// [AudioSocket quick start]: https://github.com/danieldonoghue/govoip-dsp/blob/master/docs/audiosocket.md
 package govoipdsp

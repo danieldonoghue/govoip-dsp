@@ -154,11 +154,12 @@ microphone signal, the far-end signal, the decoded audio.
 
 ### Send path and receive path
 
-The two directions of a call. The send path takes the microphone signal
-through the stages the call needs, in order, to the encoder: `echo`
-(where the microphone hears the loudspeaker), then `preprocess` and
-`agc`, each optional. The receive path takes decoded audio through
-`resample` to the loudspeaker.
+The two directions of a call. The send path takes the near-end signal
+(the microphone signal on a device, the received audio on a server)
+through the stages the call needs, in order, to the encoder or to the
+code that uses it: `echo` (where what is sent can come back), then
+`preprocess` and `agc`, each optional. The receive path takes decoded
+audio through `resample` to the loudspeaker.
 
 ### Pipeline
 
@@ -282,25 +283,33 @@ package doc lists its deviations.
 
 ### Near end
 
-The local side of a call: the person at the microphone whose voice is
-sent. "Near-end speech" is that person talking.
+The side of a call whose audio arrives at your code and goes through the
+send path. On a device it is the person at the microphone. On a server it
+is the caller's side: the audio Asterisk sends over AudioSocket, or the
+RTP stream a media server receives. The near-end signal, which these docs
+also call the microphone signal and `echo` calls `mic`, is that audio.
+"Near-end speech" is that side talking.
 
 ### Far end
 
-The remote side of a call. The far-end signal is what the local
-loudspeaker plays, and so the source of the [echo](#echo). `echo` calls
-it `far`.
+The other side of a call. The far-end signal, or far-end reference, is the
+audio your code sends toward the near end: on a device, what its
+loudspeaker plays; on a server, what it writes back to Asterisk or sends
+as RTP. It is the source of the [echo](#echo). `echo` calls it `far`.
 
 ### Echo
 
-Far-end sound that the loudspeaker plays and the microphone picks up
-again, so that the far end would hear itself. In a network call, echo can
-also come from the network or the remote phone.
+Far-end audio that comes back in the near-end signal, so that the far end
+would hear itself. On a device the microphone picks up what the
+loudspeaker plays. On a server, what it sends comes back from the
+caller's side: a speakerphone caller's microphone picks it up, or an
+acoustic or line echo on their side returns it.
 
 ### Echo path
 
-The way the far-end signal takes from `far` to the microphone samples:
-the loudspeaker, the room, the microphone and any buffering on the way.
+The way the far-end signal takes from `far` to the near-end samples: on
+a device, the loudspeaker, the room, the microphone and any buffering on
+the way; on a server, the network and the caller's side as well.
 An adaptive filter models it as an [impulse response](#impulse-response).
 
 ### Acausal

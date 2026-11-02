@@ -12,7 +12,7 @@ Releases are tagged as v0.x; the API may change until v1.0.
 
 | Package | What it does | Typical use | SpeexDSP status | Docs |
 |---|---|---|---|---|
-| `echo` | Acoustic echo cancellation: removes the far end's voice, played by the loudspeaker, from the microphone signal | Send path of a call where the microphone hears the loudspeaker, at 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
+| `echo` | Acoustic echo cancellation: removes the echo of the audio a call sends (the far-end reference) from the audio it receives (the near-end signal) | Send path of a call where what is sent can come back: a device whose microphone hears its loudspeaker, or a server whose callers may be on a speakerphone; 8 or 16 kHz, 10 or 20 ms frames | Bit-exact port of `mdf.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/echo), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `preprocess` | Noise suppression, voice activity detection (VAD) and residual-echo suppression | Send path, after `echo` where there is one, on the same frames; its VAD decision feeds `agc` | Bit-exact port of `preprocess.c` and `filterbank.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/preprocess), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `agc` | Automatic gain control with a lookahead limiter | Last stage of the send path, before the encoder | Own design; SpeexDSP has no fixed-point AGC | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/agc), [guide](docs/guide.md#the-send-path-frame-by-frame) |
 | `resample` | Sample-rate conversion, any ratio within its size limits, 1 to 256 channels, any chunk size | Decoder rate to device rate; 48 kHz down to 16 kHz for `echo` | Bit-exact port of `resample.c` | [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp/resample), [guide](docs/guide.md#the-receive-path) |
@@ -22,8 +22,12 @@ Releases are tagged as v0.x; the API may change until v1.0.
 
 An application uses only the packages its use case needs; the developer
 guide lists the [packages for each use case](docs/guide.md#which-packages-you-need).
-For a call, whether it needs `echo` depends on whether its microphone can
-hear its loudspeaker:
+The near-end signal is the audio that arrives at your code from the
+caller's side: a device's microphone signal, the audio Asterisk sends
+over AudioSocket, or the RTP stream a media server receives. The
+far-end reference is the audio your code sends toward that side. For a
+call, whether it needs `echo` depends on whether what it sends can come
+back in what it receives:
 
 - **Speakerphone, hands-free, conference room.** The microphone picks
   up what the loudspeaker plays, so the far end would hear itself. The
@@ -32,8 +36,13 @@ hear its loudspeaker:
   left and decides whether the frame is speech (voice activity
   detection, VAD), and `agc` sets the level, raising it only on frames
   that the VAD calls speech and that are above its gate level.
-- **Headset, or a handset at the ear.** There is no echo, so the send
-  path can be `preprocess` then `agc`, with `SetVAD(true)` on the
+- **A server that sends audio to the caller**, such as a service on
+  Asterisk AudioSocket that plays prompts. A speakerphone caller, or an
+  acoustic or line echo on the caller's side, returns what the server
+  sent, so the send path is the same, run on the received audio.
+- **Headset, or a handset at the ear; a server that sends nothing
+  back**, such as speech recognition. There is no echo, so the send path
+  can be `preprocess` then `agc`, with `SetVAD(true)` on the
   preprocessor so that `agc` receives the speech decision.
 
 `preprocess` and `agc` are optional. Leave out `agc` when the level is
@@ -43,6 +52,11 @@ raises noise above its gate level like speech. Leave out `preprocess`
 when the audio is already clean and you don't need a VAD; after `echo`,
 that also drops the suppression of the echo that is left.
 
+With 20 ms frames the send path delays the audio by about 22 ms: `echo`
+adds no delay, `preprocess` one frame and `agc` 2 ms
+([latency](docs/guide.md#the-send-path-frame-by-frame)); `resample`, where
+used, adds its filter delay.
+
 The receive path converts decoded audio to the device rate with
 `resample`. `buffer.SPSC` carries audio between goroutines without
 blocking either side. The developer guide draws the
@@ -50,7 +64,11 @@ blocking either side. The developer guide draws the
 
 ## Getting started
 
-Start with the [developer guide](docs/guide.md#start-here), which links
+For a Go service on Asterisk AudioSocket, start with the
+[AudioSocket quick start](docs/audiosocket.md): the protocol, the
+processors for each connection and the calls for each frame, in tested
+code. Otherwise, start with the
+[developer guide](docs/guide.md#start-here), which links
 the [glossary](docs/glossary.md) and the tested wiring recipes of
 [docs/usage.md](docs/usage.md). The root package's
 [examples](example_test.go) run the send chain, the receive chain and a
