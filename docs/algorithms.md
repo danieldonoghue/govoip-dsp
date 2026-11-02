@@ -1,8 +1,9 @@
 # Algorithms
 
 One section per component: the algorithm, the reference behaviour,
-parameters, latency, numerical notes and known deviations. Each work package
-edits only its own section.
+parameters, latency, numerical notes and known deviations. The WPn in a
+heading is the work package that built the component
+([architecture.md](architecture.md#work-packages)).
 
 ## Fixed-point arithmetic (`internal/fixed`, WP0)
 
@@ -81,11 +82,11 @@ forward transform uses `exp(-2πi·jk/N)`.
    `Inverse(Forward(x))` approximates `x`.
 
 **Twiddles.** In the fixed-point build the twiddles come from the integer
-`spx_cos_norm` (`kf_cexp2`), not from libm: the phase is
-`(±i << 17) / nfft` for the complex FFT and `(±(i + nfft/2) << 16) / nfft`
-for the super twiddles, in units where 2^17 is a full turn. The
-floating-point `KISS_FFT_COS`/`KISS_FFT_SIN` macros are compiled out. The
-tables are still compared entry by entry with the harness.
+`spx_cos_norm` (`kf_cexp2`), not from libm. With `nfft = N/2`, the size of the
+complex FFT, the phase is `(±i << 17) / nfft` for the complex FFT and
+`(±(i + nfft/2) << 16) / nfft` for the super twiddles, in units where 2^17 is a
+full turn. The floating-point `KISS_FFT_COS`/`KISS_FFT_SIN` macros are compiled
+out. The tables are still compared entry by entry with the harness.
 
 **Numerical notes.**
 
@@ -305,11 +306,12 @@ rounded up to a multiple of 8.
   configurations, all qualities) equals the harness table entry for entry;
   see `docs/testing.md`, "libm findings".
 - Accumulation is wrapping `int32`; output saturates in `SATURATE32PSHR`.
-- The stopband levels below sit at about -55 to -70 dB for every quality
+- The stopband levels below sit at about -55 to -71 dB for every quality
   from 1 up. An interpretation, not verified separately: the 16-bit
-  (Q15) filter table and the 16-bit output limit the fixed-point build;
-  a tone of amplitude 2048 at 12 to 20 kHz through 48k→16k at quality 10
-  gives all-zero output.
+  (Q15) filter table and the 16-bit output limit the fixed-point build.
+  A tone of amplitude 2048 at 12, 14, 16, 18 or 20 kHz through 48k→16k at
+  quality 10 gives zero output after the first 198 output samples (the
+  onset); measured once on 1 s of tone, no test pins it.
 
 **Deviations.** See the package doc and `docs/acceptance/resample.md`.
 
@@ -340,18 +342,18 @@ stops as soon as its output is full, so with exactly the count it can stop
 before a later internal input chunk (`mem_alloc_size - (filt_len - 1)` samples,
 160 by default), or before the input after the magic samples, even when those
 would write nothing. The extra frame keeps the output from filling. The count is
-exact, so the slack is 1 (measured over 671 configurations and the event and
-fuzz tests), except that a `float32` call offered no input writes nothing, as
-upstream `process_float` does, and the zero-output state can write fewer after
-the input position saturates. Where `den - 1 + (num mod den)` reaches 2^32, the
-fractional position can wrap and the output is not bounded by the input, so
-`OutLen` returns 2^31-1. The result is clamped to 2^31-1 in every case, the
-largest length a call accepts; above that the guarantee does not hold, for
-example for 1:1000 with 3·10^6 input frames, or 1:4000000000 with one. In the
-zero-output state after a rejected change with a ratio of 2^31 or more, the
-saturated position could in theory allow one more output than counted if more
-than about 2^31 input frames were offered at once; this was analysed by review,
-not run.
+exact, so the slack is 1 (`TestOutLenMatrix` over 671 configurations,
+`TestOutLenEvents` and `FuzzOutLen`), except that a `float32` call offered no
+input writes nothing, as upstream `process_float` does, and the zero-output
+state can write fewer after the input position saturates. Where
+`den - 1 + (num mod den)` reaches 2^32, the fractional position can wrap and the
+output is not bounded by the input, so `OutLen` returns 2^31-1. The result is
+clamped to 2^31-1 in every case, the largest length a call accepts; above that
+the guarantee does not hold, for example for 1:1000 with 3·10^6 input frames, or
+1:4000000000 with one. In the zero-output state after a rejected change with a
+ratio of 2^31 or more, the saturated position could in theory allow one more
+output than counted if more than about 2^31 input frames were offered at once;
+this was analysed, not run.
 
 **Measurements.** From the Go implementation, which is bit-exact with the
 reference, so these are the reference's figures. Mac, 2026-10-26:
@@ -437,15 +439,15 @@ where f_N is the input Nyquist frequency.
 ## Preprocessor (`preprocess`, WP5)
 
 **Algorithm.** Per frame of `N` samples: a `2N` window with 50% overlap
-(square root of a raised-cosine, `conj_window`), a real FFT, the power
-spectrum, and its projection onto 24 Bark bands (`filterbank.c`). A
-minimum-statistics tracker (Cohen and Berdugo) decides per bin whether the
-noise estimate may update. The a posteriori and a priori SNR (Ephraim and
-Malah decision-directed) give a loudness-domain MMSE gain per band and per
-bin, bounded below by a gain floor that mixes the noise and residual-echo
-suppress levels. The per-frame speech probability `Pframe` comes from the
-mean smoothed a priori SNR over the bands; it weights the gain and drives
-the VAD. The output is the inverse FFT, windowed again and overlap-added.
+(power-complementary: the square root of a squared raised cosine,
+`conj_window`), a real FFT, the power spectrum, and its projection onto 24 Bark
+bands (`filterbank.c`). A minimum-statistics tracker (Cohen and Berdugo) decides
+per bin whether the noise estimate may update. The a posteriori and a priori SNR
+(Ephraim and Malah decision-directed) give a loudness-domain MMSE gain per band
+and per bin, bounded below by a gain floor that mixes the noise and
+residual-echo suppress levels. The per-frame speech probability `Pframe` comes
+from the mean smoothed a priori SNR over the bands; it weights the gain and
+drives the VAD. The output is the inverse FFT, windowed again and overlap-added.
 
 **Reference behaviour.** `speex_preprocess_state_init`,
 `speex_preprocess_run`, `speex_preprocess_estimate_update` and the
@@ -464,14 +466,15 @@ The getters for the thresholds truncate: the defaults read back as 35 and
 20, but `SetProbStart(35)` reads back as 34 and `SetProbContinue(20)` as
 19.
 
-**Floating point and libm.** None in the fixed-point build. `toBARK` uses
-the integer `spx_atan`; `toMEL` and the `exp` calls are in float-build
-branches only. Checked by compiling `preprocess.c` and `filterbank.c` with
-the reference flags (host Apple clang): neither object references a libm
-symbol, and the only instructions on floating-point registers are `fmov`
-moves and two `fneg.4s` that build integer sign masks for `eor`. None is
-float arithmetic. The window and filterbank tables are still compared entry by
-entry with the harness for every fixture configuration and a rate sweep.
+**Floating point and libm.** None in the fixed-point build. `toBARK` uses the
+integer `spx_atan`; `toMEL` is defined but never used (`filterbank.c:52`), and
+the `exp` calls are in float-build branches only. Checked by compiling
+`preprocess.c` and `filterbank.c` with the reference flags (host Apple clang):
+neither object references a libm symbol, and the only instructions on
+floating-point registers are `fmov` moves and two `fneg.4s` that build integer
+sign masks for `eor`. None is float arithmetic. The window and filterbank tables
+are still compared entry by entry with the harness for every fixture
+configuration and a rate sweep.
 
 **Latency.** `N` samples: the output of a frame completes the overlap-add of
 the previous one.
@@ -483,15 +486,17 @@ the previous one.
   `filterbank_compute_bank32` (`filterbank.c:144`) and `SHL32(a,15)` in
   `DIV32_16_Q15` (`preprocess.c:139`). The port wraps as the reference does
   with `-fwrapv`; the fixtures exercise all three.
-- `DIV32_16_Q8(a, b)` returns -32768 for `a = 128b - 1` with `b >= 512`
-  (the quotient 32768 truncates), so `post` and `prior` can become large and
+- `DIV32_16_Q8(a, b)` returns -32768 for `a = 128b - 1` with
+  `512 <= b <= 32768` (the quotient 32768 truncates; `TestDiv32x16Q8Wraps`
+  covers `b` below 32768), so `post` and `prior` can become large and
   negative from ordinary input. The port keeps this.
 - The filterbank divisor `PSHR32(mel_interval,15)` is rounded (773 at
   8 kHz, 1138 at 48 kHz). Where it rounds down, the weight `val` can reach
-  32768 at a band edge and wrap to a negative `int16`: one bin each at
-  22050 and 44100 Hz with `N` = 2048, and at 463 of the supported rates
-  with `N` = 64 (measured with the port). The port keeps this; the table
-  tests and the rate sweep cover it.
+  32768 at a band edge and wrap to a negative `int16`. Measured with the
+  port over the 65532 rates from 4 to 65535 Hz with a nonzero divisor:
+  11847 rates with `N` = 2048, among them 22050 and 44100 Hz with one bin
+  each, and 463 rates with `N` = 64, among them 44100 Hz. The port keeps
+  this; the table tests and the rate sweep cover it.
 - The VAD is the reference's "kludge": on stationary noise the speech
   probability stays above the 35% start threshold. Measured on 16 kHz,
   20 ms frames: 0% speech frames on silence, 100% on white noise at -30
@@ -542,9 +547,9 @@ which happens through the wraps above and the -32768 of `DIV32_16_Q8`.
 - **Not seen otherwise:** the sanitizer reports no division by zero over
   the other 310 fixture cases. A counting build of the port found none in
   about 50 minutes of stress audio (edge signals, loud tones, bursts,
-  random residuals) or in 528 000 fuzz executions, and the independent
-  review found none in 1.28 million frames of random input checked
-  against C.
+  random residuals) or in 528 000 fuzz executions, and a review run found
+  none in 1.28 million frames of random input checked against C. These
+  three are one-off runs that the repository does not reproduce.
 
 This policy is accepted (ADR `wp5-zero-divisor`).
 
@@ -594,8 +599,9 @@ fixed-point arithmetic. A feed-forward AGC with a lookahead limiter:
    than a 10 ms click can touch (3 at rates that are multiples of 1000, 4
    at 9999 Hz), set `E` to the 4th power of the smallest of their `r` and
    cut the gain at once. An inactive frame ends the run. `LevelTime/3` of
-   active frames in a row below `L/2` (−6 dB) set `E` to the 4th power of
-   the largest of their `r`.
+   active frames below `L/2` (−6 dB), with no active frame at or above
+   `L/2` between them, set `E` to the 4th power of the largest of their
+   `r`; inactive frames do not end this run.
 6. The target gain is `TargetLevel / L`, clamped to `[MinGain, MaxGain]`.
    The AGC gain starts at 0 dB and moves towards the target gain by at most
    `RiseRate` dB/s up, on active frames only, and `FallRate` dB/s down, on
@@ -608,15 +614,20 @@ fixed-point arithmetic. A feed-forward AGC with a lookahead limiter:
 
 **Design choices.** Each was measured on the P4 LibriSpeech signal at
 several active levels (P4 is registered at −34 dBFS only; the other levels
-are reported, `TestAcceptanceLibriSpeech`).
+are reported, `TestAcceptanceLibriSpeech`). Criterion IDs (P4, S1, C2, R3,
+T3, G4 and so on) are defined in [acceptance/agc.md](acceptance/agc.md).
+Figures marked prototype, probe or count are one-off measurements with code
+that is not in the repository, so no test reproduces them.
 
 - **Order 4 instead of Speex's 5.** Order 4 needs only squarings and two
   square roots, which `internal/fixed` has; a fifth root does not exist
   there. Order 4 gives P4 2.05 to 2.55 dB from −38 to −20 dBFS. Order 2
   gives less at quiet levels (1.60 dB at −38, 2.14 dB at −24) but 6.78 dB
   at −20 dBFS, because its lower level lets ordinary loud speech trigger
-  the cut. Order 4 was kept for that robustness; no registered criterion
-  separates the two (mutation check: not caught).
+  the cut. Order 4 was kept for that robustness. Mutation check: order 2
+  is caught by the regression guard G4 (`docs/testing.md`), which skips
+  without the LibriSpeech files; the acceptance criteria before the guards
+  were registered did not separate the two.
 - **Cut threshold and run.** Speex cuts after one jump of 10 times the
   loudness. Here a run is needed: with 2 frames, a 10 ms click straddling
   two frames cut the gain by 32 dB (prototype), and frames that are not
@@ -661,14 +672,16 @@ first `2K` output samples of a stream are zero.
   unreachable (mutation check: removing it is not caught).
 - Every division has a non-zero divisor: the block length (at least 8), the
   frame length (at least 80), the block peak (the zero case is a separate
-  branch), and `L`, which is clamped to at least the gate (at least 13422
-  in Q12). `TestConfigEdgeAccuracy` drives `L` to just above a −80 dBFS
-  gate.
+  branch), `L`, which is clamped to at least the gate (at least 13422 in
+  Q12), and `int32(a.seen+1)` in the warm-up weight `unity/int32(a.seen+1)`,
+  which is at least 1 because `seen` counts up from 0.
+  `TestConfigEdgeAccuracy` drives `L` to just above a −80 dBFS gate.
 - The 4th power and its root use `fixed.Float` (15-bit normalised
   mantissa). Updating `E` as `E − c·E + c·x` keeps the truncation of
   `FloatMult` in the small terms: the steady-state level error on a sine is
-  −0.024 dB at most for `LevelTime` 100 ms to 10 s (`TestLevelBias`;
-  `(1 − c)·E + c·x` drifted to −0.20 dB at 10 s).
+  −0.024 dB at most, measured at `LevelTime` 100 ms, 3 s and 10 s
+  (`TestLevelBias` checks 10 s, within 0.05 dB; `(1 − c)·E + c·x` gave
+  −0.02 to −0.20 dB depending on `LevelTime`).
 - The gain is kept in Q22, so the rate limits hold at low gains: at
   −36 dB with 1 dB/s, the worst measured rate is 1.02 dB/s, from Q15
   rounding of the per-frame factor (`TestLowGainRates`). The rise step is
@@ -682,23 +695,23 @@ first `2K` output samples of a stream are zero.
   the caller's VAD rejects noise, and the VAD of the SpeexDSP 1.2.1 fixed-point
   preprocessor reports speech on nearly every frame of stationary white and pink
   noise loud enough to reach the gate (section "Preprocessor" above; N1 in
-  [testing.md](testing.md#whole-chain-measurements-integration-wp7)).
-  Stationary noise whose 10 ms frames reach the gate is therefore driven to
-  the target: with `speech = true`, white or pink
+  [testing.md](testing.md#whole-chain-measurements-integration-wp7)). Stationary
+  noise whose 10 ms frames reach the gate is therefore driven towards the
+  target, as far as the gain limits allow. With `speech = true`, white or pink
   noise at −45 to −24 dBFS ends at −23.98 to −25.18 dBFS, with gains up to +21
-  dB, and pink noise at −52 dBFS gets +23.86 dB (N5). Pink noise at −55 dBFS
-  long-term, whose loudest frames just cross the −50 dBFS gate, reaches +23.16
-  dB (N4, reported; design v1 reached +9.99 dB because it rose more slowly).
-  Noise whose frames all stay below the gate keeps 0 dB. Raising `GateLevel`
-  above the noise is the only protection. This is accepted (ADR
-  `wp4-noise-protection`). The AGC belongs after `preprocess` with denoising on,
-  which lowers stationary noise before the AGC sees it; callers set
-  `GateLevel` above the residual noise. At the default suppression
-  (−15 dB), `preprocess` reduced white noise at −35 dBFS by 13.3 to 14.1 dB
-  but pink noise at −37 dBFS by only 3.7 to 5.8 dB (section
+  dB. Pink noise at −52 dBFS gets +23.86 dB and ends at −28.22 dBFS (N5). Pink
+  noise at −55 dBFS long-term has a loudest frame of −46.26 dBFS, and 193 of its
+  6000 frames reach the −50 dBFS gate; it reaches +23.16 dB (N4, reported;
+  design v1 reached +9.99 dB because it rose more slowly). Noise whose frames
+  all stay below the gate keeps 0 dB. Raising `GateLevel` above the noise is the
+  only protection. This is accepted (ADR `wp4-noise-protection`). The AGC
+  belongs after `preprocess` with denoising on, which lowers stationary noise
+  before the AGC sees it; callers set `GateLevel` above the residual noise. At
+  the default suppression (−15 dB), `preprocess` reduced white noise at −35 dBFS
+  by 13.3 to 14.1 dB but pink noise at −37 dBFS by only 3.7 to 5.8 dB (section
   "Preprocessor", sanity results), so the residual depends on the noise.
-  `docs/testing.md`, "Whole-chain measurements", has the measurements of
-  the real chain.
+  `docs/testing.md`, "Whole-chain measurements", has the measurements of the
+  real chain.
 - **A noise-floor safeguard was tried and rejected.** Allowing a rise only
   on frames more than 10 dB above a 1.5 s minimum-statistics floor failed
   C2 to C6, because a steady sine or white noise sits at its own floor,
@@ -749,13 +762,13 @@ first `2K` output samples of a stream are zero.
 - Levels and gains are whole dB, rates whole dB/s.
 - The limiter can hold a stationary signal below the target when its peaks
   at the target gain would exceed the ceiling (a sine needs
-  `LimitLevel − TargetLevel ≥ 3 dB`).
+  `LimitLevel − TargetLevel` above 3.01 dB, so at least 4 dB in whole dB).
 
-**Design v1 (fallback).** The first design used a one-pole mean of frame
-RMS with attack and release time constants (500 ms and 1500 ms), and no
-rate limits. It met every criterion except P4 (3.64 dB). Its last code
-state is the commit "agc: check the ceiling and exact gain limits in more
-acceptance tests"; its measurements are in `docs/acceptance/agc.md`.
+**Design v1 (replaced by v2).** The first design used a one-pole mean of frame
+RMS with attack and release time constants (500 ms and 1500 ms), and no rate
+limits. It met every criterion except P4 (3.64 dB). Its last code state is the
+commit "agc: check the ceiling and exact gain limits in more acceptance tests";
+its measurements are in `docs/acceptance/agc.md`.
 
 ## Acoustic echo canceller (`echo`, WP6)
 
@@ -815,37 +828,45 @@ behaviour of the fixed-point build, not a property of this port.
 foreground error is much larger than the input for 50 frames. The energy
 sums are 32-bit (`mdf_inner_prod`). With frames of 480 samples or more
 (10 ms at 48 kHz, 20 ms at 32 and 48 kHz) and speech peaks of 16000, the
-error energy `See` and the echo-estimate energy `Syy` overflow, so the
-reference resets every few seconds in ordinary scenarios (1 to 22 resets
-per case in the fixtures; a temporary count over `farend` and `doubletalk`
-at 32 and 48 kHz with 20 ms frames found `See` negative 43 times and `Syy`
-14 times). At 8 and 16 kHz the resets occur only in the `diverge`
-scenario. At 32 kHz with 10 ms frames there are neither resets nor a
-truncated rate, yet `farend` reaches only 9 to 10 dB; that cause has not
-been investigated.
+error energy `See` and the echo-estimate energy `Syy` overflow. A one-off
+count (an instrumented build of the port, which is bit-exact with the
+reference; not in the tests) over the 384 fixture cases other than the 10
+long runs gave these resets per case:
+
+- Outside the `diverge` scenario, none at 8 and 16 kHz and none at 32 kHz
+  with 10 ms frames. At 48 kHz with 10 ms frames, 11 of 45 cases reset, at
+  most 3 times. At 32 and 48 kHz with 20 ms frames, 34 and 36 of 45 cases
+  reset, 1 to 13 times.
+- In `diverge`, none at 8 kHz or at 16 kHz with 10 ms frames, and 99 to 201
+  at 16 kHz with 20 ms frames and at 32 and 48 kHz.
+
+Another one-off count, over `farend` and `doubletalk` at 32 and 48 kHz with
+20 ms frames, found `See` negative 43 times and `Syy` 14 times. At 32 kHz
+with 10 ms frames there are no resets outside `diverge` and no truncated
+rate, yet `farend` reaches only 9 to 10 dB; that cause has not been
+investigated.
 
 **Shifts outside [0, 31].** In C a shift by 32 or more is undefined. The
 sanitizer build reports such shifts in `FLOAT_EXTRACT32` (`pseudofloat.h:236`,
-from `mdf.c:1108`, exponent 32 and below), when `Sey` is near 0 and `Syy`
-is large. clang 19 (container) and Apple clang 21 (host) compile
-`FLOAT_EXTRACT16`, `FLOAT_EXTRACT32` and `FLOAT_DIV32_FLOAT` in `mdf.c` to
-scalar `LSLV`/`ASRV` on 32-bit registers, which take the count modulo 32,
-so the port uses the masked variants of `internal/fixed` there. A
-temporary count over all fixture cases found 53 frames with such an
-exponent, 3 of them where the two semantics give a different comparison;
-in all 3 the later clamp to `See/2` made the result equal, so the fixtures
-do not tell the two apart, and the disassembly is the evidence.
-`FLOAT_MUL32` in `weighted_spectral_mul_conj` differs between the two
-toolchains: clang 19 vectorises it for the interior bins (NEON
-`SSHL`/`USHL`, which saturate like Go's shifts) and keeps the edge bins
-scalar (modulo 32), while Apple clang 21 keeps it all scalar. So for a
-count outside [-31, 31] the C result depends on the compiler and the bin,
-and no single Go behaviour matches both builds. The port uses the unmasked
-`FloatMul32`, which equals clang 19's vector lanes. No fixture reaches
-such a count (the sanitizer reports none at `pseudofloat.h:243`). The
-choice is accepted (ADR `wp6-rates-and-shifts`): saturation is a
-documented deviation where the two reference compilers disagree, and is
-unreachable in the fixtures.
+from `mdf.c:1108`, pseudo-float exponent -32 and below, so a shift count of 32
+or more), when `Sey` is near 0 and `Syy` is large. clang 19 (container) and
+Apple clang 21 (host) compile `FLOAT_EXTRACT16`, `FLOAT_EXTRACT32` and
+`FLOAT_DIV32_FLOAT` in `mdf.c` to scalar `LSLV`/`ASRV` on 32-bit registers,
+which take the count modulo 32, so the port uses the masked variants of
+`internal/fixed` there. A one-off count (not in the tests) over all fixture
+cases found 53 frames with such an exponent, 3 of them where the two semantics
+give a different comparison; in all 3 the later clamp to `See/2` made the result
+equal, so the fixtures do not tell the two apart, and the disassembly is the
+evidence. `FLOAT_MUL32` in `weighted_spectral_mul_conj` differs between the two
+toolchains: clang 19 vectorises it for the interior bins (NEON `SSHL`/`USHL`,
+which saturate like Go's shifts) and keeps the edge bins scalar (modulo 32),
+while Apple clang 21 keeps it all scalar. So for a count outside [-31, 31] the C
+result depends on the compiler and the bin, and no single Go behaviour matches
+both builds. The port uses the unmasked `FloatMul32`, which equals clang 19's
+vector lanes. No fixture reaches such a count (the sanitizer reports none at
+`pseudofloat.h:243`). The choice is accepted (ADR `wp6-rates-and-shifts`):
+saturation is a documented deviation where the two reference compilers disagree,
+and is unreachable in the fixtures.
 
 **Divisions.** Every division the port makes, and why its divisor is not 0:
 
@@ -854,7 +875,7 @@ unreachable in the fixtures.
 | `setRate` (`mdf.c:1233-1236`) | `int16(rate)` | `New` and `SetSampleRate` accept 8000 to 48000 Hz; none is a multiple of 65536 |
 | window (`mdf.c:468`) | `int16(N)` | `N = 2F` in [2, 4096] |
 | decay and `ss` (`mdf.c:482`, `:709`) | `int16(M)` | `New` keeps `M` in [1, 32767] |
-| initial `prop` (`mdf.c:492`) | `sum` | at least `prop[0]` = 22937 |
+| initial `prop` (`mdf.c:492`) | `sum` | at least `prop[0]` = 22938 |
 | `mdf_adjust_prop` (`mdf.c:373`) | `prop_sum` | 1 plus non-negative terms, each below 32767, so in [1, 2^31) for `M` at most 32767 |
 | `FLOAT_DIV32(tmp32, See)` (alpha, `RER`, `adapt_rate`) | `See` | floored at `N*100/64` >= 3 (`mdf.c:1040`) before every use |
 | `FLOAT_DIV32(adapt_rate, power+10)` | `power[i]+10` | `power` stays >= 0: it starts at 0 and adds `Xf` >= 0, which is below 2^31 because the forward FFT is scaled by `1/N`, so `|X| <= 32767`; `TestDivisorInvariantsUnderExtremes` and `FuzzCanceller` check `power >= 0` and `Xf >= 0` after every frame |
