@@ -267,12 +267,11 @@ Items 1, 2 and 5 of "Design under test" stay. Items 3 and 4 become:
      10 dB above the rest by 100 or more (10² against 10^2.5), so the
      estimate follows the loud frames of speech rather than the dips.
    - **Sustained rise (immediate cut).** If 3 consecutive active frames each
-     have energy above `10·L²` (+10 dB; +13 dB as corrected by change 6,
-     with the run length taken from the duration), `E` becomes the 4th
-     power of the smallest of their `r`, and the AGC gain is set to the new
-     target gain at once, bypassing the fall limit. Three frames (30 ms)
-     is the shortest run a 10 ms click cannot produce, since a click
-     touches at most two frames.
+     have energy above `10·L²` (+10 dB; see change 6 for the value in
+     force), `E` becomes the 4th power of the smallest of their `r`, and the
+     AGC gain is set to the new target gain at once, bypassing the fall
+     limit. Three frames (30 ms) is the shortest run a 10 ms click cannot
+     produce, since a click touches at most two frames.
    - **Sustained drop.** If `LevelTime/3` consecutive active frames each have
      `r < L/2` (−6 dB), `E` becomes the 4th power of the largest of their
      `r`. Without this, the order-4 mean would need about 18·`LevelTime` to

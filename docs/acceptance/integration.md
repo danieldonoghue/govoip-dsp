@@ -161,10 +161,8 @@ output RMS, in dB).
    to the question of ADR `wp4-noise-protection`: whether denoise keeps
    the residual noise below the -50 dBFS gate, and at which input levels
    it does not.
-2. **N2.** The AGC gain, measured as the energy of its output over the
-   energy of its input in each whole second from 1 s on, never exceeds
-   `MaxGain` (24 dB) by more than 0.5 dB, and no output sample exceeds the
-   ceiling.
+2. **N2.** The AGC gain never exceeds `MaxGain` (24 dB) by more than
+   0.5 dB, and no output sample exceeds the ceiling.
 
 ## Real-time budget (T)
 

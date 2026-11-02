@@ -185,8 +185,7 @@ those changes.
 - **D2a. Keep-newest under concurrency.** In the stress test k is drawn
   mostly from [0, `Len`], the run counts the keep-newest calls that dropped
   something and requires that count to be above 0, and after each such call
-  the consumer checks `Len` ≥ min(k, `Len` before the call), since k
-  can exceed `Len`.
+  the consumer checks `Len` ≥ k.
 - **D9. Examples.** `buffer/example_test.go` (package `buffer_test`) has
   `ExampleRing` (write and read with an explicit overflow policy, and the
   two-segment read view with `ReadSlices` and `Consume`) and `ExampleSPSC`

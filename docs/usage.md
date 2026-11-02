@@ -561,8 +561,9 @@ func (c *call) step(mic, far, out []int16) error {
 `TestDrainDropsBacklog`, `TestQueueFullIsReported`, `TestPipelineCall`,
 `TestPipelineSpeech` and `TestNoAllocsRecipe` back it, and `Example_call`
 prints the sizes of its buffers at 8, 16 and 48 kHz. `TestReferencePairing`
-checks the same stages against the C chain bit for bit, but it builds the
-chain by hand and does not run this wiring.
+checks the echo canceller, resampler and preprocessor against the C chain bit
+for bit (there is no AGC in it), but it builds the chain by hand and does not
+run this wiring.
 
 ## Recipe B: separate capture and playback callbacks
 

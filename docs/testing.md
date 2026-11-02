@@ -1255,9 +1255,9 @@ run only `farend` at 16 kHz, 10 ms, 128 ms. The package code starts no
 goroutines and uses no `sync`, so the race detector adds run time there, not
 coverage: the only shared state it checks is the tests' input cache. The
 normal `go test` checks all 395 cases in full. Swapping `q07` and `q03` in
-the adaptation rate (`mdf.go:667`) is caught under `-race` by both
-reference tests. Under `-short` (no race) the scenario measurements run one
-configuration (16 kHz, 10 ms, 128 ms) of each scenario.
+the 0.7 and 0.3 weights of the residual-to-error mix (`mdf.go:668`) is caught
+under `-race` by both reference tests. Under `-short` (no race) the scenario
+measurements run one configuration (16 kHz, 10 ms, 128 ms) of each scenario.
 `TestCappedInputsArePrefixes` compares the capped inputs of the partial runs
 with the full ones, so it skips in both modes and runs in the normal
 `go test`.

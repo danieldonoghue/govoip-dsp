@@ -162,10 +162,9 @@ Definitions, over 0.5 s windows:
   `ref` as above, compared with the same ratio for the unprocessed mic
   (`mic - near`).
 
-The Go test pins every scenario's figures for every configuration in
-`echo/testdata/metrics.golden`, so a change in behaviour is visible;
-`docs/algorithms.md` gives the ranges per rate. Sanity floors, which
-apply at 8 and 16 kHz only:
+Every scenario's figures are reported in `docs/algorithms.md` for every
+configuration, and the Go test pins them, so a change in behaviour is
+visible. Sanity floors, which apply at 8 and 16 kHz only:
 
 1. `farend` and `ir_short`: steady-state ERLE at least 10 dB, and
    convergence within 8 s.
@@ -230,9 +229,10 @@ It is accepted when:
    `TestScenarioMeasurements` gains `measure/<case>`, one subtest for
    each case it measured.
    The `-race` subset stays as `docs/testing.md` states it.
-2. **Comparisons still run.** Swapping `q07` and `q03` in the adaptation
-   rate (`mdf.go:668`) is still caught by both reference tests, in the
-   normal run and under `-race`. The mutation is reverted afterwards.
+2. **Comparisons still run.** Swapping `q07` and `q03` in
+   the 0.7 and 0.3 weights of the residual-to-error mix (`mdf.go:668`) is
+   still caught by both reference tests, in the normal run and under
+   `-race`. The mutation is reverted afterwards.
 3. **No shared mutable state.** Parallel subtests share only data that is
    read-only after it is made, or data behind a lock. The review shows
    this from the code for each parallel test, including the generated
