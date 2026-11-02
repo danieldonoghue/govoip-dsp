@@ -1208,8 +1208,8 @@ work in every mode. The reductions of the other packages:
 | `internal/fixed` | `TestReference` | first chunk of every stream | same |
 | `internal/fixed` | `TestInlining`, `TestMaskedInlining`, `TestInliningDivOrZero` | skipped | run |
 | `buffer` | `TestStressSPSC` | 2·10^5 samples per capacity, not 10^6 | same |
-| `preprocess` | `TestReferenceRun` | the 60 s runs up to their first chunk | same |
-| `echo` | `TestReferenceEcho`, `TestReferenceWithoutResidualCalls` | first 1 s of every case; one configuration per scenario in full | only that configuration per scenario, in full |
+| `preprocess` | `TestReferenceRun` | runs longer than one chunk (32 and 48 kHz 60 s, the 120 s and 210 s runs) up to their first chunk | same |
+| `echo` | `TestReferenceEcho`, `TestReferenceWithoutResidualCalls` | first 1 s of every case (`TestReferenceWithoutResidualCalls` runs fewer cases in every mode); one configuration per scenario in full | only that configuration per scenario, in full |
 | `echo` | `TestScenarioMeasurements` | one configuration (16 kHz, 10 ms, 128 ms) per scenario | `farend` in that configuration only |
 | `echo` | `TestEdgesHitBoundaries` | runs | skips 32 and 48 kHz |
 | `echo` | `TestCappedInputsArePrefixes` | skipped | skipped |

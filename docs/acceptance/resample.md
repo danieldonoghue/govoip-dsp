@@ -204,10 +204,6 @@ Targets:
      `wrap_q0_frac_4294967294_4294967295` and
      `wrap_q10_frac_4294967294_4294967295`, which run a fixed 50 calls;
      `TestReferenceCoverage` checks that they exist.
-     `wrap_q0_frac_4294967294_4294967295` is also the first case in which
-     the sanitizer build reports the signed overflow in `PDIV32`
-     (`resample.c:456`, `docs/testing.md`, "Undefined behaviour found by the
-     sanitizer"); the 1000000007:3000000019 cases report nothing.
    - Review found a panic and a hang outside the fuzzed domain (ratios of 2^31
      and more after a rejected change; strides near `math.MaxInt`). After their
      fix, `FuzzConfigResampler` also draws ratios above 6e8, which the size
@@ -407,10 +403,9 @@ Targets:
       covered. It calls each on a fresh zero value with every combination
       of representative arguments: integers -1, 0, 1, 160, 16000 and the
       type's maximum, and nil slices and slices of 1, 160 and 161
-      elements. It also tries the type's minimum and an empty non-nil
-      slice, which widens this set and relaxes nothing. It fails on a
-      panic, a wrong result, a write into an argument or a change to the
-      zero value. It is shown failing on the code before the change.
+      elements. It fails on a panic, a wrong result, a write into an
+      argument or a change to the zero value. It is shown failing on the
+      code before the change.
     - **Valid instances unchanged.** A `Resampler` made by `New` takes the
       same path as before, past one added check. Every existing test
       passes unchanged, including the reference tests and the

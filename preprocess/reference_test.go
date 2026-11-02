@@ -304,7 +304,7 @@ func TestReferenceRun(t *testing.T) {
 			} else {
 				input = signal(rc.signal, rc.rate, rc.frames*n)
 			}
-			// Only the 60 s runs exceed one chunk, so only they are shortened.
+			// Only runs longer than one chunk are shortened.
 			partial := partialCheck() && int64(len(input)) > mc.Stream(t, "out").Chunk
 			in := stream[int16](t, m, mc, "in", partial)
 			out := stream[int16](t, m, mc, "out", partial)
