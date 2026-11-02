@@ -46,7 +46,9 @@ Run one test with `go test ./resample -run TestName -v`.
    - `docs/decisions/`: name ADRs `<wp>-<slug>.md` (for example
      `wp1-sinc-table.md`), or `<slug>.md` for a decision outside any work
      package, so parallel branches never collide. Add each new ADR to
-     `docs/decisions/README.md`.
+     `docs/decisions/README.md`. Wording in an ADR or a pre-registered
+     acceptance criterion may be corrected in place; a change to the
+     decision itself needs a new ADR that states what it supersedes.
    - `go.mod`: no new dependency without an ADR. Only `golang.org/x/sys` is
      pre-approved.
 3. For a new component or work package, commit the pre-registered
