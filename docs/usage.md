@@ -254,7 +254,7 @@ func onPacket(rx *buffer.SPSC, p []int16) bool {
 	// SPSC.Write stores as much as fits. A partial frame would shift every
 	// later frame boundary, so store the whole frame or nothing.
 	if rx.Free() < len(p) {
-		return false // the processor is behind: drop this packet
+		return false // no room: store nothing
 	}
 	rx.Write(p)
 	return true

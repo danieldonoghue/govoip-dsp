@@ -41,10 +41,11 @@ back in what it receives:
   acoustic or line echo on the caller's side, returns what the server
   sent, so the send path is the same, run on the received audio. There
   the [echo delay](docs/glossary.md#echo-delay) includes the network
-  round trip to the caller's device, so the 200 ms start value of the
-  filter length may be too short, and echo later than the filter length
-  is not cancelled. Echo through a server and line echo have not been
-  measured.
+  round trip to the caller's device, so the
+  [guide's](docs/guide.md#the-send-path-frame-by-frame) 200 ms start
+  value of the filter length may be too short, and echo later than the
+  filter length is not cancelled. Echo through a server and line echo
+  have not been measured.
 - **Headset, or a handset at the ear; a server that sends nothing
   back**, such as speech recognition. There is no echo, so the send path
   can be `preprocess` then `agc`, with `SetVAD(true)` on the
@@ -214,10 +215,11 @@ network, except `make race` on Linux, which needs cgo. Regenerating them
   [acceptance criteria](docs/acceptance/integration.md). It fails, and the
   test pins it as a reported finding. For recipe A, the
   [caveats](docs/usage.md#caveats) under "Echo delay" explain why. For
-  recipe B, its caveats explain it by the far end's lag, one frame plus
-  the shift that jitter adds: the canceller models echo delays only from
-  that lag on. Without jitter, recipe B cancels a 32 ms echo by only 7.6
-  and 11.9 dB, and why has not been traced.
+  recipe B with jitter, the likely cause is the far end's lag, one frame
+  plus the shift that jitter adds: its caveats say the canceller models
+  echo delays only from that lag on, and the shift is reasoned from the
+  code, not measured. Without jitter, recipe B cancels a 32 ms echo by
+  only 7.6 and 11.9 dB at 8 and 16 kHz, and why has not been traced.
 - **Go is not a hard real-time platform.** A frame can occasionally take
   much longer than usual. The slowest frames are measured and reported
   ([docs/performance.md](docs/performance.md)), not guaranteed.

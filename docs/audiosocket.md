@@ -5,7 +5,7 @@ over AudioSocket and cleans the caller's audio: echo cancellation, noise
 suppression with voice activity detection ([VAD](glossary.md#vad)), and
 automatic gain control ([AGC](glossary.md#agc)). It gives the protocol
 facts the code needs, a whole program that accepts the connections, the
-processors to make for each connection, and the calls for each
+[processors](glossary.md#processor) to make for each connection, and the calls for each
 [frame](glossary.md#frame). The
 [developer guide](guide.md) explains each package, and [usage.md](usage.md)
 has the full recipes, their caveats and their measurements.
@@ -26,9 +26,9 @@ the blocks are kept building and correct.
 
 The packages name the two [streams](glossary.md#stream) of a call after a
 device, but the roles are the same on a server. The names come from the
-canceller's point of view, not from where your code runs: on a server the
-caller is the near end, though they are far away, and your service is
-the far end.
+device case, not from where your code runs: on a server the caller is
+the [near end](glossary.md#near-end), though they are far away, and
+your service is the [far end](glossary.md#far-end).
 
 - **[Near-end](glossary.md#near-end) signal.** The audio that Asterisk sends to your service: the
   caller's voice. The docs also call it the microphone signal, and the code
@@ -68,19 +68,21 @@ Leave out `echo` where nothing can come back:
   calls of the kind your service handles, then choose the shortest filter
   that covers it: a longer one costs more and adapts more slowly
   ([usage.md](usage.md#caveats), "Filter length").
-- **What is measured.** The code below is recipe A of usage.md. In
-  simulated calls with synthetic echo paths and up to 30 ms of
+- **What is measured.** The code below uses the pairing of recipe A of
+  usage.md, on one goroutine. In simulated calls with synthetic
+  [echo paths](glossary.md#echo-path) and up to 30 ms of
   [jitter](glossary.md#jitter), recipe A cancelled echo delays of 40 to
-  200 ms by 17.1 to 27.2 dB, and a 32 ms delay by only 11.1 and 10.7 dB
+  200 ms by 17.1 to 27.2 [dB](glossary.md#db), and a 32 ms delay by only 11.1 and 10.7 dB
   at 8 and 16 kHz ([usage.md](usage.md#caveats), "Echo delay").
 - **What is not measured.** Real calls through Asterisk, line echo and
   the round trips of real networks have not been measured. These figures
   do not promise that the echo of a speakerphone call is cancelled.
-- **The cost when there is no echo.** On the test Mac, the whole send
-  path of one call (`echo` with a 200 ms filter, `preprocess` and `agc`)
-  took a median of 71.4 µs per 20 ms frame at 8 kHz and 142.2 µs at
+- **The cost.** On the test Mac, on a synthetic call with echo, the
+  whole send path of one call (`echo` with a 200 ms filter, `preprocess`
+  and `agc`) took a median of 71.4 µs per 20 ms frame at 8 kHz and 142.2 µs at
   16 kHz, under 1% of the frame duration
-  ([performance.md](performance.md#whole-chain-integration-wp7)). In the
+  ([performance.md](performance.md#whole-chain-integration-wp7)); the
+  cost without echo has not been measured separately. In the
   `echo` package's scenario with a silent far end, `echo` lowered the
   level of the near end by 1.0 dB at 8 kHz and 0.1 dB at 16 kHz, through
   its DC notch
@@ -136,7 +138,7 @@ and from the Asterisk sources at commit
    noise is a low noise that the caller's side asks the receiver to make
    during silence, instead of sending audio. Asterisk does not forward
    comfort noise frames (`res/res_audiosocket.c:263-264`), so where the
-   caller's side suppresses silence, the received audio has gaps, and
+   caller's side suppresses silence, the received audio can have gaps, and
    the frames sent back follow the received frames, not a clock. The
    dialplan application ends the session as an error when neither the
    channel nor the socket has had activity for 2 s
@@ -154,7 +156,7 @@ and from the Asterisk sources at commit
    or adds silence. So with `echo`, your service paces
    what it sends: one frame back for each frame received, silence when it
    has nothing to send. Then the canceller gets the frame that was sent
-   with each received frame. This is recipe A of
+   with each received frame. This is the pairing of recipe A of
    [usage.md](usage.md#recipe-a-sending-paced-by-the-received-frames).
 9. Asterisk accepts only hangup and audio messages from your service. Any
    other kind, or a payload length of 0, ends the session as an error
@@ -524,7 +526,9 @@ and
 [step 2](usage.md#recipe-a-step-2-send-one-frame-and-clean-the-received-frame)
 explain it. `received` cancels the echo of the frames sent so far.
 `finish` passes the canceller's output and its residual echo to
-`preprocess`, then the frame and the VAD decision to `agc`.
+`preprocess`, then the frame and the VAD decision to `agc`. The `rate`
+and `speech` fields are not used on this page; recipe A and its tests
+use them.
 
 ```go
 // pacedCall is the send path of a call whose sending the processing
@@ -625,16 +629,26 @@ to send, such as a prompt or text-to-speech, into `pending`:
   `pending` and sends silence for that frame. The late audio goes out in
   a later frame, so the caller hears a gap of silence.
 - **How much waits.** Audio waits in `pending` until a received frame
-  takes it, so the size of `pending` is the longest it can wait before
-  it plays.
+  takes it. While frames arrive at the call's pace, the size of
+  `pending` is the longest it waits; in a gap of received audio (item 6
+  of the protocol), nothing takes it, and it waits longer.
 
 `beeper` is an example application. For each call it starts a goroutine
 that writes a 200 ms beep every 2 s into a `pending` of 200 ms, and its
 `end` stops that goroutine and logs the number of frames received.
 Replace it with your own application: `start` gets the call's UUID, and
-the session's `deliver` gets the cleaned audio. `deliver` runs on the
-connection's goroutine, so it must not wait; hand slow work to another
-goroutine ([Is one goroutine enough?](#is-one-goroutine-enough)).
+the session's `deliver` gets the cleaned audio. `start` runs on each
+connection's goroutine, so it can run for several calls at once.
+`deliver` runs on the connection's goroutine, so it must not wait; hand
+slow work to another goroutine
+([Is one goroutine enough?](#is-one-goroutine-enough)).
+
+The example keeps the accept loop short. `acceptAudioSockets` returns on
+any `Accept` error, and `main` then exits, which ends every call; a
+service would log a temporary error and accept again. No read deadline
+is set, so a caller's side that disappears without closing the
+connection is noticed only through TCP keep-alive, which Go turns on by
+default.
 
 ```go
 // onPacket stores the whole frame p in rx, or nothing when it does not
@@ -643,7 +657,7 @@ func onPacket(rx *buffer.SPSC, p []int16) bool {
 	// SPSC.Write stores as much as fits. A partial frame would shift every
 	// later frame boundary, so store the whole frame or nothing.
 	if rx.Free() < len(p) {
-		return false // the processor is behind: drop this packet
+		return false // no room: store nothing
 	}
 	rx.Write(p)
 	return true
@@ -730,8 +744,9 @@ A second goroutine, joined by a `buffer.SPSC`, is needed in these cases:
 With 20 ms frames, the processing delays the cleaned audio by about 22 ms:
 `echo` adds none, `preprocess` one frame (20 ms) and `agc` 2 ms
 ([the send path](guide.md#the-send-path-frame-by-frame), "Latency").
-That is on top of the time the samples wait in `in` until their frame is
-complete: up to 20 ms for the first sample of a frame. The audio your
+That is on top of the time the samples wait in `in` until the message
+that completes their frame arrives: with 20 ms messages, up to 20 ms for
+the first sample of a frame. The audio your
 service sends back passes through no processor, so the library adds no
 delay to it other than the time it waits in `pending`.
 

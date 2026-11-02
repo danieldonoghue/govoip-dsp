@@ -32,7 +32,7 @@ func onPacket(rx *buffer.SPSC, p []int16) bool {
 	// SPSC.Write stores as much as fits. A partial frame would shift every
 	// later frame boundary, so store the whole frame or nothing.
 	if rx.Free() < len(p) {
-		return false // the processor is behind: drop this packet
+		return false // no room: store nothing
 	}
 	rx.Write(p)
 	return true
@@ -304,7 +304,7 @@ func docCodeIsTested(t *testing.T, name string) {
 		t.Fatalf("docs/%s has no Go blocks", name)
 	}
 	for i, b := range blocks {
-		if i == 0 && strings.HasPrefix(b[1], "package main\n") {
+		if name == "audiosocket.md" && i == 0 && strings.HasPrefix(b[1], "package main\n") {
 			continue // the package clause, imports and main: TestAudioSocketPageBuilds builds them
 		}
 		lines := slices.DeleteFunc(strings.Split(b[1], "\n"), func(s string) bool { return strings.TrimSpace(s) == "" })

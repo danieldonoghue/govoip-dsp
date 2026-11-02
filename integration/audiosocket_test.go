@@ -674,9 +674,8 @@ func TestAudioSocketMessages(t *testing.T) {
 	}
 }
 
-// TestAudioSocketAccept runs acceptAudioSockets with beeper and two calls
-// at once. The first call stays open until the second has ended, so the
-// test fails if the connections are not served on their own goroutines.
+// TestAudioSocketAccept runs acceptAudioSockets with beeper and two calls at
+// once; the first stays open until the second ends, so serial serving fails.
 func TestAudioSocketAccept(t *testing.T) {
 	const rate = 8000
 	f := rate * 20 / 1000
@@ -755,7 +754,8 @@ func TestAudioSocketAccept(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !slices.Equal(started, ids) {
+	slices.SortFunc(started, func(a, b uuid) int { return bytes.Compare(a[:], b[:]) })
+	if !slices.Equal(started, ids) { // ids is sorted; the two starts may run in either order
 		t.Errorf("sessions started with UUIDs %v, want %v", started, ids)
 	}
 	for _, id := range ids {
@@ -862,9 +862,8 @@ func TestReadUUID(t *testing.T) {
 	}
 }
 
-// TestAudioSocketPageBuilds puts every Go block of docs/audiosocket.md, in
-// order, into one main.go, and checks that it is gofmt-clean, builds and
-// passes go vet as a program of its own.
+// TestAudioSocketPageBuilds joins the Go blocks of docs/audiosocket.md into
+// one main.go and checks that it is gofmt-clean, builds and passes go vet.
 func TestAudioSocketPageBuilds(t *testing.T) {
 	gobin, err := exec.LookPath("go")
 	if err != nil {
