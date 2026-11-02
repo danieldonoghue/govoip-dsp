@@ -127,13 +127,8 @@ They are met when:
    zero value.
 3. **Test.** `TestZeroValueMethods` lists the exported methods by
    reflection (`testutil.CheckZeroValue`), so a method added later is
-   covered. It calls each on a fresh zero value with nil slices and
-   slices of 1, 160 and 161 elements in every combination. It fails on a
-   panic, a wrong result, a write into an argument or a change to the
-   zero value.
+   covered. It calls each on a fresh zero value with nil slices,
+   empty non-nil slices and slices of 1, 160 and 161 elements in every
+   combination. It fails on a panic, a wrong result, a write into an
+   argument or a change to the zero value.
 4. **Mutation.** Removing the guard from `Forward` is caught by the test.
-
-### Wording correction (after an audit of the documents)
-
-The slice arguments of the zero-value test in criterion 3 also include an
-empty non-nil slice, as well as nil. No criterion or threshold changes.

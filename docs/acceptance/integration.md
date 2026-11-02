@@ -24,8 +24,9 @@ The send path of one call, per frame of `F` samples at the processing rate
 Where the network or device runs at 48 kHz, `resample.Resampler` converts
 the microphone and far-end streams down to 16 kHz before step 1 (quality
 `resample.QualityVoIP`, 3), and the receive path converts 16 kHz back to
-48 kHz. The echo filter length is 200 ms (`R/5` samples) everywhere,
-which covers the requirements §7 expensive configuration.
+48 kHz. The echo filter length is 200 ms (`R/5` samples), which
+covers the requirements §7 expensive configuration, except in U11 and U12
+(256 ms).
 
 ## Parity class
 
@@ -160,8 +161,10 @@ output RMS, in dB).
    to the question of ADR `wp4-noise-protection`: whether denoise keeps
    the residual noise below the -50 dBFS gate, and at which input levels
    it does not.
-2. **N2.** The AGC gain never exceeds `MaxGain` (24 dB) by more than
-   0.5 dB, and no output sample exceeds the ceiling.
+2. **N2.** The AGC gain, measured as the energy of its output over the
+   energy of its input in each whole second from 1 s on, never exceeds
+   `MaxGain` (24 dB) by more than 0.5 dB, and no output sample exceeds the
+   ceiling.
 
 ## Real-time budget (T)
 
@@ -543,27 +546,3 @@ recipe B's path, fed the `cancel_*_20ms` and `capture_*_20ms` inputs of
 the reference pairing, must give the echo canceller output, the residual
 spectrum, the preprocess output and the VAD decision of the C chain bit
 for bit.
-
-### Wording corrections (after an audit of the documents)
-
-These corrections change no criterion and no threshold.
-
-1. **Filter length.** "The echo filter length is 200 ms everywhere" in "The
-   chain under test" holds for every case except U11 and U12, whose echo
-   filter is 256 ms (see "U6 kept, U11 added for longer echo delays").
-2. **N2 measure.** The AGC gain of N2 is the energy of the AGC output over
-   the energy of its input (the preprocess output), in each whole second
-   from 1 s on (`TestNoiseThroughSendChain`). The 0.5 dB margin is on that
-   measure, not on the gain the AGC applies to a single frame.
-3. **U7 and U12 with recipe A.** U7 and U12.1 are worded for recipe B and
-   its `Playback`. With recipe A, the processing goroutine passes the sent
-   frame, or the silence it sent, to `Cancel`. U7 then compares the echo
-   tail of that run with a counterfactual run that queues the same sent
-   frames with `Playback` up to 14 s and nothing after, and calls
-   `Capture` (`TestPacedIdleSender`). U12.1 holds for recipe A when the
-   frames the writer sends equal, in order, the frames passed to `Cancel`.
-4. **Later entries.** In "Outcome of the two-way measurement, and U6 again",
-   `drainWith` names the comparison variant that "Comparison removed,
-   reported-only measurements behind a flag" removed from the tests. The
-   `-race` list in "Less work under `-race`" was written before
-   `TestPacedFourGoroutines`, which also runs in full under `-race`.

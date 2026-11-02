@@ -19,7 +19,8 @@ tests.
 2. `SPSC`: lock-free single-producer, single-consumer ring buffer of
    `int16`. Every configuration of both types is covered: every capacity
    from 1 to `MaxCapacity` is valid, and the tests use capacities 1, 2, 3,
-   7, 64, 160, 1000 and 4096 plus fuzzed capacities from 1 to 300.
+   7, 64, 160, 1000 and 4096 plus fuzzed capacities from 1 to 300 (1 to
+   2048 for `FuzzChunksRing`).
 
 ## Model
 
@@ -184,7 +185,8 @@ those changes.
 - **D2a. Keep-newest under concurrency.** In the stress test k is drawn
   mostly from [0, `Len`], the run counts the keep-newest calls that dropped
   something and requires that count to be above 0, and after each such call
-  the consumer checks `Len` ≥ k.
+  the consumer checks `Len` ≥ min(k, `Len` before the call), since k
+  can exceed `Len`.
 - **D9. Examples.** `buffer/example_test.go` (package `buffer_test`) has
   `ExampleRing` (write and read with an explicit overflow policy, and the
   two-segment read view with `ReadSlices` and `Consume`) and `ExampleSPSC`
@@ -240,24 +242,10 @@ those changes.
      types by reflection (`testutil.CheckZeroValue`), so a method added
      later is covered. It calls each on a fresh zero value with every
      combination of representative arguments: integers -1, 0, 1, 160,
-     16000 and the type's maximum, and nil slices and slices of 1, 160
-     and 161 elements. It fails on a panic, a nonzero result, a write
-     into an argument or a change to the zero value.
+     16000 and the type's minimum and maximum, and nil slices, empty
+     non-nil slices and slices of 1, 160 and 161 elements. It fails on
+     a panic, a nonzero result, a write into an argument or a change to
+     the zero value.
    - **Mutation.** With no guard to remove, the mutation is one that
      keeps buffers made by the constructors correct: `SPSC.slot` computed
      as `i % len(s.buf)`. The test catches it.
-7. **Wording corrections** (after an audit of the documents). These change
-   no criterion and no threshold.
-   - **Fuzzed capacities.** "Fuzzed capacities from 1 to 300" in "Types
-     covered" is `FuzzRing` and `FuzzSPSC`. `FuzzChunksRing` fuzzes
-     capacities from 1 to 2048.
-   - **S2 chunk sizes.** Chunk sizes go up to `min(2·Cap+3, 300)`, so
-     chunks above the capacity occur at the capacities 1, 2, 3, 7 and 64.
-     At capacity 1000 they stop at 300 samples.
-   - **D2a.** The consumer checks `Len` ≥ min(k, `Len` before the call),
-     because k is drawn from 0 up to 2·`Cap` in a quarter of the draws and
-     can exceed `Len`.
-   - **Zero-value arguments.** The integer arguments of the zero-value
-     test also include the type's minimum, and the slice arguments also
-     include empty non-nil slices (`zeroSliceLens` and `zeroArgs` in
-     `internal/testutil`).
