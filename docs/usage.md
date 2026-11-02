@@ -17,11 +17,12 @@ the tests in `integration/` (`paced_test.go`, `buffered_test.go`,
 `call_test.go` and `usage_test.go`), and `TestUsageCodeIsTested` fails if
 one is not. Each section names the tests that back it.
 
-Criteria named U6 to U12 are in `docs/acceptance/integration.md`: U6 uneven
-timing, U7 an idle sender, U8 concurrent goroutines, U9 no allocation, U10 a
-pause then a burst (reported, no threshold), U11 long echo delays and U12 a
-burst sender. A "reported finding" is a measured result that misses its
-registered threshold. The test pins it and the docs report it.
+Criteria named U6 to U12 are in `docs/acceptance/integration.md`: U6
+uneven timing, U7 an idle sender, U8 concurrent goroutines, U9 no
+allocation, U10 documentation plus a reported pause then burst, U11 long
+echo delays and U12 a burst sender. A "reported finding" is a measured
+result that misses its registered threshold. The test pins it and the
+docs report it.
 
 New to these packages? The [developer guide](guide.md) explains each
 package, the per-frame call order and the goroutine hand-off first, and
@@ -34,7 +35,7 @@ the [glossary](glossary.md) defines the terms this page uses.
   little-endian, at 8 kHz in the classic format; other formats and rates
   depend on the Asterisk version and channel setup (the
   [AudioSocket protocol page](https://docs.asterisk.org/Configuration/Channel-Drivers/AudioSocket/)
-  lists the payload kinds, all little-endian). Converting payload
+  lists the audio kinds, all little-endian). Converting payload
   bytes to `[]int16` is the application's job and is not part of this
   library.
 - **Rates.** The echo canceller is supported at 8 and 16 kHz only

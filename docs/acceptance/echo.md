@@ -285,17 +285,19 @@ criteria above and relax nothing. They are met when:
 These corrections change no criterion and no threshold.
 
 1. **Criterion 5 under `-race`.** Under `-race`, `TestReferenceEcho` and
-   `TestReferenceWithoutResidualCalls` run only one configuration per
-   scenario, and run it in full: 8 kHz, 10 ms frames and a 64 ms filter,
-   and for `diverge` 16 kHz, 20 ms and 64 ms (`fullInPartial`). They skip
-   the other configurations, because they start no goroutines (contracts
-   section 9). Under `-short` without `-race`, every case still compares
-   a leading part.
+   `TestReferenceWithoutResidualCalls` run one configuration of each
+   scenario except `long60` and `long10m`, in full: 8 kHz, 10 ms frames
+   and a 64 ms filter, and for `diverge` 16 kHz, 20 ms and 64 ms
+   (`fullInPartial`). They skip every other case, because they start no
+   goroutines (contracts section 9). Under `-short` without `-race`,
+   `TestReferenceEcho` compares a leading part of every case.
+   `TestReferenceWithoutResidualCalls` skips the long runs and the
+   non-capture cases above 16 kHz in every mode.
 2. **Reported figures.** The per-configuration figures are in
    `echo/testdata/metrics.golden`. `docs/algorithms.md` gives ranges per
    rate. The text under "Scenario measurements" is worded that way.
 3. **Adaptation rate.** The `q07` and `q03` swap of "Reference tests run in
-   parallel" is in the adaptation rate (`mdf.go:661` to `669`), not in a
+   parallel" is in the adaptation rate (`mdf.go:668`), not in a
    mask.
 4. **Zero-value arguments.** The integer arguments of the zero-value test
    (criterion 4 of "Zero-value safety") also include the type's minimum,
