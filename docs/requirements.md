@@ -517,6 +517,7 @@ Never report a platform as tested because it cross-compiled.
 | `README.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md` | Project front matter |
 | `LICENSES/` | Third-party licence texts |
 | `Makefile`, `go.mod` | Build entry points: check, test, race, bench, fixtures |
+| `.githooks/` | Pre-push hook that runs `make check-short` (enabled by `make hooks`) |
 | `resample/`, `buffer/`, `preprocess/`, `echo/`, `agc/` | Public packages (`jitter/` when started) |
 | `integration/` | Tests of the whole chain; no library code |
 | `doc.go`, `example_test.go` (root) | Package `govoipdsp`: overview and end-to-end examples; no library code |
