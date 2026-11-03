@@ -16,8 +16,9 @@ var benchIn = func() []int32 {
 }()
 
 var (
-	sink16 int16
-	sinkF  Float
+	sink16   int16
+	sinkF    Float
+	sinkBool bool
 )
 
 func BenchmarkSqrt(b *testing.B) {
@@ -65,6 +66,18 @@ func BenchmarkPseudoFloat(b *testing.B) {
 func BenchmarkFloatAdd(b *testing.B) {
 	for i := 0; b.Loop(); i++ {
 		sinkF = FloatAdd(Float{int16(benchIn[i&1023]), 3}, Float{int16(benchIn[(i+1)&1023]), -2})
+	}
+}
+
+func BenchmarkFloatSub(b *testing.B) {
+	for i := 0; b.Loop(); i++ {
+		sinkF = FloatSub(Float{int16(benchIn[i&1023]), 3}, Float{int16(benchIn[(i+1)&1023]), -2})
+	}
+}
+
+func BenchmarkFloatGT(b *testing.B) {
+	for i := 0; b.Loop(); i++ {
+		sinkBool = FloatGT(Float{int16(benchIn[i&1023]), 3}, Float{int16(benchIn[(i+1)&1023]), -2})
 	}
 }
 
