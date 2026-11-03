@@ -96,6 +96,24 @@ goroutine hand-off end to end:
 go test github.com/danieldonoghue/govoip-dsp -run Example -v
 ```
 
+## Documentation
+
+The [docs index](docs/README.md) says what each document is for and when
+to read it.
+
+- **For users:** the [AudioSocket quick start](docs/audiosocket.md), the
+  [developer guide](docs/guide.md), the [glossary](docs/glossary.md), the
+  wiring recipes of [docs/usage.md](docs/usage.md), and the API reference
+  on [pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp).
+- **For contributors**, records for people who change the library:
+  [requirements](docs/requirements.md),
+  [contracts](docs/contracts.md),
+  [architecture](docs/architecture.md),
+  [acceptance criteria](docs/acceptance/),
+  [testing](docs/testing.md), [algorithms](docs/algorithms.md),
+  [performance](docs/performance.md) and
+  [decisions](docs/decisions/README.md).
+
 ## Design
 
 - **No cgo.** The library builds and runs with `CGO_ENABLED=0`; no C
