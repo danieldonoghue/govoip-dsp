@@ -11,7 +11,7 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/resample"
 )
 
-var budget = flag.Bool("budget", false, "run the 10-minute real-time budget measurement (docs/acceptance/integration.md, T)")
+var budget = flag.Bool("budget", false, "run the real-time budget measurement over 10 minutes of audio per configuration (docs/acceptance/integration.md, T)")
 
 // budgetConfig is one row of the real-time budget table.
 type budgetConfig struct {
