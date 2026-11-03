@@ -262,6 +262,7 @@ func TestAcceptanceLibriSpeech(t *testing.T) {
 		if spread > 3 {
 			t.Errorf("G at %v dBFS: p95-p5 %.3f dB > 3 dB", lvl, spread)
 		}
+		checkCeiling(t, r, fmt.Sprintf("G at %v dBFS", lvl), false)
 	}
 }
 
@@ -615,6 +616,7 @@ func TestAcceptanceCautiousStart(t *testing.T) {
 	if worst > 0 {
 		t.Errorf("R3: gain exceeded the cautious-start bound by %.4f dB", worst)
 	}
+	checkCeiling(t, r, "R3", false)
 }
 
 // TestAcceptanceStationaryNoise covers N5.
@@ -673,6 +675,7 @@ func TestAcceptanceCutThreshold(t *testing.T) {
 					}
 				}
 				overSec := float64(over) * r.frameSeconds(cfg)
+				checkCeiling(t, r, name, false)
 				cuts := checkRates(t, r, name, cfg)
 				t.Logf("+%v dB at %d Hz: within 2 dB %.3f s, above target+6 dB %.3f s, cuts %v",
 					step, rate, within, overSec, cuts)
