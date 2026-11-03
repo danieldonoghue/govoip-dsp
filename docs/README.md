@@ -6,26 +6,26 @@ background for the user guides; the glossary explains each term.
 
 ## For users
 
-Read these in this order. Start with the first if you write an Asterisk
-AudioSocket service, and with the second otherwise.
+Read these in this order. Start with the first two if you write an Asterisk
+AudioSocket service, and with the third otherwise.
 
 1. [AudioSocket quick start](audiosocket.md): for a Go service that takes
    calls from Asterisk over AudioSocket. It explains a complete program
    and how to run and change it.
-2. [Developer guide](guide.md): the main path for every other
-   application. It explains the audio basics, which packages you need,
-   and how to call them for each frame.
-3. [Glossary](glossary.md): look up a term such as frame, near end or
-   echo delay when you meet it.
-4. [usage.md](usage.md): the full recipes for wiring the packages into
-   one call across goroutines, with their caveats and measurements. Read
-   it when you build a real call.
-5. [API reference on pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp):
-   every exported type and function, with examples. Keep it open while
-   you write code.
-6. [examples/audiosocket](../examples/audiosocket/main.go): the program
+2. [examples/audiosocket](../examples/audiosocket/main.go): the program
    that the AudioSocket quick start explains. Run it from the repository
    root with `go run ./examples/audiosocket`.
+3. [Developer guide](guide.md): the main path for every other
+   application. It explains the audio basics, which packages you need,
+   and how to call them for each frame.
+4. [Glossary](glossary.md): look up a term such as frame, near end or
+   echo delay when you meet it.
+5. [usage.md](usage.md): the full recipes for wiring the packages into
+   one call across goroutines, with their caveats and measurements. Read
+   it when you build a real call.
+6. [API reference on pkg.go.dev](https://pkg.go.dev/github.com/danieldonoghue/govoip-dsp):
+   every exported type and function, with examples. Keep it open while
+   you write code.
 
 ## For contributors
 

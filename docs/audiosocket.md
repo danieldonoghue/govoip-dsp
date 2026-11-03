@@ -144,7 +144,8 @@ each. The application, for example a text-to-speech engine, runs on its
 own goroutine and writes the audio to send into `pending`, a
 `buffer.SPSC` (an [SPSC](glossary.md#spsc) is a queue between one
 writing and one reading goroutine). A session that sends nothing back
-has `pending` nil. The application's side of a call is a `session`:
+has `pending` nil. The application's side of a call is a `session`,
+which `start` makes from the call's UUID:
 
 ```go
 // session is the application's side of one call.
@@ -378,7 +379,7 @@ against an Asterisk server.
 
 The tests in [main_test.go](../examples/audiosocket/main_test.go) run
 the program against a simulated Asterisk: a fake Asterisk connection
-over loopback TCP, or hand-written message bytes. No test runs `main`,
+over loopback TCP, or messages and writers in memory. No test runs `main`,
 and the program has not been run on a real Asterisk server.
 
 - `TestAudioSocketQuickStart` runs `serveAudioSocket` at 8 and 16 kHz,
