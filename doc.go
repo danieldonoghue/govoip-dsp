@@ -55,7 +55,8 @@
 // there is no echo, and the send path can be preprocess.Preprocessor.Run
 // followed by agc.AGC.Process, with preprocess.Preprocessor.SetVAD(true) so
 // that agc receives the speech decision. The [AudioSocket quick start] is a
-// tested path for a service on Asterisk AudioSocket.
+// path for a service on Asterisk AudioSocket, tested against a simulated
+// Asterisk connection; it has not been run on a real Asterisk server.
 //
 // preprocess and agc are optional. Leave out agc when the level is already
 // right, for example a source of known, fixed gain. agc still works without
