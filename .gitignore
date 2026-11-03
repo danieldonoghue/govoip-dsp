@@ -20,6 +20,9 @@ CLAUDE.local.md
 
 # Go build and test output
 /bin/
+# go build ./examples/audiosocket and its recordings, made in the root
+/audiosocket
+/*.raw
 /dist/
 *.exe
 *.test
