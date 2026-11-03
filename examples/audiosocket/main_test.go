@@ -61,8 +61,8 @@ func skipUnderRace(t testing.TB) {
 	}
 }
 
-// callSignals is the first 6 s of the integration package's call scenario:
-// far starts at 2 s, and mic is its echo through a room plus noise.
+// callSignals copies the first 6 s of the integration call scenario (far
+// from 2 s, mic its echo plus noise); no test keeps the two copies equal.
 type callSignals struct{ far, mic []int16 }
 
 func callScenario(rate int) callSignals {
@@ -183,7 +183,7 @@ func TestAudioSocketQuickStart(t *testing.T) {
 }
 
 func audioSocketQuickStart(t *testing.T, rate int, sends bool, end string) {
-	// The far end is silent for its first 2 s (farOn), so the application
+	// The far end is silent for its first 2 s, so the application
 	// sends 4 s of it and the call lasts 6 s: the canceller adapts.
 	const seconds = 6
 	kind := byte(kindSlin)
