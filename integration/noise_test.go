@@ -59,6 +59,13 @@ func TestNoiseThroughSendChain(t *testing.T) {
 							maxGain = max(maxGain, dB(energy(out[end-rate:end]), energy(den[end-rate:end])))
 						}
 					}
+					// The AGC frame is 10 ms, and the output is its input delayed by Latency.
+					fine, win, d := math.Inf(-1), rate/100, gc.Latency()
+					for from := 0; from+win+d <= len(in)/frame*frame; from += win {
+						if e := energy(den[from : from+win]); e > 0 {
+							fine = max(fine, dB(energy(out[from+d:from+win+d]), e))
+						}
+					}
 					last := func(x []int16) []int16 { return x[(seconds-10)*rate:] }
 					inL := testutil.DBFS(testutil.RMS(last(in)))
 					denL := testutil.DBFS(testutil.RMS(last(den)))
@@ -67,10 +74,13 @@ func TestNoiseThroughSendChain(t *testing.T) {
 					for _, v := range out {
 						peak = max(peak, int(math.Abs(float64(v))))
 					}
-					t.Logf("input %.1f dBFS, after preprocess %.1f dBFS (%.1f dB), VAD speech %d of %d frames, AGC out %.1f dBFS, AGC gain %+.1f dB (max per second %+.1f dB), gate %d dBFS",
-						inL, denL, denL-inL, speechFrames, frames, outL, outL-denL, maxGain, cfg.GateLevel)
+					t.Logf("input %.1f dBFS, after preprocess %.1f dBFS (%.1f dB), VAD speech %d of %d frames, AGC out %.1f dBFS, AGC gain %+.1f dB (max per second %+.1f dB, per 10 ms %+.1f dB), gate %d dBFS",
+						inL, denL, denL-inL, speechFrames, frames, outL, outL-denL, maxGain, fine, cfg.GateLevel)
 					if maxGain > float64(cfg.MaxGain)+0.5 {
 						t.Errorf("N2: AGC gain %.1f dB above MaxGain %d dB", maxGain, cfg.MaxGain)
+					}
+					if fine > float64(cfg.MaxGain)+0.5 {
+						t.Errorf("N2: AGC gain %.2f dB over a 10 ms window, above MaxGain %d dB", fine, cfg.MaxGain)
 					}
 					if peak > ceiling {
 						t.Errorf("N2: peak %d above the ceiling %d", peak, ceiling)
