@@ -154,6 +154,7 @@ var mustInline = []string{
 	"Div32", "PDiv32",
 	"FloatLT", "FloatMult", "FloatAMult", "FloatShl", "FloatExtract16",
 	"FloatExtract32", "FloatMul32",
+	"ILog2", "VShr32Masked", "FloatExtract16Masked", "FloatExtract32Masked",
 }
 
 func TestInlining(t *testing.T) {
