@@ -21,9 +21,11 @@ package's `example_test.go` (the root's is
 ## Start here
 
 Writing a Go service on Asterisk AudioSocket? The
-[AudioSocket quick start](audiosocket.md) is a short tested path for one
-connection; come back here for the detail. Otherwise, read the guide in
-this order to get a first call working:
+[AudioSocket quick start](audiosocket.md) is a short path, with a
+complete program for each connection. The program is tested against a
+simulated Asterisk connection; it has not been run on a real Asterisk
+server. Come back here for the detail. Otherwise, read the guide in this
+order to get a first call working:
 
 1. Read [Audio basics](#audio-basics) if samples, rates and frames are
    new to you.

@@ -80,9 +80,12 @@ blocking either side. The developer guide draws the
 ## Getting started
 
 For a Go service on Asterisk AudioSocket, start with the
-[AudioSocket quick start](docs/audiosocket.md): the protocol, the
-processors for each connection and the calls for each frame, in tested
-code. Otherwise, start with the
+[AudioSocket quick start](docs/audiosocket.md): the protocol, and a
+complete program,
+[examples/audiosocket](examples/audiosocket/main.go), that makes the
+processors for each connection and calls them for each frame. The
+program is tested against a simulated Asterisk connection; it has not
+been run on a real Asterisk server. Otherwise, start with the
 [developer guide](docs/guide.md#start-here), which links
 the [glossary](docs/glossary.md) and the tested wiring recipes of
 [docs/usage.md](docs/usage.md). The root package's
