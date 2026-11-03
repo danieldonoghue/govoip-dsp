@@ -35,9 +35,10 @@ TG1. **`FloatSub` and `FloatGT` (`docs/acceptance/fixed.md`, criteria 5 and
 TG2. **Inlining list (`docs/performance.md`, "All macro ports inline").**
      `TestInlining` checks `ILog2`, `VShr32Masked`, `FloatExtract16Masked`
      and `FloatExtract32Masked`. Pass: each one reports `can inline`.
-     Fault: add a loop to `ILog2` in a scratch copy, so that it no longer
-     inlines. `TestInlining` must fail with `ILog2 does not inline`. The
-     same for one masked function.
+     Fault: mark `ILog2` `//go:noinline` in a scratch copy, so that it no
+     longer inlines (a loop does not stop Go from inlining it).
+     `TestInlining` must fail with `ILog2 does not inline`. The same for
+     one masked function.
 
 TG3. **Ceiling on every signal (`docs/acceptance/agc.md` T1, "every other
      criterion's signals").** `checkCeiling` runs on the signals of R3
