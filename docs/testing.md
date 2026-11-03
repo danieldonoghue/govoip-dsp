@@ -963,6 +963,24 @@ One mutation of the test's Go chain, or of a recipe, at a time.
 | in-step wiring: `resampleInto` ignores the queue result | caught by `TestQueueFullIsReported` |
 | in-step wiring: backlog drop without skipping far frames, two goroutines | caught by `TestRecipeDropsUnderRace` (343 mismatches) |
 
+### Test gaps (`docs/acceptance/test-gaps.md`)
+
+Each check below was run on a scratch copy with the fault named, and passed
+on the real code. Run times are `go test -count=1` on the Mac, before and
+after the change.
+
+| Criterion | Fault | Result | Run time |
+|---|---|---|---|
+| TG1, `BenchmarkFloatSub`, `BenchmarkFloatGT` | bodies replaced by a constant result | the ns/op fell from 5.9 to 2.2 and from 2.5 to 2.1, so the benchmarks measure the functions. They have no pass condition | n/a |
+| TG1, inlining of `FloatSub` and `FloatGT` | none: they do not inline (cost 156 and 83, budget 80), so they are not in the list | not testable without a library change; see criterion 5 as narrowed | n/a |
+| TG2, `ILog2`, `VShr32Masked`, `FloatExtract16Masked`, `FloatExtract32Masked` in `TestInlining` | `//go:noinline` on each | caught (`ILog2 does not inline` and the same for the other three) | 0.02 s before and after |
+| TG3, `checkCeiling` on R3, G1 to G4, G5 and G6 | the output multiplied by 8 before saturation | caught on every one of them (R3, the four G levels, all 20 G5 and G6 subtests) | 0.55, 0.12 and 0.44 s before; 0.57, 0.13 and 0.47 s after |
+| TG3, the same | the limiter's allowed gain raised by 3000 in the ceiling, or removed | not caught: these signals peak well below the ceiling (-24 dBFS target), so only a fault in the applied gain reaches it | n/a |
+| TG4, `TestFloatNonFiniteChannel` | `ProcessChannelFloat` of channel 1 converts NaN to 32767 | caught (`channel 1 frame 6: NaN input gives -1, zero input gives 0`); `TestFloatNonFinite` does not see it | 0.00 s before and after |
+| TG5, 10 ms windows in `TestNoiseThroughSendChain` | the gain for one 10 ms block, 20 s in, set to `MaxGain` + 2 dB | caught (13 of the 16 signals fail, 24.6 to 26.0 dB). The previous one-second check passes on the same fault | 0.66 s before, 0.68 s after |
+| TG6, chunks above the capacity in `TestStressSPSC` | chunks capped at 300 again | caught at capacity 1000 (0 written and 0 read chunks above it) | 4.33 s before, 4.05 s after (capacity 1000: 0.01 s both) |
+| TG7, `-budget` flag text | none: a text | n/a | n/a |
+
 ## Whole-chain measurements (`integration`, WP7)
 
 From `go test ./integration -run 'TestPipeline|TestNoise' -v`
@@ -1181,8 +1199,8 @@ follows from the AGC design and was not traced frame by frame. Below that the
 gate holds, and the AGC gain stays at 0 dB. At 16 kHz the VAD reports speech on
 almost every frame of noise above about -65 dBFS; at 8 kHz it reports none on
 white noise at -59.5 dBFS. No recorded line noise was available, so none was
-measured. N2 holds: the largest one-second gain is +23.6 dB (MaxGain 24) and no
-sample exceeds the ceiling.
+measured. N2 holds: the largest gain, over one second and over one 10 ms
+window, is +23.6 dB (MaxGain 24) and no sample exceeds the ceiling.
 
 ## Platform determinism of generated inputs
 
@@ -1230,7 +1248,8 @@ normal `go test`.
 
 The `buffer` SPSC stress test moves 2·10^5 samples per capacity under
 `-race` or `-short` instead of 10^6, with the same capacities, chunk sizes
-and access styles.
+and access styles. At every capacity, both sides draw chunks above the
+capacity, and the test fails if either draws none.
 
 `preprocess` compares the long runs (more than one chunk) up to their first
 chunk in those modes, and their per-frame VAD and probability streams up to the
