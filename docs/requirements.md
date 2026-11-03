@@ -520,6 +520,7 @@ Never report a platform as tested because it cross-compiled.
 | `.githooks/` | Pre-push hook that runs `make check-short` (enabled by `make hooks`) |
 | `resample/`, `buffer/`, `preprocess/`, `echo/`, `agc/` | Public packages (`jitter/` when started) |
 | `integration/` | Tests of the whole chain; no library code |
+| `examples/` | Runnable example programs, such as the AudioSocket service; not part of the library API |
 | `doc.go`, `example_test.go` (root) | Package `govoipdsp`: overview and end-to-end examples; no library code |
 | `internal/fixed/` | Fixed-point operations (shared, append-only) |
 | `internal/fft/` | Fixed-point FFT |
