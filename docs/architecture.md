@@ -111,6 +111,7 @@ integration results have been reviewed.
 | WP6b | Parallel reference subtests | `echo`, `preprocess` tests | WP5, WP6 | bit-exact | Validated |
 | WP7 | Integration and validation of the whole chain | `integration`, docs | WP1 to WP6 | bit-exact (echo and preprocess pairing) | Implemented (two criteria fail at 48 kHz; both recipes fail criterion U6, a 32 ms echo with jitter) |
 | WP7b | Zero-value safety: no method panics on a zero value | `echo`, `resample`, `agc`, `preprocess`, `buffer`, `internal/fft`, `internal/testutil` | WP7 | bit-exact (unchanged on valid input) | Validated |
+| WP7c | Test gaps: checks that the acceptance criteria promise | tests of `internal/fixed`, `agc`, `resample`, `buffer`, `integration` | WP8 | unchanged (test code only) | Validated |
 | WP8 | Developer documentation | package docs, examples, root package `govoipdsp`, `docs/` | WP7, WP7b | n/a | Validated |
 | WP9 | Performance | `internal/kernels`, hot paths | WP8 | bit-exact with the portable code | Planned |
 | S1 | Jitter buffer | `jitter` | WP9 | to be decided | Planned |
