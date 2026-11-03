@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -22,6 +23,36 @@ import (
 	"github.com/danieldonoghue/govoip-dsp/internal/testutil"
 	"github.com/danieldonoghue/govoip-dsp/preprocess"
 )
+
+// TestPageQuotesProgram checks that every Go block of docs/audiosocket.md
+// is verbatim in main.go, so that the page quotes the program as it is.
+func TestPageQuotesProgram(t *testing.T) {
+	doc, err := os.ReadFile(filepath.Join(testutil.RepoRoot(t), "docs", "audiosocket.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(doc, []byte("(../examples/audiosocket/main.go)")) {
+		t.Error("docs/audiosocket.md does not link to examples/audiosocket/main.go")
+	}
+	blocks := regexp.MustCompile("(?s)```go\n(.*?)```").FindAllSubmatch(doc, -1)
+	if len(blocks) == 0 {
+		t.Fatal("docs/audiosocket.md has no Go blocks")
+	}
+	for i, b := range blocks {
+		for l := range strings.SplitSeq(string(b[1]), "\n") {
+			if strings.TrimSpace(l) != "" && !bytes.Contains(src, []byte(l)) {
+				t.Errorf("docs/audiosocket.md Go block %d: line %q is not in main.go", i+1, l)
+			}
+		}
+		if !bytes.Contains(src, b[1]) {
+			t.Errorf("docs/audiosocket.md Go block %d is not verbatim in main.go", i+1)
+		}
+	}
+}
 
 // skipUnderRace skips single-goroutine work under the race detector.
 func skipUnderRace(t testing.TB) {

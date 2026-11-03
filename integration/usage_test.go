@@ -277,9 +277,6 @@ func TestNoAllocsRecipe(t *testing.T) {
 // appears verbatim in this package's tests (criterion U2).
 func TestUsageCodeIsTested(t *testing.T) { docCodeIsTested(t, "usage.md") }
 
-// TestAudioSocketCodeIsTested checks the same for docs/audiosocket.md.
-func TestAudioSocketCodeIsTested(t *testing.T) { docCodeIsTested(t, "audiosocket.md") }
-
 // docCodeIsTested checks that every Go block of docs/name appears verbatim
 // in this package's tests.
 func docCodeIsTested(t *testing.T, name string) {
@@ -304,9 +301,6 @@ func docCodeIsTested(t *testing.T, name string) {
 		t.Fatalf("docs/%s has no Go blocks", name)
 	}
 	for i, b := range blocks {
-		if name == "audiosocket.md" && i == 0 && strings.HasPrefix(b[1], "package main\n") {
-			continue // the package clause, imports and main: TestAudioSocketPageBuilds builds them
-		}
 		lines := slices.DeleteFunc(strings.Split(b[1], "\n"), func(s string) bool { return strings.TrimSpace(s) == "" })
 		// Each run of non-blank lines must appear in the source.
 		for _, l := range lines {
