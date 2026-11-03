@@ -178,6 +178,37 @@ func TestFloatNonFinite(t *testing.T) {
 	}
 }
 
+// TestFloatNonFiniteChannel is TestFloatNonFinite for ProcessChannelFloat,
+// with NaN in one channel of a strided input.
+func TestFloatNonFiniteChannel(t *testing.T) {
+	const nch, frames = 2, 960
+	nan := float32(math.NaN())
+	in := testutil.ToFloat32(testutil.WhiteNoise(nch*frames, 20000, 9))
+	zeroed := slices.Clone(in)
+	for i := 1; i < len(in); i += 2 * 13 { // channel 1 only
+		in[i] = nan
+		zeroed[i] = 0
+	}
+	cfg := Config{Channels: nch, InRate: 48000, OutRate: 16000, Quality: 5}
+	a, b := mustNew(t, cfg), mustNew(t, cfg)
+	outA, outB := make([]float32, nch*400), make([]float32, nch*400)
+	for ch := range nch {
+		_, na, err := a.ProcessChannelFloat(ch, in[ch:], nch, outA[ch:], nch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, nb, err := b.ProcessChannelFloat(ch, zeroed[ch:], nch, outB[ch:], nch)
+		if err != nil || na != nb || na == 0 {
+			t.Fatalf("channel %d: %d and %d frames, %v", ch, na, nb, err)
+		}
+		for j := range na {
+			if va, vb := outA[ch+j*nch], outB[ch+j*nch]; va != vb || va != float32(int16(va)) {
+				t.Fatalf("channel %d frame %d: NaN input gives %v, zero input gives %v", ch, j, va, vb)
+			}
+		}
+	}
+}
+
 // TestFloatMatchesInt checks that float32 output is the exact int16 result
 // for integer-valued input.
 func TestFloatMatchesInt(t *testing.T) {
