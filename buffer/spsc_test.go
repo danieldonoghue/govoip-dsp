@@ -116,10 +116,16 @@ func TestStressSPSC(t *testing.T) {
 	}
 }
 
-// stressSPSC moves total samples through s. Chunks go up to 2·Cap+3 samples,
-// but at most 300, so large capacities still see thousands of operations.
+// stressSPSC moves total samples through s, in chunks up to 2·Cap+3. Above
+// Cap 148 three in four stop at 300, to keep thousands of operations.
 func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
-	maxChunk := min(2*s.Cap()+3, 300)
+	maxChunk := 2*s.Cap() + 3
+	chunk := func(rng *testutil.SplitMix64) int {
+		if maxChunk > 300 && rng.Intn(4) != 0 {
+			return rng.Intn(300 + 1)
+		}
+		return rng.Intn(maxChunk + 1)
+	}
 	var failed atomic.Bool
 	fail := func(format string, args ...any) {
 		t.Helper()
@@ -135,12 +141,17 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 		return failed.Load()
 	}
 	var delivered, dropped, keepDrops int // consumer only; read after Wait
+	var bigWrites, bigReads int           // chunks above Cap, by side; read after Wait
 	var wg sync.WaitGroup
 	wg.Go(func() { // producer
 		rng := testutil.SplitMix64{State: seed}
 		p := make([]int16, maxChunk)
 		for sent := 0; sent < total && !stalled(); {
-			size := min(rng.Intn(len(p)+1), total-sent)
+			size := chunk(&rng)
+			if size > s.Cap() {
+				bigWrites++
+			}
+			size = min(size, total-sent)
 			n := 0
 			if rng.Intn(2) == 0 {
 				for i := range p[:size] {
@@ -173,7 +184,10 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 		p := make([]int16, maxChunk)
 		var c seqChecker
 		for int(c.next) < total && !stalled() {
-			size := rng.Intn(len(p) + 1)
+			size := chunk(&rng)
+			if size > s.Cap() {
+				bigReads++
+			}
 			n := 0
 			switch mode := rng.Intn(5); {
 			case mode == 4: // drop without reading, as after a stall
@@ -241,7 +255,10 @@ func stressSPSC(t *testing.T, s *SPSC, total int, seed uint64) {
 	if delivered+dropped != total {
 		t.Errorf("%d delivered + %d dropped, want %d written", delivered, dropped, total)
 	}
-	t.Logf("%d delivered, %d dropped, %d keep-newest drops", delivered, dropped, keepDrops)
+	t.Logf("%d delivered, %d dropped, %d keep-newest drops, chunks above Cap %d: %d written, %d read", delivered, dropped, keepDrops, s.Cap(), bigWrites, bigReads)
+	if bigWrites == 0 || bigReads == 0 {
+		t.Errorf("%d written and %d read chunks above Cap %d: the run missed S2's oversized chunks", bigWrites, bigReads, s.Cap())
+	}
 	if dropped == 0 || delivered == 0 || keepDrops == 0 {
 		t.Errorf("%d delivered, %d dropped, %d keep-newest drops: the run missed a path", delivered, dropped, keepDrops)
 	}
